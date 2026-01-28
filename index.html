@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rookie Financial Planner</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-6xl mx-auto p-4 md:p-6">
+    <!-- Header -->
+    <header class="bg-white rounded-lg shadow-sm p-4 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <svg class="w-10 h-10" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="30" fill="#10B981" stroke="#059669" stroke-width="2"/>
+          <circle cx="32" cy="32" r="24" fill="none" stroke="#A7F3D0" stroke-width="2"/>
+          <path d="M32 44 L32 28" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+          <path d="M32 32 C32 32 26 28 26 22 C26 18 30 16 32 20 C34 16 38 18 38 22 C38 28 32 32 32 32" fill="#fff"/>
+          <path d="M32 36 C28 34 25 36 25 36 C25 36 28 38 32 36" fill="#A7F3D0"/>
+          <path d="M32 36 C36 34 39 36 39 36 C39 36 36 38 32 36" fill="#A7F3D0"/>
+        </svg>
+        <h1 class="text-2xl font-bold text-gray-800">Rookie Financial Planner</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <label for="currency-select" class="text-sm text-gray-600">Currency:</label>
+          <select id="currency-select" class="px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+          </select>
+        </div>
+        <div id="fund-house-container" class="flex items-center gap-2">
+          <label for="fund-house-select" class="text-sm text-gray-600">Fund House:</label>
+          <select id="fund-house-select" class="px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="icici">ICICI Prudential</option>
+            <option value="hdfc">HDFC</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <!-- Cash Flow Section -->
+    <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
+      <h2 class="text-lg font-semibold mb-4 text-gray-800">Cash Flow</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Income (1 column) -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium text-green-700">Income</h3>
+            <button id="add-income-btn" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+              + Add
+            </button>
+          </div>
+          <div id="income-form-container"></div>
+          <div id="income-list" class="space-y-1"></div>
+        </div>
+
+        <!-- Expenses (2 columns) -->
+        <div class="md:col-span-2">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium text-red-700">Expenses</h3>
+            <button id="add-expense-btn" class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
+              + Add
+            </button>
+          </div>
+          <div id="expense-form-container"></div>
+          <div id="expense-list" class="space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- Monthly Summary -->
+      <div class="mt-6 pt-4 border-t">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-600">Total Income:</span>
+            <span id="total-income" class="font-semibold text-green-600">₹0</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-600">Total Expenses:</span>
+            <span id="total-expenses" class="font-semibold text-red-600">₹0</span>
+          </div>
+          <div class="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg">
+            <span class="text-gray-700 font-medium">Net Cash Flow:</span>
+            <span id="net-cashflow" class="text-xl font-bold text-green-600">₹0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Goals Section -->
+    <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-800">Financial Goals</h2>
+        <div class="flex gap-2">
+          <button id="review-plan-btn" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+            Review Plan
+          </button>
+          <button id="add-goal-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            + Add Goal
+          </button>
+        </div>
+      </div>
+
+      <div id="goals-list"></div>
+    </div>
+
+    <!-- Total Investment Summary -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-5 text-white">
+      <h2 class="text-lg font-semibold mb-4">Investment Summary</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white/10 rounded-lg p-4">
+          <div class="text-blue-100 text-sm">Total Monthly SIP Needed</div>
+          <div id="total-monthly-sip" class="text-2xl font-bold">₹0</div>
+        </div>
+
+        <div class="bg-white/10 rounded-lg p-4">
+          <div class="text-blue-100 text-sm">Available from Cash Flow</div>
+          <div id="available-from-cashflow" class="text-2xl font-bold">₹0</div>
+        </div>
+
+        <div class="bg-white/10 rounded-lg p-4">
+          <div id="gap-label" class="text-blue-100 text-sm">Gap</div>
+          <div id="investment-gap" class="text-2xl font-bold">₹0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-gray-500 text-sm mt-8 pb-4">
+      <p>Data is stored locally in your browser. No data is sent to any server.</p>
+    </footer>
+  </div>
+
+  <!-- Goal Modal -->
+  <div id="goal-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div id="goal-modal-content"></div>
+  </div>
+
+  <!-- Investment Modal -->
+  <div id="investment-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div id="investment-modal-content"></div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
