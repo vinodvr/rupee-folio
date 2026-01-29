@@ -25,10 +25,11 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 - **Monthly SIP Calculation**: Automatic calculation of required monthly investment
 
 ### Currency Support
-| Currency | Equity Return Range | Debt Return Range |
-|----------|---------------------|-------------------|
-| INR (₹)  | 9% - 13.5%          | 4% - 6.5%         |
-| USD ($)  | 6% - 10%            | 2% - 4.5%         |
+Currently supports INR (₹) only.
+
+| Equity Return Range | Debt Return Range |
+|---------------------|-------------------|
+| 9% - 13.5%          | 4% - 6.5%         |
 
 Returns are post-tax estimates based on historical market performance.
 
@@ -159,7 +160,9 @@ financial-planner/
 │   └── investments.js  # Investment summary
 └── tests/
     ├── test-runner.html    # Browser-based test runner
-    └── calculator.test.js  # Calculator unit tests
+    ├── calculator.test.js  # Calculator unit tests
+    ├── currency.test.js    # Currency formatting tests
+    └── storage.test.js     # Storage/CRUD tests
 ```
 
 ## Usage Guide

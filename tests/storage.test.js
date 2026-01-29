@@ -123,14 +123,14 @@ test('saveData: Returns true on success', () => {
 
 test('loadData: Round-trip preserves data', () => {
   const original = getFreshData();
-  original.settings.currency = 'USD';
+  original.settings.fundHouse = 'hdfc';
   original.cashflow.income.push({ id: 'test-1', name: 'Salary', amount: 100000 });
   original.goals.push({ id: 'goal-1', name: 'Test Goal', targetAmount: 1000000 });
 
   saveData(original);
   const loaded = loadData();
 
-  assertEqual(loaded.settings.currency, 'USD', 'Currency should be preserved');
+  assertEqual(loaded.settings.fundHouse, 'hdfc', 'Fund house should be preserved');
   assertEqual(loaded.cashflow.income.length, 1, 'Income should be preserved');
   assertEqual(loaded.cashflow.income[0].name, 'Salary', 'Income name should be preserved');
   assertEqual(loaded.goals.length, 1, 'Goals should be preserved');
@@ -169,12 +169,12 @@ test('loadData: Handles corrupted JSON gracefully', () => {
 test('loadData: Merges with defaults for schema updates', () => {
   // Save partial data (simulating old schema)
   localStorage.setItem('financial-planner-data', JSON.stringify({
-    settings: { currency: 'USD' },
+    settings: { currency: 'INR' },
     goals: []
   }));
 
   const data = loadData();
-  assertEqual(data.settings.currency, 'USD', 'Should preserve existing currency');
+  assertEqual(data.settings.currency, 'INR', 'Should preserve existing currency');
   assertEqual(data.settings.fundHouse, 'icici', 'Should add default fundHouse');
   assertTrue(data.cashflow.income !== undefined, 'Should add default cashflow');
 
@@ -187,8 +187,8 @@ test('loadData: Merges with defaults for schema updates', () => {
 
 test('getCurrency: Returns currency from data', () => {
   const data = getFreshData();
-  data.settings.currency = 'USD';
-  assertEqual(getCurrency(data), 'USD');
+  data.settings.currency = 'INR';
+  assertEqual(getCurrency(data), 'INR');
 });
 
 test('getCurrency: Returns INR as default', () => {
@@ -198,8 +198,8 @@ test('getCurrency: Returns INR as default', () => {
 
 test('setCurrency: Updates and saves', () => {
   const data = getFreshData();
-  setCurrency(data, 'USD');
-  assertEqual(data.settings.currency, 'USD', 'Should update data object');
+  setCurrency(data, 'INR');
+  assertEqual(data.settings.currency, 'INR', 'Should update data object');
 });
 
 test('getFundHouse: Returns fundHouse from data', () => {

@@ -1,4 +1,5 @@
 // Currency configuration with historical return limits (post-tax)
+// Currently only supports INR
 export const currencyConfig = {
   INR: {
     symbol: '₹',
@@ -32,24 +33,6 @@ export const currencyConfig = {
         moneyMarket: 'HDFC Money Market Fund Direct Growth',
         arbitrage: 'HDFC Arbitrage Fund Direct Growth'
       }
-    }
-  },
-  USD: {
-    symbol: '$',
-    locale: 'en-US',
-    equity: {
-      min: 6,
-      max: 10,
-      default: 8
-    },
-    debt: {
-      min: 2,
-      max: 4.5,
-      default: 3
-    },
-    recommendations: {
-      equity: 'Total Stock Market Index Fund (VTI/VTSAX)',
-      debt: 'Money Market Fund (VMFXX/SPAXX)'
     }
   }
 };

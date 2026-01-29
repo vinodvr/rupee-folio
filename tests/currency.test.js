@@ -67,18 +67,9 @@ test('Config: INR configuration exists', () => {
   assertEqual(currencyConfig.INR.locale, 'en-IN', 'INR locale should be en-IN');
 });
 
-test('Config: USD configuration exists', () => {
-  assertTrue(currencyConfig.USD !== undefined, 'USD config should exist');
-  assertEqual(currencyConfig.USD.symbol, '$', 'USD symbol should be $');
-  assertEqual(currencyConfig.USD.locale, 'en-US', 'USD locale should be en-US');
-});
-
 test('Config: getCurrencyConfig returns correct config', () => {
   const inrConfig = getCurrencyConfig('INR');
   assertEqual(inrConfig.symbol, '₹');
-
-  const usdConfig = getCurrencyConfig('USD');
-  assertEqual(usdConfig.symbol, '$');
 });
 
 test('Config: getCurrencyConfig defaults to INR for unknown currency', () => {
@@ -87,7 +78,7 @@ test('Config: getCurrencyConfig defaults to INR for unknown currency', () => {
 });
 
 // ============================================
-// TESTS: INR Return Limits (from README)
+// TESTS: INR Return Limits
 // ============================================
 
 test('INR Limits: Equity return range is 9-13.5%', () => {
@@ -102,24 +93,6 @@ test('INR Limits: Debt return range is 4-6.5%', () => {
   assertEqual(limits.min, 4, 'INR debt min should be 4%');
   assertEqual(limits.max, 6.5, 'INR debt max should be 6.5%');
   assertEqual(limits.default, 5, 'INR debt default should be 5%');
-});
-
-// ============================================
-// TESTS: USD Return Limits (from README)
-// ============================================
-
-test('USD Limits: Equity return range is 6-10%', () => {
-  const limits = getEquityLimits('USD');
-  assertEqual(limits.min, 6, 'USD equity min should be 6%');
-  assertEqual(limits.max, 10, 'USD equity max should be 10%');
-  assertEqual(limits.default, 8, 'USD equity default should be 8%');
-});
-
-test('USD Limits: Debt return range is 2-4.5%', () => {
-  const limits = getDebtLimits('USD');
-  assertEqual(limits.min, 2, 'USD debt min should be 2%');
-  assertEqual(limits.max, 4.5, 'USD debt max should be 4.5%');
-  assertEqual(limits.default, 3, 'USD debt default should be 3%');
 });
 
 // ============================================
@@ -151,16 +124,9 @@ test('Constraint: INR debt return clamped to max', () => {
   assertEqual(result, 6.5, 'Should clamp to max 6.5%');
 });
 
-test('Constraint: USD equity return clamped correctly', () => {
-  assertEqual(constrainEquityReturn(3, 'USD'), 6, 'Should clamp to min 6%');
-  assertEqual(constrainEquityReturn(15, 'USD'), 10, 'Should clamp to max 10%');
-  assertEqual(constrainEquityReturn(8, 'USD'), 8, 'Should remain 8%');
-});
-
-test('Constraint: USD debt return clamped correctly', () => {
-  assertEqual(constrainDebtReturn(0, 'USD'), 2, 'Should clamp to min 2%');
-  assertEqual(constrainDebtReturn(10, 'USD'), 4.5, 'Should clamp to max 4.5%');
-  assertEqual(constrainDebtReturn(3, 'USD'), 3, 'Should remain 3%');
+test('Constraint: INR debt return unchanged when in range', () => {
+  const result = constrainDebtReturn(5, 'INR');
+  assertEqual(result, 5, 'Should remain 5%');
 });
 
 // ============================================
@@ -169,10 +135,6 @@ test('Constraint: USD debt return clamped correctly', () => {
 
 test('Symbol: INR returns ₹', () => {
   assertEqual(getSymbol('INR'), '₹');
-});
-
-test('Symbol: USD returns $', () => {
-  assertEqual(getSymbol('USD'), '$');
 });
 
 test('Symbol: Unknown currency defaults to ₹', () => {
@@ -188,13 +150,6 @@ test('Format: INR formats with Indian numbering', () => {
   assertContains(formatted, '₹', 'Should contain ₹ symbol');
   // Indian numbering: 12,34,567
   assertContains(formatted, '12', 'Should have lakhs separator');
-});
-
-test('Format: USD formats with Western numbering', () => {
-  const formatted = formatCurrency(1234567, 'USD');
-  assertContains(formatted, '$', 'Should contain $ symbol');
-  // Western numbering: 1,234,567
-  assertContains(formatted, '1,234,567', 'Should have thousands separator');
 });
 
 test('Format: formatNumber without currency symbol', () => {
@@ -241,9 +196,16 @@ test('Funds: HDFC fund names are correct', () => {
   assertContains(funds.hdfc.nifty50, 'Nifty 50', 'Should mention Nifty 50');
 });
 
-test('Funds: USD returns null for funds', () => {
-  const funds = getFunds('USD');
-  assertEqual(funds, null, 'USD should not have specific fund recommendations');
+test('Funds: ICICI has arbitrage fund', () => {
+  const funds = getFunds('INR');
+  assertContains(funds.icici.arbitrage, 'Arbitrage', 'Should have arbitrage fund');
+  assertContains(funds.icici.arbitrage, 'ICICI', 'Arbitrage fund should be ICICI');
+});
+
+test('Funds: HDFC has arbitrage fund', () => {
+  const funds = getFunds('INR');
+  assertContains(funds.hdfc.arbitrage, 'Arbitrage', 'Should have arbitrage fund');
+  assertContains(funds.hdfc.arbitrage, 'HDFC', 'Arbitrage fund should be HDFC');
 });
 
 test('Recommendations: INR has generic recommendations', () => {
@@ -251,13 +213,6 @@ test('Recommendations: INR has generic recommendations', () => {
   assertTrue(recs.equity !== undefined, 'Should have equity recommendation');
   assertTrue(recs.debt !== undefined, 'Should have debt recommendation');
   assertContains(recs.equity, 'Index', 'Should recommend index funds');
-});
-
-test('Recommendations: USD has generic recommendations', () => {
-  const recs = getRecommendations('USD');
-  assertTrue(recs.equity !== undefined, 'Should have equity recommendation');
-  assertTrue(recs.debt !== undefined, 'Should have debt recommendation');
-  assertContains(recs.equity, 'VTI', 'Should recommend VTI or similar');
 });
 
 // ============================================
