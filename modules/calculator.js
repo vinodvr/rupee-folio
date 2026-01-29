@@ -212,23 +212,239 @@ export function getCategoryDisplay(category) {
  */
 export function getMaxEquity(targetDate, goalType = 'one-time') {
   const years = getYearsRemaining(targetDate);
+  return getMaxEquityForYearsRemaining(years, goalType);
+}
+
+/**
+ * Get maximum equity for a given number of years remaining
+ * Used internally for glide path calculations
+ */
+export function getMaxEquityForYearsRemaining(yearsRemaining, goalType = 'one-time') {
   const isRetirement = goalType === 'retirement';
   const minEquity = isRetirement ? 30 : 0;
 
-  if (years >= 8) return 70;  // Long term
-  if (years >= 3) return Math.max(40, minEquity);  // Mid term
+  if (yearsRemaining >= 8) return 70;  // Long term
+  if (yearsRemaining >= 3) return Math.max(40, minEquity);  // Mid term
 
   // Short term - glide path
   if (isRetirement) {
     // Retirement: gradual reduction to 30%
-    if (years >= 2) return 40;
-    if (years >= 1) return 35;
+    if (yearsRemaining >= 2) return 40;
+    if (yearsRemaining >= 1) return 35;
     return 30;  // At retirement - maintain 30% equity
   } else {
     // One-time goals: reach 0% equity 2 years before goal
-    if (years >= 2) return 0;  // 2+ years before - move to 0% equity
+    if (yearsRemaining >= 2) return 0;  // 2+ years before - move to 0% equity
     return 0;  // Less than 2 years - stay at 0% equity
   }
+}
+
+/**
+ * Get year-by-year expected returns based on glide path
+ * Returns an array of annual returns for each year until goal
+ */
+export function getYearlyReturns(goal) {
+  const totalYears = Math.round(getYearsRemaining(goal.targetDate));
+  if (totalYears <= 0) return [];
+
+  const returns = [];
+
+  for (let year = 1; year <= totalYears; year++) {
+    const yearsRemaining = totalYears - year;
+    const maxEquity = getMaxEquityForYearsRemaining(yearsRemaining, goal.goalType);
+    const recommendedEquity = Math.min(goal.equityPercent, maxEquity);
+    const recommendedDebt = 100 - recommendedEquity;
+    const yearReturn = (recommendedEquity / 100 * goal.equityReturn) + (recommendedDebt / 100 * goal.debtReturn);
+    returns.push(yearReturn);
+  }
+
+  return returns;
+}
+
+/**
+ * Calculate future value of corpus with varying yearly returns (glide path)
+ * Compounds through each month at the appropriate year's return rate
+ */
+export function calculateCorpusFVWithGlidePath(currentCorpus, goal) {
+  if (currentCorpus <= 0) return 0;
+
+  const totalMonths = getMonthsRemaining(goal.targetDate);
+  if (totalMonths <= 0) return currentCorpus;
+
+  const yearlyReturns = getYearlyReturns(goal);
+
+  // Fallback to debt return if no yearly returns
+  const fallbackReturn = goal.debtReturn || 5;
+  if (yearlyReturns.length === 0) {
+    const monthlyRate = fallbackReturn / 100 / 12;
+    return currentCorpus * Math.pow(1 + monthlyRate, totalMonths);
+  }
+
+  // Build monthly returns array
+  const monthlyReturns = [];
+  const lastYearReturn = yearlyReturns[yearlyReturns.length - 1];
+  const lastMonthlyRate = lastYearReturn / 100 / 12;
+
+  // Distribute yearly returns across months
+  for (let y = 0; y < yearlyReturns.length; y++) {
+    const monthlyRate = yearlyReturns[y] / 100 / 12;
+    for (let m = 0; m < 12; m++) {
+      monthlyReturns.push(monthlyRate);
+    }
+  }
+
+  // Pad with last year's rate if needed
+  while (monthlyReturns.length < totalMonths) {
+    monthlyReturns.push(lastMonthlyRate);
+  }
+
+  // Compound corpus through each month
+  let corpus = currentCorpus;
+  for (let month = 0; month < totalMonths; month++) {
+    corpus = corpus * (1 + monthlyReturns[month]);
+  }
+
+  return corpus;
+}
+
+/**
+ * Calculate SIP with annual step-up AND varying returns (glide path)
+ * Uses iterative approach with year-specific returns
+ */
+export function calculateStepUpSIPWithGlidePath(futureValue, goal) {
+  const months = getMonthsRemaining(goal.targetDate);
+  if (futureValue <= 0 || months <= 0) return 0;
+
+  const yearlyReturns = getYearlyReturns(goal);
+  if (yearlyReturns.length === 0) return 0;
+
+  const stepUpRate = (goal.annualStepUp || 0) / 100;
+
+  // Binary search for the starting SIP amount
+  let low = 0;
+  let high = futureValue / months * 3; // Upper bound estimate
+  const tolerance = 1; // Allow ₹1 tolerance
+
+  for (let iterations = 0; iterations < 100; iterations++) {
+    const mid = (low + high) / 2;
+    const fv = calculateSIPFutureValueWithGlidePath(mid, goal, stepUpRate);
+
+    if (Math.abs(fv - futureValue) < tolerance) {
+      return mid;
+    }
+
+    if (fv < futureValue) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return (low + high) / 2;
+}
+
+/**
+ * Calculate future value of step-up SIP with varying yearly returns
+ */
+function calculateSIPFutureValueWithGlidePath(startingSIP, goal, stepUpRate) {
+  const totalMonths = getMonthsRemaining(goal.targetDate);
+  const yearlyReturns = getYearlyReturns(goal);
+
+  if (totalMonths <= 0) return 0;
+
+  // If no yearly returns, use debt return as fallback
+  const fallbackReturn = goal.debtReturn || 5;
+  if (yearlyReturns.length === 0) {
+    // Use simple calculation with fallback return
+    const monthlyRate = fallbackReturn / 100 / 12;
+    let fv = 0;
+    let currentSIP = startingSIP;
+    let monthInYear = 0;
+
+    for (let month = 0; month < totalMonths; month++) {
+      fv += currentSIP * Math.pow(1 + monthlyRate, totalMonths - month);
+      monthInYear++;
+      if (monthInYear >= 12) {
+        currentSIP *= (1 + stepUpRate);
+        monthInYear = 0;
+      }
+    }
+    return fv;
+  }
+
+  // Build monthly returns array based on yearly returns
+  const monthlyReturns = [];
+
+  // Last year's return rate (for padding if needed)
+  const lastYearReturn = yearlyReturns[yearlyReturns.length - 1];
+  const lastMonthlyRate = lastYearReturn / 100 / 12;
+
+  // Distribute yearly returns across months
+  for (let y = 0; y < yearlyReturns.length; y++) {
+    const monthlyRate = yearlyReturns[y] / 100 / 12;
+    for (let m = 0; m < 12; m++) {
+      monthlyReturns.push(monthlyRate);
+    }
+  }
+
+  // Pad with last year's rate if we need more months
+  while (monthlyReturns.length < totalMonths) {
+    monthlyReturns.push(lastMonthlyRate);
+  }
+
+  // Calculate FV of each SIP payment
+  let fv = 0;
+  let currentSIP = startingSIP;
+  let monthInYear = 0;
+
+  for (let month = 0; month < totalMonths; month++) {
+    // Add this month's SIP and compound to end
+    let sipValue = currentSIP;
+
+    // Compound this payment through all remaining months
+    for (let futureMonth = month; futureMonth < totalMonths; futureMonth++) {
+      sipValue = sipValue * (1 + monthlyReturns[futureMonth]);
+    }
+
+    fv += sipValue;
+    monthInYear++;
+
+    // Annual step-up
+    if (monthInYear >= 12) {
+      currentSIP *= (1 + stepUpRate);
+      monthInYear = 0;
+    }
+  }
+
+  return fv;
+}
+
+/**
+ * Calculate effective XIRR - the single rate that would produce the same result
+ * as the varying glide path returns
+ */
+export function calculateEffectiveXIRR(goal) {
+  const years = getYearsRemaining(goal.targetDate);
+  if (years <= 0) return goal.debtReturn || 5; // Fallback to debt return
+
+  const yearlyReturns = getYearlyReturns(goal);
+  if (yearlyReturns.length === 0) return goal.debtReturn || 5;
+
+  // Method: Calculate what single rate produces the same FV as varying rates
+  // For a lumpsum of 1, compound through each year with varying rates
+  let corpusWithGlidePath = 1;
+  for (const yearReturn of yearlyReturns) {
+    corpusWithGlidePath *= (1 + yearReturn / 100);
+  }
+
+  // Use the number of yearly returns for consistency
+  const effectiveYears = yearlyReturns.length;
+
+  // Now find the single rate that produces the same FV
+  // FV = PV * (1 + r)^n => r = (FV/PV)^(1/n) - 1
+  const effectiveRate = (Math.pow(corpusWithGlidePath, 1 / effectiveYears) - 1) * 100;
+
+  return effectiveRate;
 }
 
 /**
@@ -266,13 +482,16 @@ export function calculateGoalProjections(goal) {
     years
   );
 
-  // Blended return
-  const blendedReturn = calculateBlendedReturn(
+  // Starting blended return (for current corpus calculation - past investments)
+  const startingBlendedReturn = calculateBlendedReturn(
     goal.equityPercent,
     goal.equityReturn,
     goal.debtPercent,
     goal.debtReturn
   );
+
+  // Effective XIRR accounting for glide path (for display and understanding)
+  const effectiveXIRR = calculateEffectiveXIRR(goal);
 
   // Total amount invested (for display)
   const totalInvested = calculateTotalInvested(
@@ -280,28 +499,23 @@ export function calculateGoalProjections(goal) {
     goal.initialLumpsum || 0
   );
 
-  // Current corpus value (compounded for calculations)
+  // Current corpus value (compounded using starting rate for past investments)
   const currentCorpus = calculateCurrentCorpus(
     goal.investments,
-    blendedReturn,
+    startingBlendedReturn,
     goal.targetDate,
     goal.initialLumpsum || 0,
     goal.startDate
   );
 
-  // Future value of current corpus at goal date
-  const corpusFV = calculateCorpusFV(currentCorpus, blendedReturn, goal.targetDate);
+  // Future value of current corpus at goal date (using glide path varying returns)
+  const corpusFV = calculateCorpusFVWithGlidePath(currentCorpus, goal);
 
   // Gap to cover with SIP
   const gapAmount = Math.max(0, inflationAdjustedTarget - corpusFV);
 
-  // Calculate SIP needed
-  const monthlySIP = calculateStepUpSIP(
-    gapAmount,
-    blendedReturn,
-    months,
-    goal.annualStepUp || 0
-  );
+  // Calculate SIP needed (using glide path varying returns)
+  const monthlySIP = calculateStepUpSIPWithGlidePath(gapAmount, goal);
 
   // Category and max equity
   const category = getGoalCategory(goal.targetDate);
@@ -312,7 +526,8 @@ export function calculateGoalProjections(goal) {
     years,
     months,
     inflationAdjustedTarget,
-    blendedReturn,
+    effectiveXIRR,              // Effective return accounting for glide path
+    blendedReturn: effectiveXIRR, // For backwards compatibility
     totalInvested,
     currentCorpus,
     corpusFV,

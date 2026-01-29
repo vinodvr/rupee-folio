@@ -35,10 +35,9 @@ function formatTimeline(years) {
 }
 
 function generateYearlyProjections(goal, projections) {
-  const years = Math.ceil(projections.years);
+  const years = Math.round(projections.years);
   if (years <= 0) return [];
 
-  const monthlyRate = projections.blendedReturn / 100 / 12;
   const stepUpRate = (goal.annualStepUp || 0) / 100;
   const startingSIP = projections.monthlySIP;
   const isRetirement = goal.goalType === 'retirement';
@@ -68,24 +67,31 @@ function generateYearlyProjections(goal, projections) {
   for (let year = 1; year <= years; year++) {
     const yearsRemaining = years - year;
 
-    // Compound existing corpus for 12 months and add SIP contributions
+    // Get the expected return for THIS year based on current allocation
+    const maxEquity = getMaxEquityForYear(years - year + 1); // Current year's max equity
+    const recommendedEquity = Math.min(goal.equityPercent, maxEquity);
+    const recommendedDebt = 100 - recommendedEquity;
+    const expectedReturn = (recommendedEquity / 100 * goal.equityReturn) + (recommendedDebt / 100 * goal.debtReturn);
+    const monthlyRate = expectedReturn / 100 / 12;
+
+    // Compound existing corpus for 12 months using THIS year's return rate
     for (let month = 0; month < 12; month++) {
       currentCorpus = currentCorpus * (1 + monthlyRate) + currentSIP;
     }
 
-    const maxEquity = getMaxEquityForYear(yearsRemaining);
-    const recommendedEquity = Math.min(goal.equityPercent, maxEquity);
-    const recommendedDebt = 100 - recommendedEquity;
-    const expectedReturn = (recommendedEquity / 100 * goal.equityReturn) + (recommendedDebt / 100 * goal.debtReturn);
+    // Get max equity for END of year (years remaining after this year)
+    const endOfYearMaxEquity = getMaxEquityForYear(yearsRemaining);
+    const endOfYearRecommendedEquity = Math.min(goal.equityPercent, endOfYearMaxEquity);
+    const endOfYearExpectedReturn = (endOfYearRecommendedEquity / 100 * goal.equityReturn) + ((100 - endOfYearRecommendedEquity) / 100 * goal.debtReturn);
 
     yearlyData.push({
       year,
       yearsRemaining,
       corpus: Math.round(currentCorpus),
       sip: Math.round(currentSIP),
-      maxEquity,
-      recommendedEquity,
-      expectedReturn
+      maxEquity: endOfYearMaxEquity,
+      recommendedEquity: endOfYearRecommendedEquity,
+      expectedReturn: endOfYearExpectedReturn
     });
 
     // Step up SIP for next year
@@ -657,8 +663,9 @@ function renderGoalCard(goal) {
           <div class="text-xs text-gray-400">max ${projections.maxEquity}% equity</div>
         </div>
         <div>
-          <div class="text-gray-500">Blended Return</div>
-          <div class="font-medium">${projections.blendedReturn.toFixed(1)}%</div>
+          <div class="text-gray-500">Effective XIRR</div>
+          <div class="font-medium text-blue-600">${projections.effectiveXIRR.toFixed(1)}%</div>
+          <div class="text-xs text-gray-400">with glide path</div>
         </div>
       </div>
 
@@ -694,42 +701,51 @@ function renderGoalCard(goal) {
       <hr class="my-4">
 
       <!-- SIP Split & Fund Recommendations -->
-      <div class="bg-gray-50 rounded-lg p-3 mb-4">
-        <div class="text-sm font-medium mb-3">SIP Allocation by Fund</div>
-        ${funds && funds[fundHouse] ? `
-          <div class="space-y-2 text-sm">
-            ${equityAmount > 0 ? `
-              <div class="flex justify-between items-center">
-                <span class="text-gray-600 flex-1">${funds[fundHouse].nifty50}</span>
-                <span class="font-medium text-green-600 ml-2">${formatCurrency(Math.round(nifty50Amount), currency)}</span>
+      <div class="mb-4">
+        <details class="group">
+          <summary class="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800 list-none flex items-center gap-1">
+            <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            View Fund Recommendations & SIP Split
+          </summary>
+          <div class="mt-3 bg-gray-50 rounded-lg p-3">
+            ${funds && funds[fundHouse] ? `
+              <div class="space-y-2 text-sm">
+                ${equityAmount > 0 ? `
+                  <div class="flex justify-between items-center">
+                    <span class="text-gray-600 flex-1">${funds[fundHouse].nifty50}</span>
+                    <span class="font-medium text-green-600 ml-2">${formatCurrency(Math.round(nifty50Amount), currency)}</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-gray-600 flex-1">${funds[fundHouse].niftyNext50}</span>
+                    <span class="font-medium text-green-600 ml-2">${formatCurrency(Math.round(niftyNext50Amount), currency)}</span>
+                  </div>
+                ` : ''}
+                ${debtAmount > 0 ? `
+                  <div class="flex justify-between items-center">
+                    <span class="text-gray-600 flex-1">${funds[fundHouse].moneyMarket}</span>
+                    <span class="font-medium text-blue-600 ml-2">${formatCurrency(Math.round(moneyMarketAmount), currency)}</span>
+                  </div>
+                ` : ''}
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-600 flex-1">${funds[fundHouse].niftyNext50}</span>
-                <span class="font-medium text-green-600 ml-2">${formatCurrency(Math.round(niftyNext50Amount), currency)}</span>
+              <div class="mt-3 pt-2 border-t text-xs text-gray-500">
+                Equity: 70% Nifty 50 + 30% Nifty Next 50 | Debt: Money Market
               </div>
-            ` : ''}
-            ${debtAmount > 0 ? `
-              <div class="flex justify-between items-center">
-                <span class="text-gray-600 flex-1">${funds[fundHouse].moneyMarket}</span>
-                <span class="font-medium text-blue-600 ml-2">${formatCurrency(Math.round(moneyMarketAmount), currency)}</span>
+            ` : `
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span class="text-gray-500">Equity:</span>
+                  <span class="ml-1">${recommendations.equity}</span>
+                </div>
+                <div>
+                  <span class="text-gray-500">Debt:</span>
+                  <span class="ml-1">${recommendations.debt}</span>
+                </div>
               </div>
-            ` : ''}
+            `}
           </div>
-          <div class="mt-3 pt-2 border-t text-xs text-gray-500">
-            Equity: 70% Nifty 50 + 30% Nifty Next 50 | Debt: Money Market
-          </div>
-        ` : `
-          <div class="grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <span class="text-gray-500">Equity:</span>
-              <span class="ml-1">${recommendations.equity}</span>
-            </div>
-            <div>
-              <span class="text-gray-500">Debt:</span>
-              <span class="ml-1">${recommendations.debt}</span>
-            </div>
-          </div>
-        `}
+        </details>
       </div>
 
       <!-- Actions -->
@@ -933,14 +949,14 @@ function analyzeGoal(goal, projections, availableCashflow) {
     }
   }
 
-  // Check return assumptions
-  const blendedReturn = projections.blendedReturn;
-  if (blendedReturn > 10) {
-    reasons.push(`Expected return of ${blendedReturn.toFixed(1)}% is optimistic. Consider using conservative estimates.`);
-  } else if (blendedReturn >= 7) {
-    reasons.push(`Expected return of ${blendedReturn.toFixed(1)}% is reasonable for a balanced portfolio.`);
+  // Check return assumptions (using effective XIRR which accounts for glide path)
+  const effectiveReturn = projections.effectiveXIRR;
+  if (effectiveReturn > 10) {
+    reasons.push(`Effective XIRR of ${effectiveReturn.toFixed(1)}% (with glide path) is optimistic. Consider using conservative estimates.`);
+  } else if (effectiveReturn >= 7) {
+    reasons.push(`Effective XIRR of ${effectiveReturn.toFixed(1)}% (with glide path) is reasonable for a balanced portfolio.`);
   } else {
-    reasons.push(`Expected return of ${blendedReturn.toFixed(1)}% is conservative, providing a safety margin.`);
+    reasons.push(`Effective XIRR of ${effectiveReturn.toFixed(1)}% (with glide path) is conservative, providing a safety margin.`);
   }
 
   // Check inflation assumption

@@ -6,9 +6,93 @@ import { initInvestments, updateCurrency as updateInvestmentsCurrency, refreshDa
 
 let appData = null;
 
+// Sample data for demo purposes
+function getSampleData() {
+  return {
+    settings: {
+      currency: 'INR',
+      fundHouse: 'icici'
+    },
+    cashflow: {
+      income: [
+        { name: 'Salary Self', amount: 150000, id: '421af97f-222b-4ec1-97f4-e0a9a071c3be' },
+        { name: 'Salary Spouse', amount: 150000, id: '77e29ba2-756f-4409-9f4a-e8a9c0285b72' }
+      ],
+      expenses: [
+        { category: 'Housing', name: 'Rent', amount: 50000, id: '35c860f6-8a25-48f9-85ce-48d6ee333718' },
+        { category: 'Utilities', name: 'Elec + Internet', amount: 5000, id: '26647708-b354-4fd5-aa03-0a6ee0fe6341' },
+        { category: 'Food', name: 'Groceries + Eat out', amount: 15000, id: '7642cb61-da32-4ca5-9e0b-bff3496dc9eb' },
+        { category: 'Insurance', name: 'Health + Life', amount: 3000, id: 'a837f139-bef7-4485-b7f2-57f2633e4311' },
+        { category: 'Entertainment', name: 'OTT + Partying', amount: 10000, id: '39cf5253-4092-4350-8149-a0ee16acba93' },
+        { category: 'Shopping', name: 'Malls', amount: 8000, id: '59213d20-d9d5-455e-b132-5683d6213eb8' }
+      ]
+    },
+    goals: [
+      {
+        name: 'Retirement',
+        goalType: 'retirement',
+        targetAmount: 40000000,
+        inflationRate: 6,
+        targetDate: '2046-01-29',
+        equityPercent: 70,
+        debtPercent: 30,
+        equityReturn: 12,
+        debtReturn: 5,
+        annualStepUp: 7,
+        initialLumpsum: 0,
+        startDate: '2026-01-29',
+        investments: [],
+        id: '5c582900-7783-4f61-b700-920a5cf67d1b'
+      },
+      {
+        name: 'Car',
+        goalType: 'one-time',
+        targetAmount: 1500000,
+        inflationRate: 8,
+        targetDate: '2030-01-29',
+        equityPercent: 40,
+        debtPercent: 60,
+        equityReturn: 12,
+        debtReturn: 5,
+        annualStepUp: 7,
+        initialLumpsum: 0,
+        startDate: '2026-01-29',
+        investments: [],
+        id: '4f056bc9-e8ce-4116-a394-6ddd99017a92'
+      },
+      {
+        name: 'Home at Retirement',
+        goalType: 'one-time',
+        targetAmount: 20000000,
+        inflationRate: 6,
+        targetDate: '2045-01-29',
+        equityPercent: 70,
+        debtPercent: 30,
+        equityReturn: 12,
+        debtReturn: 5,
+        annualStepUp: 7,
+        initialLumpsum: 0,
+        startDate: '2026-01-29',
+        investments: [],
+        id: 'f7340a31-3a65-4b70-a63b-a1cc4039628d'
+      }
+    ]
+  };
+}
+
 function init() {
-  // Load data from localStorage
-  appData = loadData();
+  // Check for sample data URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const useSampleData = urlParams.get('sample_plan') === '1';
+
+  // Load data from localStorage or use sample data
+  if (useSampleData) {
+    appData = getSampleData();
+    saveData(appData); // Save to localStorage so it persists
+    console.log('Loaded sample financial plan');
+  } else {
+    appData = loadData();
+  }
 
   const currency = getCurrency(appData);
   const fundHouse = getFundHouse(appData);
