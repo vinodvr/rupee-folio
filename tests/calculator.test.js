@@ -975,6 +975,218 @@ test('Projections: All fields are present', () => {
 });
 
 // ============================================
+// TESTS: End-to-End SIP Validation
+// Verify that calculated SIP actually reaches target corpus
+// ============================================
+
+/**
+ * Simulates monthly SIP investments with step-up and glide path returns
+ * Returns the final corpus after all investments
+ */
+function simulateSIPInvestments(goal, startingSIP) {
+  const yearlyReturns = getYearlyReturns(goal);
+  const totalMonths = getMonthsRemaining(goal.targetDate);  // Use same function as calculator
+  const stepUpRate = (goal.annualStepUp || 0) / 100;
+
+  if (totalMonths <= 0 || yearlyReturns.length === 0) return 0;
+
+  // Build monthly returns array
+  const monthlyReturns = [];
+  for (let y = 0; y < yearlyReturns.length; y++) {
+    const monthlyRate = yearlyReturns[y] / 100 / 12;
+    for (let m = 0; m < 12; m++) {
+      monthlyReturns.push(monthlyRate);
+    }
+  }
+  // Pad if needed
+  const lastMonthlyRate = yearlyReturns[yearlyReturns.length - 1] / 100 / 12;
+  while (monthlyReturns.length < totalMonths) {
+    monthlyReturns.push(lastMonthlyRate);
+  }
+
+  // Simulate month by month
+  let corpus = 0;
+  let currentSIP = startingSIP;
+  let monthInYear = 0;
+
+  for (let month = 0; month < totalMonths; month++) {
+    // Add SIP at start of month, then apply growth
+    corpus = (corpus + currentSIP) * (1 + monthlyReturns[month]);
+
+    monthInYear++;
+    if (monthInYear >= 12) {
+      currentSIP *= (1 + stepUpRate);
+      monthInYear = 0;
+    }
+  }
+
+  return corpus;
+}
+
+test('E2E Validation: Long-term goal (15 years) SIP reaches target', () => {
+  const goal = createGoal({
+    yearsFromNow: 15,
+    goalType: 'one-time',
+    targetAmount: 5000000,
+    inflationRate: 6,
+    equityPercent: 70,
+    annualStepUp: 5,
+    initialLumpsum: 0
+  });
+
+  const projections = calculateGoalProjections(goal);
+  const simulatedCorpus = simulateSIPInvestments(goal, projections.monthlySIP);
+
+  // Should reach within 1% of target (allowing for rounding in SIP calculation)
+  const tolerance = projections.inflationAdjustedTarget * 0.01;
+  const diff = Math.abs(simulatedCorpus - projections.inflationAdjustedTarget);
+
+  assertTrue(
+    diff < tolerance,
+    `Long-term: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
+  );
+});
+
+test('E2E Validation: Mid-term goal (5 years) SIP reaches target', () => {
+  const goal = createGoal({
+    yearsFromNow: 5,
+    goalType: 'one-time',
+    targetAmount: 1000000,
+    inflationRate: 6,
+    equityPercent: 40,
+    annualStepUp: 5,
+    initialLumpsum: 0
+  });
+
+  const projections = calculateGoalProjections(goal);
+  const simulatedCorpus = simulateSIPInvestments(goal, projections.monthlySIP);
+
+  const tolerance = projections.inflationAdjustedTarget * 0.01;
+  const diff = Math.abs(simulatedCorpus - projections.inflationAdjustedTarget);
+
+  assertTrue(
+    diff < tolerance,
+    `Mid-term: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
+  );
+});
+
+test('E2E Validation: Short-term goal (2 years) SIP reaches target', () => {
+  const goal = createGoal({
+    yearsFromNow: 2,
+    goalType: 'one-time',
+    targetAmount: 500000,
+    inflationRate: 5,
+    equityPercent: 0,  // Will be forced to 0% anyway
+    annualStepUp: 0,
+    initialLumpsum: 0
+  });
+
+  const projections = calculateGoalProjections(goal);
+  const simulatedCorpus = simulateSIPInvestments(goal, projections.monthlySIP);
+
+  const tolerance = projections.inflationAdjustedTarget * 0.01;
+  const diff = Math.abs(simulatedCorpus - projections.inflationAdjustedTarget);
+
+  assertTrue(
+    diff < tolerance,
+    `Short-term: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
+  );
+});
+
+test('E2E Validation: Retirement goal (20 years) SIP reaches target', () => {
+  const goal = createGoal({
+    yearsFromNow: 20,
+    goalType: 'retirement',
+    targetAmount: 10000000,
+    inflationRate: 6,
+    equityPercent: 70,
+    annualStepUp: 7,
+    initialLumpsum: 0
+  });
+
+  const projections = calculateGoalProjections(goal);
+  const simulatedCorpus = simulateSIPInvestments(goal, projections.monthlySIP);
+
+  const tolerance = projections.inflationAdjustedTarget * 0.01;
+  const diff = Math.abs(simulatedCorpus - projections.inflationAdjustedTarget);
+
+  assertTrue(
+    diff < tolerance,
+    `Retirement: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
+  );
+});
+
+test('E2E Validation: Goal with no step-up SIP reaches target', () => {
+  const goal = createGoal({
+    yearsFromNow: 10,
+    goalType: 'one-time',
+    targetAmount: 2000000,
+    inflationRate: 6,
+    equityPercent: 60,
+    annualStepUp: 0,
+    initialLumpsum: 0
+  });
+
+  const projections = calculateGoalProjections(goal);
+  const simulatedCorpus = simulateSIPInvestments(goal, projections.monthlySIP);
+
+  const tolerance = projections.inflationAdjustedTarget * 0.01;
+  const diff = Math.abs(simulatedCorpus - projections.inflationAdjustedTarget);
+
+  assertTrue(
+    diff < tolerance,
+    `No step-up: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
+  );
+});
+
+test('E2E Validation: Goal with 100% debt allocation SIP reaches target', () => {
+  const goal = createGoal({
+    yearsFromNow: 8,
+    goalType: 'one-time',
+    targetAmount: 1500000,
+    inflationRate: 5,
+    equityPercent: 0,
+    debtPercent: 100,
+    annualStepUp: 5,
+    initialLumpsum: 0
+  });
+
+  const projections = calculateGoalProjections(goal);
+  const simulatedCorpus = simulateSIPInvestments(goal, projections.monthlySIP);
+
+  const tolerance = projections.inflationAdjustedTarget * 0.01;
+  const diff = Math.abs(simulatedCorpus - projections.inflationAdjustedTarget);
+
+  assertTrue(
+    diff < tolerance,
+    `100% debt: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
+  );
+});
+
+test('E2E Validation: Goal with high step-up (10%) SIP reaches target', () => {
+  const goal = createGoal({
+    yearsFromNow: 12,
+    goalType: 'one-time',
+    targetAmount: 3000000,
+    inflationRate: 6,
+    equityPercent: 70,
+    annualStepUp: 10,
+    initialLumpsum: 0
+  });
+
+  const projections = calculateGoalProjections(goal);
+  const simulatedCorpus = simulateSIPInvestments(goal, projections.monthlySIP);
+
+  const tolerance = projections.inflationAdjustedTarget * 0.01;
+  const diff = Math.abs(simulatedCorpus - projections.inflationAdjustedTarget);
+
+  assertTrue(
+    diff < tolerance,
+    `High step-up: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
+  );
+});
+
+// ============================================
 // Summary
 // ============================================
 
