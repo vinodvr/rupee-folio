@@ -15,7 +15,8 @@ import {
   getYearsRemaining,
   getCategoryDisplay,
   getMaxEquity,
-  constrainEquityAllocation
+  constrainEquityAllocation,
+  wasShortTermAtStart
 } from './calculator.js';
 import { showAddInvestmentModal, showInvestmentHistory } from './investments.js';
 
@@ -600,6 +601,9 @@ function renderGoalCard(goal) {
   const recommendations = getRecommendations(currency);
   const funds = getFunds(currency);
 
+  // Check if this goal started as short-term (for arbitrage fund recommendation)
+  const useArbitrage = wasShortTermAtStart(goal);
+
   // Calculate SIP split
   const monthlySIP = projections.monthlySIP;
   const equityAmount = monthlySIP * (goal.equityPercent / 100);
@@ -724,13 +728,18 @@ function renderGoalCard(goal) {
                 ` : ''}
                 ${debtAmount > 0 ? `
                   <div class="flex justify-between items-center">
-                    <span class="text-gray-600 flex-1">${funds[fundHouse].moneyMarket}</span>
+                    <span class="text-gray-600 flex-1">${useArbitrage ? funds[fundHouse].arbitrage : funds[fundHouse].moneyMarket}</span>
                     <span class="font-medium text-blue-600 ml-2">${formatCurrency(Math.round(moneyMarketAmount), currency)}</span>
                   </div>
+                  ${useArbitrage ? `
+                    <div class="text-xs text-purple-600 mt-1">
+                      Arbitrage fund recommended for short-term goals (low risk + equity taxation benefit)
+                    </div>
+                  ` : ''}
                 ` : ''}
               </div>
               <div class="mt-3 pt-2 border-t text-xs text-gray-500">
-                Equity: 70% Nifty 50 + 30% Nifty Next 50 | Debt: Money Market
+                Equity: 70% Nifty 50 + 30% Nifty Next 50 | Debt: ${useArbitrage ? 'Equity Arbitrage' : 'Money Market'}
               </div>
             ` : `
               <div class="grid grid-cols-2 gap-2 text-sm">

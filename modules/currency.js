@@ -22,13 +22,15 @@ export const currencyConfig = {
         name: 'ICICI Prudential',
         nifty50: 'ICICI Prudential Nifty 50 Index Fund Direct Growth',
         niftyNext50: 'ICICI Prudential Nifty Next 50 Index Fund Direct Growth',
-        moneyMarket: 'ICICI Prudential Money Market Fund Direct Growth'
+        moneyMarket: 'ICICI Prudential Money Market Fund Direct Growth',
+        arbitrage: 'ICICI Prudential Equity Arbitrage Fund Direct Growth'
       },
       hdfc: {
         name: 'HDFC',
         nifty50: 'HDFC Nifty 50 Index Fund Direct Growth',
         niftyNext50: 'HDFC Nifty Next 50 Index Fund Direct Growth',
-        moneyMarket: 'HDFC Money Market Fund Direct Growth'
+        moneyMarket: 'HDFC Money Market Fund Direct Growth',
+        arbitrage: 'HDFC Arbitrage Fund Direct Growth'
       }
     }
   },

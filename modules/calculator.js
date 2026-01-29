@@ -469,6 +469,20 @@ export function needsRebalanceAlert(goal) {
 }
 
 /**
+ * Check if a goal started as short-term (original timeline < 3 years)
+ * Used to recommend Arbitrage funds instead of Money Market for tax efficiency
+ */
+export function wasShortTermAtStart(goal) {
+  if (!goal.startDate || !goal.targetDate) return false;
+
+  const start = new Date(goal.startDate);
+  const target = new Date(goal.targetDate);
+  const originalYears = (target - start) / (1000 * 60 * 60 * 24 * 365.25);
+
+  return originalYears < 3;
+}
+
+/**
  * Calculate complete goal projections
  */
 export function calculateGoalProjections(goal) {

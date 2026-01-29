@@ -16,7 +16,8 @@ import {
   calculateStepUpSIPWithGlidePath,
   calculateGoalProjections,
   calculateTotalInvested,
-  needsRebalanceAlert
+  needsRebalanceAlert,
+  wasShortTermAtStart
 } from '../modules/calculator.js';
 
 // Simple test framework
@@ -1184,6 +1185,123 @@ test('E2E Validation: Goal with high step-up (10%) SIP reaches target', () => {
     diff < tolerance,
     `High step-up: Simulated corpus ${Math.round(simulatedCorpus)} should be within 1% of target ${Math.round(projections.inflationAdjustedTarget)}, diff: ${Math.round(diff)}`
   );
+});
+
+// ============================================
+// TESTS: Short-term Start Detection (for Arbitrage Fund Recommendation)
+// ============================================
+
+test('wasShortTermAtStart: Returns true for 2-year goal', () => {
+  const goal = createGoal({
+    yearsFromNow: 2,
+    startDate: new Date().toISOString().split('T')[0]
+  });
+  // Override targetDate to be exactly 2 years from startDate
+  const start = new Date(goal.startDate);
+  const target = new Date(start);
+  target.setFullYear(target.getFullYear() + 2);
+  goal.targetDate = target.toISOString().split('T')[0];
+
+  assertTrue(wasShortTermAtStart(goal), '2-year goal should be short-term at start');
+});
+
+test('wasShortTermAtStart: Returns true for 1-year goal', () => {
+  const start = new Date();
+  const target = new Date(start);
+  target.setFullYear(target.getFullYear() + 1);
+
+  const goal = {
+    startDate: start.toISOString().split('T')[0],
+    targetDate: target.toISOString().split('T')[0]
+  };
+
+  assertTrue(wasShortTermAtStart(goal), '1-year goal should be short-term at start');
+});
+
+test('wasShortTermAtStart: Returns false for 3-year goal', () => {
+  const start = new Date();
+  const target = new Date(start);
+  target.setFullYear(target.getFullYear() + 3);
+
+  const goal = {
+    startDate: start.toISOString().split('T')[0],
+    targetDate: target.toISOString().split('T')[0]
+  };
+
+  assertFalse(wasShortTermAtStart(goal), '3-year goal should NOT be short-term at start');
+});
+
+test('wasShortTermAtStart: Returns false for 5-year goal', () => {
+  const start = new Date();
+  const target = new Date(start);
+  target.setFullYear(target.getFullYear() + 5);
+
+  const goal = {
+    startDate: start.toISOString().split('T')[0],
+    targetDate: target.toISOString().split('T')[0]
+  };
+
+  assertFalse(wasShortTermAtStart(goal), '5-year goal should NOT be short-term at start');
+});
+
+test('wasShortTermAtStart: Returns false for 10-year goal', () => {
+  const start = new Date();
+  const target = new Date(start);
+  target.setFullYear(target.getFullYear() + 10);
+
+  const goal = {
+    startDate: start.toISOString().split('T')[0],
+    targetDate: target.toISOString().split('T')[0]
+  };
+
+  assertFalse(wasShortTermAtStart(goal), '10-year goal should NOT be short-term at start');
+});
+
+test('wasShortTermAtStart: Returns false when startDate is missing', () => {
+  const goal = {
+    targetDate: '2028-01-01'
+  };
+
+  assertFalse(wasShortTermAtStart(goal), 'Should return false when startDate is missing');
+});
+
+test('wasShortTermAtStart: Returns false when targetDate is missing', () => {
+  const goal = {
+    startDate: '2026-01-01'
+  };
+
+  assertFalse(wasShortTermAtStart(goal), 'Should return false when targetDate is missing');
+});
+
+test('wasShortTermAtStart: 10-year goal that is now 2 years away is NOT short-term at start', () => {
+  // Goal created 8 years ago with 10-year timeline
+  const start = new Date();
+  start.setFullYear(start.getFullYear() - 8);
+  const target = new Date(start);
+  target.setFullYear(target.getFullYear() + 10);
+
+  const goal = {
+    startDate: start.toISOString().split('T')[0],
+    targetDate: target.toISOString().split('T')[0]
+  };
+
+  // Original timeline was 10 years, so should NOT be short-term at start
+  assertFalse(wasShortTermAtStart(goal), 'Goal that started as 10-year should NOT be short-term at start');
+});
+
+test('wasShortTermAtStart: Boundary at exactly 2.9 years', () => {
+  const start = new Date();
+  const target = new Date(start);
+  // Add 2 years and ~11 months (2.9 years)
+  target.setFullYear(target.getFullYear() + 2);
+  target.setMonth(target.getMonth() + 11);
+
+  const goal = {
+    startDate: start.toISOString().split('T')[0],
+    targetDate: target.toISOString().split('T')[0]
+  };
+
+  assertTrue(wasShortTermAtStart(goal), '2.9-year goal should be short-term at start');
 });
 
 // ============================================

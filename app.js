@@ -15,7 +15,7 @@ function getSampleData() {
     },
     cashflow: {
       income: [
-        { name: 'Salary Self', amount: 150000, id: '421af97f-222b-4ec1-97f4-e0a9a071c3be' },
+        { name: 'Salary Self', amount: 200000, id: '421af97f-222b-4ec1-97f4-e0a9a071c3be' },
         { name: 'Salary Spouse', amount: 150000, id: '77e29ba2-756f-4409-9f4a-e8a9c0285b72' }
       ],
       expenses: [
@@ -28,6 +28,22 @@ function getSampleData() {
       ]
     },
     goals: [
+      {
+        name: 'Trip to Japan',
+        goalType: 'one-time',
+        targetAmount: 1000000,
+        inflationRate: 5,
+        targetDate: '2028-01-29',
+        equityPercent: 0,
+        debtPercent: 100,
+        equityReturn: 12,
+        debtReturn: 5,
+        annualStepUp: 0,
+        initialLumpsum: 0,
+        startDate: '2026-01-29',
+        investments: [],
+        id: 'a1b2c3d4-5678-90ab-cdef-1234567890ab'
+      },
       {
         name: 'Retirement',
         goalType: 'retirement',
