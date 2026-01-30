@@ -16,9 +16,11 @@ import {
   getCategoryDisplay,
   getMaxEquity,
   constrainEquityAllocation,
-  wasShortTermAtStart
+  wasShortTermAtStart,
+  calculateRetirementProjectionsWithEpfNps
 } from './calculator.js';
 import { showAddInvestmentModal, showInvestmentHistory } from './investments.js';
+import { getRetirementContributions } from './cashflow.js';
 
 let appData = null;
 let currency = 'INR';
@@ -46,6 +48,19 @@ function generateYearlyProjections(goal, projections) {
   let currentCorpus = projections.totalInvested;
   let currentSIP = startingSIP;
   const yearlyData = [];
+
+  // EPF/NPS tracking for retirement goals
+  const hasEpfNps = isRetirement && projections.epfNps;
+  let epfNpsCorpus = hasEpfNps ? projections.epfNps.totalCorpus : 0;
+  let currentMonthlyEpf = hasEpfNps ? projections.epfNps.monthlyEpf : 0;
+  let currentMonthlyNps = hasEpfNps ? projections.epfNps.monthlyNps : 0;
+  const epfNpsStepUpEnabled = hasEpfNps && projections.epfNps.stepUpEnabled;
+  const epfMonthlyRate = 8 / 100 / 12;  // EPF at 8%
+  const npsMonthlyRate = 10 / 100 / 12; // NPS at 10%
+
+  // Split initial corpus for separate tracking
+  let epfCorpus = hasEpfNps ? projections.epfNps.epfCorpus : 0;
+  let npsCorpus = hasEpfNps ? projections.epfNps.npsCorpus : 0;
 
   // Calculate max equity for each year based on years remaining and goal type
   function getMaxEquityForYear(yearsRemaining) {
@@ -78,6 +93,12 @@ function generateYearlyProjections(goal, projections) {
     // Compound existing corpus for 12 months using THIS year's return rate
     for (let month = 0; month < 12; month++) {
       currentCorpus = currentCorpus * (1 + monthlyRate) + currentSIP;
+
+      // Compound EPF/NPS separately
+      if (hasEpfNps) {
+        epfCorpus = epfCorpus * (1 + epfMonthlyRate) + currentMonthlyEpf;
+        npsCorpus = npsCorpus * (1 + npsMonthlyRate) + currentMonthlyNps;
+      }
     }
 
     // Get max equity for END of year (years remaining after this year)
@@ -85,7 +106,7 @@ function generateYearlyProjections(goal, projections) {
     const endOfYearRecommendedEquity = Math.min(goal.equityPercent, endOfYearMaxEquity);
     const endOfYearExpectedReturn = (endOfYearRecommendedEquity / 100 * goal.equityReturn) + ((100 - endOfYearRecommendedEquity) / 100 * goal.debtReturn);
 
-    yearlyData.push({
+    const rowData = {
       year,
       yearsRemaining,
       corpus: Math.round(currentCorpus),
@@ -93,10 +114,24 @@ function generateYearlyProjections(goal, projections) {
       maxEquity: endOfYearMaxEquity,
       recommendedEquity: endOfYearRecommendedEquity,
       expectedReturn: endOfYearExpectedReturn
-    });
+    };
+
+    // Add EPF/NPS corpus for retirement goals
+    if (hasEpfNps) {
+      rowData.epfNpsCorpus = Math.round(epfCorpus + npsCorpus);
+      rowData.totalCorpus = Math.round(currentCorpus + epfCorpus + npsCorpus);
+    }
+
+    yearlyData.push(rowData);
 
     // Step up SIP for next year
     currentSIP *= (1 + stepUpRate);
+
+    // Step up EPF/NPS for next year if enabled
+    if (epfNpsStepUpEnabled) {
+      currentMonthlyEpf *= (1 + stepUpRate);
+      currentMonthlyNps *= (1 + stepUpRate);
+    }
   }
 
   return yearlyData;
@@ -125,12 +160,19 @@ function renderProjectionsTable(goal, projections) {
 
   const targetYear = new Date().getFullYear();
   const isRetirement = goal.goalType === 'retirement';
+  const hasEpfNps = isRetirement && projections.epfNps;
 
-  const glidePathExplanation = isRetirement
+  let glidePathExplanation = isRetirement
     ? `<p><strong>Retirement Glide Path:</strong> Equity reduces gradually but maintains 30% at retirement for ongoing growth during withdrawals.</p>
        <p class="mt-1">8+ years: up to 70% | 3-8 years: up to 40% | At retirement: 30% equity minimum</p>`
     : `<p><strong>Glide Path:</strong> Equity moves to 0% two years before goal to protect accumulated gains.</p>
        <p class="mt-1">8+ years: up to 70% equity | 3-8 years: up to 40% | 2 years before goal: 0% equity (100% debt)</p>`;
+
+  // Add EPF/NPS return rates note for retirement goals
+  if (hasEpfNps) {
+    glidePathExplanation += `
+      <p class="mt-2 text-purple-600"><strong>EPF/NPS Returns:</strong> EPF @ 8% p.a. | NPS @ 10% p.a.</p>`;
+  }
 
   return `
     <div class="mb-4">
@@ -148,7 +190,9 @@ function renderProjectionsTable(goal, projections) {
                 <th class="px-3 py-2 text-left font-medium text-gray-600">Year</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">Years Left</th>
                 <th class="px-3 py-2 text-right font-medium text-gray-600">Monthly SIP</th>
-                <th class="px-3 py-2 text-right font-medium text-gray-600">Projected Corpus</th>
+                <th class="px-3 py-2 text-right font-medium text-gray-600">SIP Corpus</th>
+                ${hasEpfNps ? '<th class="px-3 py-2 text-right font-medium text-purple-600">EPF+NPS</th>' : ''}
+                ${hasEpfNps ? '<th class="px-3 py-2 text-right font-medium text-gray-600">Total</th>' : ''}
                 <th class="px-3 py-2 text-center font-medium text-gray-600">Max Equity</th>
                 <th class="px-3 py-2 text-center font-medium text-gray-600">Exp. Return</th>
                 <th class="px-3 py-2 text-center font-medium text-gray-600">Action</th>
@@ -176,6 +220,8 @@ function renderProjectionsTable(goal, projections) {
                     <td class="px-3 py-2 border-t">${row.yearsRemaining}y</td>
                     <td class="px-3 py-2 border-t text-right">${formatCurrency(row.sip, currency)}</td>
                     <td class="px-3 py-2 border-t text-right font-medium">${formatCurrency(row.corpus, currency)}</td>
+                    ${hasEpfNps ? `<td class="px-3 py-2 border-t text-right font-medium text-purple-600">${formatCurrency(row.epfNpsCorpus, currency)}</td>` : ''}
+                    ${hasEpfNps ? `<td class="px-3 py-2 border-t text-right font-bold">${formatCurrency(row.totalCorpus, currency)}</td>` : ''}
                     <td class="px-3 py-2 border-t text-center">
                       <span class="px-2 py-0.5 rounded text-xs ${row.maxEquity <= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
                         ${row.maxEquity}%
@@ -385,6 +431,20 @@ function showAddGoalModal(editGoal = null) {
           </div>
           <p class="text-xs text-gray-500 mt-1">SIP increases by this % every year</p>
         </div>
+
+        <!-- EPF/NPS Step-Up (Retirement only) -->
+        <div id="epf-nps-stepup-container" class="md:col-span-2 ${(goal.goalType || 'one-time') === 'retirement' ? '' : 'hidden'}">
+          <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" id="goal-epf-nps-stepup" ${goal.epfNpsStepUp ? 'checked' : ''}
+                class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
+              <div>
+                <span class="text-sm font-medium text-purple-800">EPF/NPS contributions grow with salary</span>
+                <p class="text-xs text-purple-600">Increase EPF/NPS by the same step-up rate as SIP annually</p>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
@@ -406,7 +466,7 @@ function showAddGoalModal(editGoal = null) {
   const dateInput = document.getElementById('goal-date');
   const goalTypeSelect = document.getElementById('goal-type');
 
-  // Helper to update max equity based on date and goal type
+  // Helper to update max equity and retirement options based on date and goal type
   function updateMaxEquity() {
     const newMaxEquity = getMaxEquity(dateInput.value, goalTypeSelect.value);
     equitySlider.max = newMaxEquity;
@@ -417,6 +477,14 @@ function showAddGoalModal(editGoal = null) {
     }
     const typeLabel = goalTypeSelect.value === 'retirement' ? ' (Retirement)' : '';
     document.getElementById('max-equity-badge').textContent = `Max Equity: ${newMaxEquity}%${typeLabel}`;
+
+    // Show/hide EPF/NPS step-up option for retirement goals
+    const epfNpsContainer = document.getElementById('epf-nps-stepup-container');
+    if (goalTypeSelect.value === 'retirement') {
+      epfNpsContainer.classList.remove('hidden');
+    } else {
+      epfNpsContainer.classList.add('hidden');
+    }
   }
 
   equitySlider.addEventListener('input', () => {
@@ -459,6 +527,7 @@ function showAddGoalModal(editGoal = null) {
     const debtReturn = parseFloat(document.getElementById('goal-debt-return').value);
     const annualStepUp = parseInt(document.getElementById('goal-stepup').value);
     const initialLumpsum = parseFloat(document.getElementById('goal-lumpsum').value) || 0;
+    const epfNpsStepUp = goalType === 'retirement' ? document.getElementById('goal-epf-nps-stepup').checked : false;
 
     if (!name) {
       alert('Please enter a goal name');
@@ -484,7 +553,8 @@ function showAddGoalModal(editGoal = null) {
       equityReturn,
       debtReturn,
       annualStepUp,
-      initialLumpsum
+      initialLumpsum,
+      epfNpsStepUp
     };
 
     if (isEdit) {
@@ -597,7 +667,11 @@ function moveGoal(goalId, direction) {
 }
 
 function renderGoalCard(goal) {
-  const projections = calculateGoalProjections(goal);
+  // For retirement goals, get EPF/NPS adjusted projections
+  const retirementContributions = goal.goalType === 'retirement' ? getRetirementContributions() : null;
+  const projections = goal.goalType === 'retirement' && retirementContributions
+    ? calculateRetirementProjectionsWithEpfNps(goal, retirementContributions)
+    : calculateGoalProjections(goal);
   const recommendations = getRecommendations(currency);
   const funds = getFunds(currency);
 
@@ -691,11 +765,47 @@ function renderGoalCard(goal) {
           <div class="font-medium">${formatCurrency(projections.gapAmount, currency)}</div>
         </div>
         <div>
-          <div class="text-gray-500">Starting Monthly SIP</div>
+          <div class="text-gray-500">Additional Monthly SIP</div>
           <div class="font-bold text-blue-600 text-lg">${formatCurrency(Math.round(projections.monthlySIP), currency)}</div>
           ${goal.annualStepUp > 0 ? `<div class="text-xs text-gray-400">+${goal.annualStepUp}%/year</div>` : ''}
         </div>
       </div>
+
+      ${projections.epfNps ? `
+      <!-- EPF/NPS Automatic Contributions -->
+      <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+        <h4 class="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Automatic Retirement Contributions (EPF/NPS)
+        </h4>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <div class="text-purple-600">Monthly EPF</div>
+            <div class="font-medium">${formatCurrency(projections.epfNps.monthlyEpf, currency)}</div>
+            <div class="text-xs text-purple-500">@ ${projections.epfNps.epfReturn}% return${projections.epfNps.stepUpEnabled ? ` +${projections.epfNps.stepUpRate}%/yr` : ''}</div>
+          </div>
+          <div>
+            <div class="text-purple-600">Monthly NPS</div>
+            <div class="font-medium">${formatCurrency(projections.epfNps.monthlyNps, currency)}</div>
+            <div class="text-xs text-purple-500">@ ${projections.epfNps.npsReturn}% return${projections.epfNps.stepUpEnabled ? ` +${projections.epfNps.stepUpRate}%/yr` : ''}</div>
+          </div>
+          <div>
+            <div class="text-purple-600">Current EPF+NPS Corpus</div>
+            <div class="font-medium">${formatCurrency(projections.epfNps.totalCorpus, currency)}</div>
+          </div>
+          <div>
+            <div class="text-purple-600">EPF+NPS at Retirement</div>
+            <div class="font-bold text-purple-700">${formatCurrency(Math.round(projections.epfNps.totalEpfNpsFV), currency)}</div>
+            ${projections.epfNps.stepUpEnabled ? `<div class="text-xs text-purple-500">with salary growth</div>` : ''}
+          </div>
+        </div>
+        <div class="mt-3 pt-2 border-t border-purple-200 text-xs text-purple-600">
+          EPF/NPS contributions are already happening from your salary.${projections.epfNps.stepUpEnabled ? ` Contributions assumed to grow ${projections.epfNps.stepUpRate}% annually with salary.` : ' Contributions assumed flat (edit goal to enable salary growth).'} The "Additional Monthly SIP" above is what you need to invest separately.
+        </div>
+      </div>
+      ` : ''}
 
       <hr class="my-4">
 
@@ -737,6 +847,10 @@ function renderGoalCard(goal) {
                     </div>
                   ` : ''}
                 ` : ''}
+                <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
+                  <span class="text-gray-700 font-medium flex-1">Total</span>
+                  <span class="font-bold text-gray-800 ml-2">${formatCurrency(Math.round(monthlySIP), currency)}</span>
+                </div>
               </div>
               <div class="mt-3 pt-2 border-t text-xs text-gray-500">
                 Equity: 70% Nifty 50 + 30% Nifty Next 50 | Debt: ${useArbitrage ? 'Equity Arbitrage' : 'Money Market'}

@@ -17,7 +17,11 @@ import {
   calculateGoalProjections,
   calculateTotalInvested,
   needsRebalanceAlert,
-  wasShortTermAtStart
+  wasShortTermAtStart,
+  calculateEpfNpsCorpusFV,
+  calculateEpfNpsSipFV,
+  calculateEpfNpsSipFVWithStepUp,
+  calculateRetirementProjectionsWithEpfNps
 } from '../modules/calculator.js';
 
 // Simple test framework
@@ -1302,6 +1306,363 @@ test('wasShortTermAtStart: Boundary at exactly 2.9 years', () => {
   };
 
   assertTrue(wasShortTermAtStart(goal), '2.9-year goal should be short-term at start');
+});
+
+// ============================================
+// TESTS: EPF/NPS Calculations
+// ============================================
+
+test('EPF/NPS Corpus FV: Returns sum when no time remaining', () => {
+  const today = new Date().toISOString().split('T')[0];
+  const result = calculateEpfNpsCorpusFV(1000000, 500000, today);
+  assertApproxEqual(result, 1500000, 1, 'Should return sum of corpus when target is today');
+});
+
+test('EPF/NPS Corpus FV: EPF grows at 8%', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 10);
+  const target = targetDate.toISOString().split('T')[0];
+
+  // EPF only, 10 years with monthly compounding
+  const result = calculateEpfNpsCorpusFV(1000000, 0, target);
+  // 1000000 * (1 + 0.08/12)^120 ≈ 2,219,640 (monthly compounding)
+  assertApproxEqual(result, 2219640, 50000, 'EPF should grow at 8% with monthly compounding');
+});
+
+test('EPF/NPS Corpus FV: NPS grows at 10%', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 10);
+  const target = targetDate.toISOString().split('T')[0];
+
+  // NPS only, 10 years with monthly compounding
+  const result = calculateEpfNpsCorpusFV(0, 1000000, target);
+  // 1000000 * (1 + 0.10/12)^120 ≈ 2,707,041 (monthly compounding)
+  assertApproxEqual(result, 2707041, 50000, 'NPS should grow at 10% with monthly compounding');
+});
+
+test('EPF/NPS Corpus FV: Combined EPF + NPS', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 10);
+  const target = targetDate.toISOString().split('T')[0];
+
+  // Both EPF and NPS with monthly compounding
+  const result = calculateEpfNpsCorpusFV(1000000, 500000, target);
+  // EPF: 1000000 * (1 + 0.08/12)^120 ≈ 2,219,640
+  // NPS: 500000 * (1 + 0.10/12)^120 ≈ 1,353,521
+  // Total: ~3,573,161
+  assertApproxEqual(result, 3573161, 100000, 'Combined EPF+NPS should use respective rates with monthly compounding');
+});
+
+test('EPF/NPS SIP FV: Returns 0 when no time remaining', () => {
+  const today = new Date().toISOString().split('T')[0];
+  const result = calculateEpfNpsSipFV(10000, 5000, today);
+  assertEqual(result, 0, 'Should return 0 when target is today');
+});
+
+test('EPF/NPS SIP FV: Monthly EPF SIP grows at 8%', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 20);
+  const target = targetDate.toISOString().split('T')[0];
+
+  // 10000/month EPF for 20 years at 8%
+  const result = calculateEpfNpsSipFV(10000, 0, target);
+  // Should be significant growth over 20 years
+  assertTrue(result > 5000000, 'EPF SIP should compound significantly over 20 years');
+  assertTrue(result < 10000000, 'EPF SIP should be reasonable');
+});
+
+test('EPF/NPS SIP FV: Monthly NPS SIP grows at 10%', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 20);
+  const target = targetDate.toISOString().split('T')[0];
+
+  // 10000/month NPS for 20 years at 10%
+  const result = calculateEpfNpsSipFV(0, 10000, target);
+  // NPS at 10% should grow more than EPF at 8%
+  const epfResult = calculateEpfNpsSipFV(10000, 0, target);
+  assertTrue(result > epfResult, 'NPS SIP should grow more than EPF due to higher rate');
+});
+
+test('Retirement with EPF/NPS: Reduces required SIP', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 20);
+  const target = targetDate.toISOString().split('T')[0];
+
+  const goal = {
+    name: 'Retirement',
+    goalType: 'retirement',
+    targetAmount: 50000000,
+    inflationRate: 6,
+    targetDate: target,
+    equityPercent: 70,
+    debtPercent: 30,
+    equityReturn: 12,
+    debtReturn: 5,
+    annualStepUp: 7,
+    initialLumpsum: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    investments: []
+  };
+
+  // Without EPF/NPS
+  const baseProjections = calculateGoalProjections(goal);
+
+  // With EPF/NPS
+  const retirementContributions = {
+    monthlyEpf: 30000,
+    monthlyNps: 10000,
+    epfCorpus: 1000000,
+    npsCorpus: 500000,
+    totalMonthly: 40000,
+    totalCorpus: 1500000
+  };
+
+  const epfNpsProjections = calculateRetirementProjectionsWithEpfNps(goal, retirementContributions);
+
+  // EPF/NPS should reduce required SIP
+  assertTrue(epfNpsProjections.monthlySIP < baseProjections.monthlySIP,
+    `EPF/NPS should reduce SIP: ${epfNpsProjections.monthlySIP} should be less than ${baseProjections.monthlySIP}`);
+
+  // Should have EPF/NPS details
+  assertTrue(epfNpsProjections.epfNps !== null, 'Should have EPF/NPS details');
+  assertEqual(epfNpsProjections.epfNps.monthlyEpf, 30000, 'Should have correct monthly EPF');
+  assertEqual(epfNpsProjections.epfNps.monthlyNps, 10000, 'Should have correct monthly NPS');
+  assertEqual(epfNpsProjections.epfNps.epfReturn, 8, 'EPF return should be 8%');
+  assertEqual(epfNpsProjections.epfNps.npsReturn, 10, 'NPS return should be 10%');
+});
+
+test('Retirement with EPF/NPS: Returns null epfNps for non-retirement goals', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 10);
+  const target = targetDate.toISOString().split('T')[0];
+
+  const goal = {
+    name: 'Education',
+    goalType: 'one-time',
+    targetAmount: 5000000,
+    inflationRate: 6,
+    targetDate: target,
+    equityPercent: 40,
+    debtPercent: 60,
+    equityReturn: 12,
+    debtReturn: 5,
+    annualStepUp: 5,
+    initialLumpsum: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    investments: []
+  };
+
+  const retirementContributions = {
+    monthlyEpf: 30000,
+    monthlyNps: 10000,
+    epfCorpus: 1000000,
+    npsCorpus: 500000,
+    totalMonthly: 40000,
+    totalCorpus: 1500000
+  };
+
+  const projections = calculateRetirementProjectionsWithEpfNps(goal, retirementContributions);
+
+  assertEqual(projections.epfNps, null, 'Non-retirement goals should not have EPF/NPS');
+});
+
+test('Retirement with EPF/NPS: Zero contributions returns null epfNps', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 20);
+  const target = targetDate.toISOString().split('T')[0];
+
+  const goal = {
+    name: 'Retirement',
+    goalType: 'retirement',
+    targetAmount: 50000000,
+    inflationRate: 6,
+    targetDate: target,
+    equityPercent: 70,
+    debtPercent: 30,
+    equityReturn: 12,
+    debtReturn: 5,
+    annualStepUp: 7,
+    initialLumpsum: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    investments: []
+  };
+
+  const retirementContributions = {
+    monthlyEpf: 0,
+    monthlyNps: 0,
+    epfCorpus: 0,
+    npsCorpus: 0,
+    totalMonthly: 0,
+    totalCorpus: 0
+  };
+
+  const projections = calculateRetirementProjectionsWithEpfNps(goal, retirementContributions);
+
+  assertEqual(projections.epfNps, null, 'Zero EPF/NPS should return null');
+});
+
+test('Retirement with EPF/NPS: Large EPF/NPS can cover entire goal', () => {
+  const targetDate = new Date();
+  targetDate.setFullYear(targetDate.getFullYear() + 20);
+  const target = targetDate.toISOString().split('T')[0];
+
+  const goal = {
+    name: 'Retirement',
+    goalType: 'retirement',
+    targetAmount: 10000000, // Smaller goal
+    inflationRate: 6,
+    targetDate: target,
+    equityPercent: 70,
+    debtPercent: 30,
+    equityReturn: 12,
+    debtReturn: 5,
+    annualStepUp: 7,
+    initialLumpsum: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    investments: []
+  };
+
+  // Very large EPF/NPS
+  const retirementContributions = {
+    monthlyEpf: 100000,
+    monthlyNps: 50000,
+    epfCorpus: 10000000,
+    npsCorpus: 5000000,
+    totalMonthly: 150000,
+    totalCorpus: 15000000
+  };
+
+  const projections = calculateRetirementProjectionsWithEpfNps(goal, retirementContributions);
+
+  // With large EPF/NPS, additional SIP should be 0
+  assertEqual(projections.monthlySIP, 0, 'Large EPF/NPS should cover goal, no additional SIP needed');
+  assertEqual(projections.gapAmount, 0, 'Gap should be 0 when EPF/NPS covers goal');
+});
+
+// TESTS: EPF/NPS Step-Up Calculations
+// ============================================
+
+test('EPF/NPS SIP FV with Step-Up: Returns 0 when no time remaining', () => {
+  const today = new Date().toISOString().split('T')[0];
+  const result = calculateEpfNpsSipFVWithStepUp(10000, 5000, today, 5);
+  assertEqual(result, 0, 'Should return 0 for past date');
+});
+
+test('EPF/NPS SIP FV with Step-Up: 0% step-up equals regular calculation', () => {
+  const target = new Date();
+  target.setFullYear(target.getFullYear() + 20);
+  const targetDate = target.toISOString().split('T')[0];
+
+  const regularFV = calculateEpfNpsSipFV(10000, 5000, targetDate);
+  const stepUpFV = calculateEpfNpsSipFVWithStepUp(10000, 5000, targetDate, 0);
+
+  assertApproxEqual(stepUpFV, regularFV, 1, '0% step-up should equal regular calculation');
+});
+
+test('EPF/NPS SIP FV with Step-Up: Higher FV with step-up than without', () => {
+  const target = new Date();
+  target.setFullYear(target.getFullYear() + 20);
+  const targetDate = target.toISOString().split('T')[0];
+
+  const regularFV = calculateEpfNpsSipFV(10000, 5000, targetDate);
+  const stepUpFV = calculateEpfNpsSipFVWithStepUp(10000, 5000, targetDate, 7);
+
+  assertTrue(stepUpFV > regularFV, `Step-up FV (${Math.round(stepUpFV)}) should be greater than regular FV (${Math.round(regularFV)})`);
+});
+
+test('EPF/NPS SIP FV with Step-Up: Higher step-up means higher FV', () => {
+  const target = new Date();
+  target.setFullYear(target.getFullYear() + 20);
+  const targetDate = target.toISOString().split('T')[0];
+
+  const lowStepUpFV = calculateEpfNpsSipFVWithStepUp(10000, 5000, targetDate, 3);
+  const highStepUpFV = calculateEpfNpsSipFVWithStepUp(10000, 5000, targetDate, 10);
+
+  assertTrue(highStepUpFV > lowStepUpFV, `10% step-up FV (${Math.round(highStepUpFV)}) should be greater than 3% step-up FV (${Math.round(lowStepUpFV)})`);
+});
+
+test('Retirement with EPF/NPS Step-Up: Reduces required SIP more than without step-up', () => {
+  const target = new Date();
+  target.setFullYear(target.getFullYear() + 20);
+  const targetDate = target.toISOString().split('T')[0];
+
+  const goal = {
+    name: 'Retirement',
+    goalType: 'retirement',
+    targetAmount: 50000000,
+    inflationRate: 6,
+    targetDate,
+    equityPercent: 60,
+    debtPercent: 40,
+    equityReturn: 12,
+    debtReturn: 6,
+    annualStepUp: 7,
+    epfNpsStepUp: false,
+    initialLumpsum: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    investments: []
+  };
+
+  const retirementContributions = {
+    monthlyEpf: 30000,
+    monthlyNps: 10000,
+    epfCorpus: 1000000,
+    npsCorpus: 500000,
+    totalMonthly: 40000,
+    totalCorpus: 1500000
+  };
+
+  // Without EPF/NPS step-up
+  const noStepUpProjections = calculateRetirementProjectionsWithEpfNps(goal, retirementContributions);
+
+  // With EPF/NPS step-up
+  const goalWithStepUp = { ...goal, epfNpsStepUp: true };
+  const stepUpProjections = calculateRetirementProjectionsWithEpfNps(goalWithStepUp, retirementContributions);
+
+  // Step-up should result in lower required SIP
+  assertTrue(stepUpProjections.monthlySIP < noStepUpProjections.monthlySIP,
+    `With step-up SIP (${Math.round(stepUpProjections.monthlySIP)}) should be less than without (${Math.round(noStepUpProjections.monthlySIP)})`);
+
+  // Step-up info should be in projections
+  assertTrue(stepUpProjections.epfNps.stepUpEnabled, 'stepUpEnabled should be true');
+  assertEqual(stepUpProjections.epfNps.stepUpRate, 7, 'stepUpRate should match goal annualStepUp');
+});
+
+test('Retirement with EPF/NPS Step-Up: stepUpEnabled is false when not set', () => {
+  const target = new Date();
+  target.setFullYear(target.getFullYear() + 20);
+  const targetDate = target.toISOString().split('T')[0];
+
+  const goal = {
+    name: 'Retirement',
+    goalType: 'retirement',
+    targetAmount: 50000000,
+    inflationRate: 6,
+    targetDate,
+    equityPercent: 60,
+    debtPercent: 40,
+    equityReturn: 12,
+    debtReturn: 6,
+    annualStepUp: 7,
+    // epfNpsStepUp not set (undefined)
+    initialLumpsum: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    investments: []
+  };
+
+  const retirementContributions = {
+    monthlyEpf: 30000,
+    monthlyNps: 10000,
+    epfCorpus: 1000000,
+    npsCorpus: 500000,
+    totalMonthly: 40000,
+    totalCorpus: 1500000
+  };
+
+  const projections = calculateRetirementProjectionsWithEpfNps(goal, retirementContributions);
+
+  assertEqual(projections.epfNps.stepUpEnabled, false, 'stepUpEnabled should default to false');
+  assertEqual(projections.epfNps.stepUpRate, 0, 'stepUpRate should be 0 when not enabled');
 });
 
 // ============================================

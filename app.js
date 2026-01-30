@@ -15,8 +15,8 @@ function getSampleData() {
     },
     cashflow: {
       income: [
-        { name: 'Salary Self', amount: 200000, id: '421af97f-222b-4ec1-97f4-e0a9a071c3be' },
-        { name: 'Salary Spouse', amount: 150000, id: '77e29ba2-756f-4409-9f4a-e8a9c0285b72' }
+        { name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, epfCorpus: 1500000, npsCorpus: 500000, id: '421af97f-222b-4ec1-97f4-e0a9a071c3be' },
+        { name: 'Salary Spouse', amount: 150000, epf: 24000, nps: 0, epfCorpus: 800000, npsCorpus: 0, id: '77e29ba2-756f-4409-9f4a-e8a9c0285b72' }
       ],
       expenses: [
         { category: 'Housing', name: 'Rent', amount: 50000, id: '35c860f6-8a25-48f9-85ce-48d6ee333718' },
@@ -55,6 +55,7 @@ function getSampleData() {
         equityReturn: 12,
         debtReturn: 5,
         annualStepUp: 7,
+        epfNpsStepUp: true,
         initialLumpsum: 0,
         startDate: '2026-01-29',
         investments: [],

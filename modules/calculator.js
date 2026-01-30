@@ -482,6 +482,174 @@ export function wasShortTermAtStart(goal) {
   return originalYears < 3;
 }
 
+// EPF and NPS return rates (fixed)
+const EPF_RETURN = 8;
+const NPS_RETURN = 10;
+
+/**
+ * Calculate future value of EPF/NPS corpus at target date
+ * EPF earns 8%, NPS earns 10%
+ */
+export function calculateEpfNpsCorpusFV(epfCorpus, npsCorpus, targetDate) {
+  const years = getYearsRemaining(targetDate);
+  if (years <= 0) return epfCorpus + npsCorpus;
+
+  const epfFV = calculateLumpsumFV(epfCorpus, EPF_RETURN, years);
+  const npsFV = calculateLumpsumFV(npsCorpus, NPS_RETURN, years);
+
+  return epfFV + npsFV;
+}
+
+/**
+ * Calculate future value of monthly EPF/NPS SIP contributions
+ * EPF earns 8%, NPS earns 10%
+ * FV = PMT * ((1 + r)^n - 1) / r * (1 + r)
+ */
+export function calculateEpfNpsSipFV(monthlyEpf, monthlyNps, targetDate) {
+  const months = getMonthsRemaining(targetDate);
+  if (months <= 0) return 0;
+
+  const epfMonthlyRate = EPF_RETURN / 100 / 12;
+  const npsMonthlyRate = NPS_RETURN / 100 / 12;
+
+  let epfSipFV = 0;
+  let npsSipFV = 0;
+
+  if (monthlyEpf > 0) {
+    if (epfMonthlyRate === 0) {
+      epfSipFV = monthlyEpf * months;
+    } else {
+      const factor = Math.pow(1 + epfMonthlyRate, months);
+      epfSipFV = monthlyEpf * ((factor - 1) / epfMonthlyRate) * (1 + epfMonthlyRate);
+    }
+  }
+
+  if (monthlyNps > 0) {
+    if (npsMonthlyRate === 0) {
+      npsSipFV = monthlyNps * months;
+    } else {
+      const factor = Math.pow(1 + npsMonthlyRate, months);
+      npsSipFV = monthlyNps * ((factor - 1) / npsMonthlyRate) * (1 + npsMonthlyRate);
+    }
+  }
+
+  return epfSipFV + npsSipFV;
+}
+
+/**
+ * Calculate future value of monthly EPF/NPS SIP contributions with annual step-up
+ * EPF earns 8%, NPS earns 10%
+ * Contributions increase annually by stepUpRate (reflecting salary growth)
+ */
+export function calculateEpfNpsSipFVWithStepUp(monthlyEpf, monthlyNps, targetDate, annualStepUp) {
+  const totalMonths = getMonthsRemaining(targetDate);
+  if (totalMonths <= 0) return 0;
+  if (annualStepUp === 0) return calculateEpfNpsSipFV(monthlyEpf, monthlyNps, targetDate);
+
+  const epfMonthlyRate = EPF_RETURN / 100 / 12;
+  const npsMonthlyRate = NPS_RETURN / 100 / 12;
+  const stepUpRate = annualStepUp / 100;
+
+  let epfSipFV = 0;
+  let npsSipFV = 0;
+  let currentEpf = monthlyEpf;
+  let currentNps = monthlyNps;
+  let monthInYear = 0;
+
+  for (let month = 0; month < totalMonths; month++) {
+    const remainingMonths = totalMonths - month;
+
+    // EPF contribution compounded to end
+    if (currentEpf > 0) {
+      epfSipFV += currentEpf * Math.pow(1 + epfMonthlyRate, remainingMonths);
+    }
+
+    // NPS contribution compounded to end
+    if (currentNps > 0) {
+      npsSipFV += currentNps * Math.pow(1 + npsMonthlyRate, remainingMonths);
+    }
+
+    monthInYear++;
+
+    // Annual step-up
+    if (monthInYear >= 12) {
+      currentEpf *= (1 + stepUpRate);
+      currentNps *= (1 + stepUpRate);
+      monthInYear = 0;
+    }
+  }
+
+  return epfSipFV + npsSipFV;
+}
+
+/**
+ * Calculate retirement goal projections including EPF/NPS contributions
+ * Returns enhanced projections with EPF/NPS breakdown
+ */
+export function calculateRetirementProjectionsWithEpfNps(goal, retirementContributions) {
+  // Get base projections first
+  const baseProjections = calculateGoalProjections(goal);
+
+  if (goal.goalType !== 'retirement' || !retirementContributions) {
+    return {
+      ...baseProjections,
+      epfNps: null
+    };
+  }
+
+  const { monthlyEpf, monthlyNps, epfCorpus, npsCorpus, totalMonthly, totalCorpus } = retirementContributions;
+
+  // If no EPF/NPS, return base projections
+  if (totalMonthly === 0 && totalCorpus === 0) {
+    return {
+      ...baseProjections,
+      epfNps: null
+    };
+  }
+
+  // Calculate FV of EPF/NPS corpus
+  const epfNpsCorpusFV = calculateEpfNpsCorpusFV(epfCorpus, npsCorpus, goal.targetDate);
+
+  // Calculate FV of EPF/NPS SIP contributions (with or without step-up)
+  const epfNpsSipFV = goal.epfNpsStepUp
+    ? calculateEpfNpsSipFVWithStepUp(monthlyEpf, monthlyNps, goal.targetDate, goal.annualStepUp || 0)
+    : calculateEpfNpsSipFV(monthlyEpf, monthlyNps, goal.targetDate);
+
+  // Total contribution from EPF/NPS at goal date
+  const totalEpfNpsFV = epfNpsCorpusFV + epfNpsSipFV;
+
+  // Recalculate gap amount after accounting for EPF/NPS
+  const adjustedGapAmount = Math.max(0, baseProjections.inflationAdjustedTarget - baseProjections.corpusFV - totalEpfNpsFV);
+
+  // Recalculate required SIP for remaining gap
+  const adjustedMonthlySIP = adjustedGapAmount > 0
+    ? calculateStepUpSIPWithGlidePath(adjustedGapAmount, goal)
+    : 0;
+
+  return {
+    ...baseProjections,
+    // Override with adjusted values
+    gapAmount: adjustedGapAmount,
+    monthlySIP: adjustedMonthlySIP,
+    // EPF/NPS details
+    epfNps: {
+      monthlyEpf,
+      monthlyNps,
+      totalMonthly,
+      epfCorpus,
+      npsCorpus,
+      totalCorpus,
+      epfNpsCorpusFV,
+      epfNpsSipFV,
+      totalEpfNpsFV,
+      epfReturn: EPF_RETURN,
+      npsReturn: NPS_RETURN,
+      stepUpEnabled: goal.epfNpsStepUp || false,
+      stepUpRate: goal.epfNpsStepUp ? (goal.annualStepUp || 0) : 0
+    }
+  };
+}
+
 /**
  * Calculate complete goal projections
  */
