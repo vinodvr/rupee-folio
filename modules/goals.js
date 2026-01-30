@@ -767,12 +767,11 @@ function renderGoalCard(goal) {
         </div>
         <div>
           <div class="text-gray-500">Additional Monthly SIP</div>
-          <div class="font-bold text-blue-600 text-lg">${formatCurrency(Math.round(projections.monthlySIP), currency)}</div>
+          <div class="font-bold text-blue-600 text-lg">${formatCurrency(Math.round(projections.monthlySIP), currency)}${goal.annualStepUp > 0 ? `<span class="text-xs text-gray-400 font-normal ml-1">+${goal.annualStepUp}%/yr</span>` : ''}</div>
           <div class="text-xs text-gray-500">
             <span class="text-green-600">${formatCurrency(Math.round(equityAmount), currency)} Equity</span> +
             <span class="text-blue-600">${formatCurrency(Math.round(debtAmount), currency)} Debt</span>
           </div>
-          ${goal.annualStepUp > 0 ? `<div class="text-xs text-gray-400">+${goal.annualStepUp}%/year</div>` : ''}
         </div>
       </div>
 
