@@ -409,7 +409,7 @@ function showAddGoalModal(editGoal = null) {
           <div class="flex justify-between text-xs text-gray-500 mt-1">
             <span>8-9% Conservative</span>
             <span id="equity-return-label" class="font-medium text-blue-600">${goal.equityReturn <= 9 ? 'Conservative' : goal.equityReturn >= 12 ? 'Optimistic' : 'Realistic'}</span>
-            <span>12-14% Optimistic</span>
+            <span>12-13% Optimistic</span>
           </div>
         </div>
 

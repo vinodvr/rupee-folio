@@ -6,9 +6,9 @@ export const currencyConfig = {
     locale: 'en-IN',
     equity: {
       min: 8,
-      max: 14,
+      max: 13,
       default: 10,
-      labels: { '8-9': 'Conservative', '10-11': 'Realistic', '12-14': 'Optimistic' }
+      labels: { '8-9': 'Conservative', '10-11': 'Realistic', '12-13': 'Optimistic' }
     },
     debt: {
       min: 4,
