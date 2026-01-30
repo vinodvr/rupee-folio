@@ -410,9 +410,9 @@ function showAddGoalModal(editGoal = null) {
             <span id="equity-return-display" class="text-sm font-medium w-12">${goal.equityReturn}%</span>
           </div>
           <div class="flex justify-between text-xs text-gray-500 mt-1">
-            <span>8-9% Conservative</span>
+            <span>Conservative</span>
             <span id="equity-return-label" class="font-medium text-blue-600">${goal.equityReturn <= 9 ? 'Conservative' : goal.equityReturn >= 12 ? 'Optimistic' : 'Realistic'}</span>
-            <span>12-13% Optimistic</span>
+            <span>Optimistic</span>
           </div>
         </div>
 
@@ -427,9 +427,9 @@ function showAddGoalModal(editGoal = null) {
             <span id="debt-return-display" class="text-sm font-medium w-12">${goal.debtReturn}%</span>
           </div>
           <div class="flex justify-between text-xs text-gray-500 mt-1">
-            <span>4% Conservative</span>
+            <span>Conservative</span>
             <span id="debt-return-label" class="font-medium text-blue-600">${goal.debtReturn <= 4 ? 'Conservative' : goal.debtReturn >= 7 ? 'Optimistic' : 'Realistic'}</span>
-            <span>7% Optimistic</span>
+            <span>Optimistic</span>
           </div>
         </div>
 
