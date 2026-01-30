@@ -80,7 +80,7 @@ function createGoal(options) {
     targetDate: options.targetDate || targetDate.toISOString().split('T')[0],
     equityPercent: options.equityPercent ?? 70,
     debtPercent: options.debtPercent ?? 30,
-    equityReturn: options.equityReturn ?? 11,
+    equityReturn: options.equityReturn ?? 10,
     debtReturn: options.debtReturn ?? 5,
     annualStepUp: options.annualStepUp ?? 5,
     goalType: options.goalType || 'one-time',

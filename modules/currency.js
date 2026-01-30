@@ -5,14 +5,16 @@ export const currencyConfig = {
     symbol: '₹',
     locale: 'en-IN',
     equity: {
-      min: 9,
-      max: 13.5,
-      default: 11
+      min: 8,
+      max: 14,
+      default: 10,
+      labels: { '8-9': 'Conservative', '10-11': 'Realistic', '12-14': 'Optimistic' }
     },
     debt: {
       min: 4,
-      max: 6.5,
-      default: 5
+      max: 7,
+      default: 5,
+      labels: { '4': 'Conservative', '5-6': 'Realistic', '7': 'Optimistic' }
     },
     recommendations: {
       equity: 'Nifty 50 / Nifty Total Market Index Fund',

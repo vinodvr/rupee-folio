@@ -400,12 +400,16 @@ function showAddGoalModal(editGoal = null) {
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
             Equity Return (post-tax)
-            <span class="text-xs text-gray-500">${equityLimits.min}-${equityLimits.max}%</span>
           </label>
           <div class="flex items-center gap-2">
-            <input type="range" id="goal-equity-return" min="${equityLimits.min}" max="${equityLimits.max}" step="0.5"
+            <input type="range" id="goal-equity-return" min="${equityLimits.min}" max="${equityLimits.max}" step="1"
               value="${goal.equityReturn}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             <span id="equity-return-display" class="text-sm font-medium w-12">${goal.equityReturn}%</span>
+          </div>
+          <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>8-9% Conservative</span>
+            <span id="equity-return-label" class="font-medium text-blue-600">${goal.equityReturn <= 9 ? 'Conservative' : goal.equityReturn >= 12 ? 'Optimistic' : 'Realistic'}</span>
+            <span>12-14% Optimistic</span>
           </div>
         </div>
 
@@ -415,9 +419,14 @@ function showAddGoalModal(editGoal = null) {
             <span class="text-xs text-gray-500">${debtLimits.min}-${debtLimits.max}%</span>
           </label>
           <div class="flex items-center gap-2">
-            <input type="range" id="goal-debt-return" min="${debtLimits.min}" max="${debtLimits.max}" step="0.5"
+            <input type="range" id="goal-debt-return" min="${debtLimits.min}" max="${debtLimits.max}" step="1"
               value="${goal.debtReturn}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             <span id="debt-return-display" class="text-sm font-medium w-12">${goal.debtReturn}%</span>
+          </div>
+          <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>4% Conservative</span>
+            <span id="debt-return-label" class="font-medium text-blue-600">${goal.debtReturn <= 4 ? 'Conservative' : goal.debtReturn >= 7 ? 'Optimistic' : 'Realistic'}</span>
+            <span>7% Optimistic</span>
           </div>
         </div>
 
@@ -494,11 +503,17 @@ function showAddGoalModal(editGoal = null) {
   });
 
   equityReturnSlider.addEventListener('input', () => {
-    document.getElementById('equity-return-display').textContent = equityReturnSlider.value + '%';
+    const val = parseFloat(equityReturnSlider.value);
+    document.getElementById('equity-return-display').textContent = val + '%';
+    const label = val <= 9 ? 'Conservative' : val >= 12 ? 'Optimistic' : 'Realistic';
+    document.getElementById('equity-return-label').textContent = label;
   });
 
   debtReturnSlider.addEventListener('input', () => {
-    document.getElementById('debt-return-display').textContent = debtReturnSlider.value + '%';
+    const val = parseFloat(debtReturnSlider.value);
+    document.getElementById('debt-return-display').textContent = val + '%';
+    const label = val <= 4 ? 'Conservative' : val >= 7 ? 'Optimistic' : 'Realistic';
+    document.getElementById('debt-return-label').textContent = label;
   });
 
   stepupSlider.addEventListener('input', () => {
