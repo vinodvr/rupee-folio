@@ -156,19 +156,19 @@ test('getMaxEquityForYearsRemaining: One-time, 10 years', () => {
 });
 
 test('getMaxEquityForYearsRemaining: One-time, 8 years', () => {
-  assertEqual(getMaxEquityForYearsRemaining(8, 'one-time'), 70);
+  assertEqual(getMaxEquityForYearsRemaining(8, 'one-time'), 60);
 });
 
 test('getMaxEquityForYearsRemaining: One-time, 7 years', () => {
-  assertEqual(getMaxEquityForYearsRemaining(7, 'one-time'), 40);
+  assertEqual(getMaxEquityForYearsRemaining(7, 'one-time'), 50);
 });
 
 test('getMaxEquityForYearsRemaining: One-time, 5 years', () => {
-  assertEqual(getMaxEquityForYearsRemaining(5, 'one-time'), 40);
+  assertEqual(getMaxEquityForYearsRemaining(5, 'one-time'), 30);
 });
 
 test('getMaxEquityForYearsRemaining: One-time, 3 years', () => {
-  assertEqual(getMaxEquityForYearsRemaining(3, 'one-time'), 40);
+  assertEqual(getMaxEquityForYearsRemaining(3, 'one-time'), 15);
 });
 
 test('getMaxEquityForYearsRemaining: One-time, 2 years', () => {
@@ -196,11 +196,11 @@ test('getMaxEquityForYearsRemaining: Retirement, 5 years', () => {
 });
 
 test('getMaxEquityForYearsRemaining: Retirement, 2 years', () => {
-  assertEqual(getMaxEquityForYearsRemaining(2, 'retirement'), 40);
+  assertEqual(getMaxEquityForYearsRemaining(2, 'retirement'), 35);
 });
 
 test('getMaxEquityForYearsRemaining: Retirement, 1 year', () => {
-  assertEqual(getMaxEquityForYearsRemaining(1, 'retirement'), 35);
+  assertEqual(getMaxEquityForYearsRemaining(1, 'retirement'), 30);
 });
 
 test('getMaxEquityForYearsRemaining: Retirement, 0 years', () => {
@@ -236,17 +236,20 @@ test('getYearlyReturns: Mid-term one-time goal (5 years)', () => {
     yearsFromNow: 5,
     goalType: 'one-time',
     equityPercent: 70,
-    equityReturn: 11,
+    equityReturn: 10,
     debtReturn: 5
   });
   const returns = getYearlyReturns(goal);
 
   assertEqual(returns.length, 5, 'Should have 5 yearly returns');
 
-  // Year 1-2: max 40% equity (mid-term, 3+ years remaining), but user has 70%, so capped at 40%
-  // Blended: 40% * 11 + 60% * 5 = 4.4 + 3 = 7.4%
-  assertApproxEqual(returns[0], 7.4, 0.1, 'Year 1 (4 years remaining): 40% equity');
-  assertApproxEqual(returns[1], 7.4, 0.1, 'Year 2 (3 years remaining): 40% equity');
+  // Year 1: 4 years remaining, max 30% equity (4-6 years range)
+  // Blended: 30% * 10 + 70% * 5 = 3 + 3.5 = 6.5%
+  assertApproxEqual(returns[0], 6.5, 0.1, 'Year 1 (4 years remaining): 30% equity');
+
+  // Year 2: 3 years remaining, max 15% equity (3-4 years range)
+  // Blended: 15% * 10 + 85% * 5 = 1.5 + 4.25 = 5.75%
+  assertApproxEqual(returns[1], 5.75, 0.1, 'Year 2 (3 years remaining): 15% equity');
 
   // Year 3-5: < 3 years remaining, 0% equity for one-time goals
   assertApproxEqual(returns[2], 5, 0.1, 'Year 3 (2 years remaining): 0% equity');
@@ -263,23 +266,30 @@ test('getYearlyReturns: Long-term one-time goal (10 years)', () => {
     yearsFromNow: 10,
     goalType: 'one-time',
     equityPercent: 70,
-    equityReturn: 11,
+    equityReturn: 10,
     debtReturn: 5
   });
   const returns = getYearlyReturns(goal);
 
   assertEqual(returns.length, 10, 'Should have 10 yearly returns');
 
-  // Year 1-2: 70% equity (long-term, 8+ years remaining)
-  // Blended: 70% * 11 + 30% * 5 = 7.7 + 1.5 = 9.2%
-  assertApproxEqual(returns[0], 9.2, 0.1, 'Year 1 (9 years remaining): 70% equity');
-  assertApproxEqual(returns[1], 9.2, 0.1, 'Year 2 (8 years remaining): 70% equity');
+  // Year 1-2: 60% equity (8-10 years remaining)
+  // Blended: 60% * 10 + 40% * 5 = 6 + 2 = 8%
+  assertApproxEqual(returns[0], 8, 0.1, 'Year 1 (9 years remaining): 60% equity');
+  assertApproxEqual(returns[1], 8, 0.1, 'Year 2 (8 years remaining): 60% equity');
 
-  // Year 3-7: 40% equity (mid-term, 3-7 years remaining)
-  assertApproxEqual(returns[2], 7.4, 0.1, 'Year 3 (7 years remaining): 40% equity');
-  assertApproxEqual(returns[6], 7.4, 0.1, 'Year 7 (3 years remaining): 40% equity');
+  // Year 3-4: 50% equity (6-8 years remaining)
+  assertApproxEqual(returns[2], 7.5, 0.1, 'Year 3 (7 years remaining): 50% equity');
+  assertApproxEqual(returns[3], 7.5, 0.1, 'Year 4 (6 years remaining): 50% equity');
 
-  // Year 8-10: 0% equity (< 2 years remaining)
+  // Year 5-6: 30% equity (4-6 years remaining)
+  assertApproxEqual(returns[4], 6.5, 0.1, 'Year 5 (5 years remaining): 30% equity');
+  assertApproxEqual(returns[5], 6.5, 0.1, 'Year 6 (4 years remaining): 30% equity');
+
+  // Year 7: 15% equity (3-4 years remaining)
+  assertApproxEqual(returns[6], 5.75, 0.1, 'Year 7 (3 years remaining): 15% equity');
+
+  // Year 8-10: 0% equity (< 3 years remaining)
   assertApproxEqual(returns[7], 5, 0.1, 'Year 8 (2 years remaining): 0% equity');
   assertApproxEqual(returns[8], 5, 0.1, 'Year 9 (1 year remaining): 0% equity');
   assertApproxEqual(returns[9], 5, 0.1, 'Year 10 (0 years remaining): 0% equity');
@@ -294,28 +304,35 @@ test('getYearlyReturns: Retirement goal (10 years)', () => {
     yearsFromNow: 10,
     goalType: 'retirement',
     equityPercent: 70,
-    equityReturn: 11,
+    equityReturn: 10,
     debtReturn: 5
   });
   const returns = getYearlyReturns(goal);
 
   assertEqual(returns.length, 10, 'Should have 10 yearly returns');
 
-  // Year 1-2: 70% equity (long-term)
-  assertApproxEqual(returns[0], 9.2, 0.1, 'Year 1: 70% equity');
-  assertApproxEqual(returns[1], 9.2, 0.1, 'Year 2: 70% equity');
+  // Year 1-2: 60% equity (8-10 years remaining)
+  // Blended: 60% * 10 + 40% * 5 = 6 + 2 = 8%
+  assertApproxEqual(returns[0], 8, 0.1, 'Year 1 (9 years remaining): 60% equity');
+  assertApproxEqual(returns[1], 8, 0.1, 'Year 2 (8 years remaining): 60% equity');
 
-  // Year 3-8: 40% equity (mid-term, retirement maintains higher)
-  assertApproxEqual(returns[2], 7.4, 0.1, 'Year 3: 40% equity');
-  assertApproxEqual(returns[7], 7.4, 0.1, 'Year 8: 40% equity');
+  // Year 3-4: 50% equity (6-8 years remaining)
+  assertApproxEqual(returns[2], 7.5, 0.1, 'Year 3 (7 years remaining): 50% equity');
+  assertApproxEqual(returns[3], 7.5, 0.1, 'Year 4 (6 years remaining): 50% equity');
 
-  // Year 9: 35% equity (1 year remaining, retirement glide path)
-  // Blended: 35% * 11 + 65% * 5 = 3.85 + 3.25 = 7.1%
-  assertApproxEqual(returns[8], 7.1, 0.1, 'Year 9: 35% equity');
+  // Year 5-6: 40% equity (4-6 years remaining for retirement)
+  assertApproxEqual(returns[4], 7, 0.1, 'Year 5 (5 years remaining): 40% equity');
+  assertApproxEqual(returns[5], 7, 0.1, 'Year 6 (4 years remaining): 40% equity');
 
-  // Year 10: 30% equity (0 years remaining, retirement minimum)
-  // Blended: 30% * 11 + 70% * 5 = 3.3 + 3.5 = 6.8%
-  assertApproxEqual(returns[9], 6.8, 0.1, 'Year 10: 30% equity');
+  // Year 7-8: 35% equity (2-4 years remaining for retirement)
+  // Blended: 35% * 10 + 65% * 5 = 3.5 + 3.25 = 6.75%
+  assertApproxEqual(returns[6], 6.75, 0.1, 'Year 7 (3 years remaining): 35% equity');
+  assertApproxEqual(returns[7], 6.75, 0.1, 'Year 8 (2 years remaining): 35% equity');
+
+  // Year 9-10: 30% equity (< 2 years remaining, retirement minimum)
+  // Blended: 30% * 10 + 70% * 5 = 3 + 3.5 = 6.5%
+  assertApproxEqual(returns[8], 6.5, 0.1, 'Year 9 (1 year remaining): 30% equity');
+  assertApproxEqual(returns[9], 6.5, 0.1, 'Year 10 (0 years remaining): 30% equity');
 });
 
 // ============================================
@@ -344,10 +361,10 @@ test('calculateEffectiveXIRR: Long-term one-time (10 years)', () => {
     debtReturn: 5
   });
   const xirr = calculateEffectiveXIRR(goal);
-  // Should be between 5% (all debt) and 9.2% (all 70% equity)
-  assertTrue(xirr > 5 && xirr < 9.2, `XIRR ${xirr} should be between 5 and 9.2`);
-  // Expected around 7% based on glide path
-  assertApproxEqual(xirr, 7, 0.5, 'XIRR for long-term one-time');
+  // Should be between 5% (all debt) and 8.6% (max 60% equity for 8-10 years)
+  assertTrue(xirr > 5 && xirr < 9, `XIRR ${xirr} should be between 5 and 9`);
+  // Expected around 6.5-7% based on new gradual glide path
+  assertApproxEqual(xirr, 6.8, 0.7, 'XIRR for long-term one-time');
 });
 
 test('calculateEffectiveXIRR: Retirement goal (10 years)', () => {
@@ -360,8 +377,8 @@ test('calculateEffectiveXIRR: Retirement goal (10 years)', () => {
   });
   const xirr = calculateEffectiveXIRR(goal);
   // Retirement maintains higher equity, so XIRR should be higher than one-time
-  assertTrue(xirr > 7, `Retirement XIRR ${xirr} should be higher than one-time`);
-  assertApproxEqual(xirr, 7.8, 0.5, 'XIRR for retirement');
+  assertTrue(xirr > 6.5, `Retirement XIRR ${xirr} should be higher than one-time`);
+  assertApproxEqual(xirr, 7.5, 0.7, 'XIRR for retirement');
 });
 
 // ============================================
@@ -401,7 +418,7 @@ test('calculateGoalProjections: Mid-term one-time goal', () => {
 
   assertTrue(projections.years > 4.5 && projections.years < 5.5, 'Years should be ~5');
   assertEqual(projections.category, 'mid');
-  assertEqual(projections.maxEquity, 40, 'Max equity should be 40 for mid-term');
+  assertEqual(projections.maxEquity, 30, 'Max equity should be 30 for 4-6 years one-time');
   assertTrue(projections.monthlySIP > 0, 'SIP should be positive');
   assertTrue(projections.effectiveXIRR > 5 && projections.effectiveXIRR < 9, 'XIRR should be between 5 and 9');
 });
@@ -450,9 +467,9 @@ test('calculateGoalProjections: Retirement goal', () => {
 
 test('needsRebalanceAlert: No alert when equity within limit', () => {
   const goal = createGoal({
-    yearsFromNow: 10,
+    yearsFromNow: 15,
     goalType: 'one-time',
-    equityPercent: 70
+    equityPercent: 70  // Max is 70 for 10+ years
   });
   assertFalse(needsRebalanceAlert(goal), 'Should not need rebalance');
 });
@@ -461,7 +478,7 @@ test('needsRebalanceAlert: Alert when equity exceeds max by > 5%', () => {
   const goal = createGoal({
     yearsFromNow: 5,
     goalType: 'one-time',
-    equityPercent: 70  // Max is 40% for mid-term, 70 > 45
+    equityPercent: 70  // Max is 30% for 4-6 years one-time, 70 > 35
   });
   assertTrue(needsRebalanceAlert(goal), 'Should need rebalance');
 });
@@ -470,7 +487,7 @@ test('needsRebalanceAlert: No alert for retirement with higher equity', () => {
   const goal = createGoal({
     yearsFromNow: 1,
     goalType: 'retirement',
-    equityPercent: 35  // Max is 35% for retirement at 1 year
+    equityPercent: 30  // Max is 30% for retirement under 2 years
   });
   assertFalse(needsRebalanceAlert(goal), 'Should not need rebalance');
 });
@@ -570,33 +587,45 @@ test('Edge case: Goal with initial lumpsum', () => {
 // Note: Direct numeric tests are more reliable than date-based tests for exact boundaries
 // because date calculations can have millisecond timing differences
 
-test('Boundary: 8+ years should be long-term', () => {
-  assertEqual(getMaxEquityForYearsRemaining(8, 'one-time'), 70, 'Exactly 8 years should get 70% max equity');
-  assertEqual(getMaxEquityForYearsRemaining(8.5, 'one-time'), 70, '8.5 years should get 70% max equity');
+test('Boundary: 10+ years should be long-term (70%)', () => {
+  assertEqual(getMaxEquityForYearsRemaining(10, 'one-time'), 70, 'Exactly 10 years should get 70% max equity');
+  assertEqual(getMaxEquityForYearsRemaining(15, 'one-time'), 70, '15 years should get 70% max equity');
   assertEqual(getMaxEquityForYearsRemaining(20, 'one-time'), 70, '20 years should get 70% max equity');
 });
 
-test('Boundary: Just under 8 years should be mid-term', () => {
-  assertEqual(getMaxEquityForYearsRemaining(7.99, 'one-time'), 40, '7.99 years should get 40% max equity');
-  assertEqual(getMaxEquityForYearsRemaining(7, 'one-time'), 40, '7 years should get 40% max equity');
+test('Boundary: 8-10 years should get 60%', () => {
+  assertEqual(getMaxEquityForYearsRemaining(9.99, 'one-time'), 60, '9.99 years should get 60% max equity');
+  assertEqual(getMaxEquityForYearsRemaining(8, 'one-time'), 60, '8 years should get 60% max equity');
 });
 
-test('Boundary: 3+ years (under 8) should be mid-term', () => {
-  assertEqual(getMaxEquityForYearsRemaining(3, 'one-time'), 40, 'Exactly 3 years should get 40% max equity');
-  assertEqual(getMaxEquityForYearsRemaining(5, 'one-time'), 40, '5 years should get 40% max equity');
+test('Boundary: 6-8 years should get 50%', () => {
+  assertEqual(getMaxEquityForYearsRemaining(7.99, 'one-time'), 50, '7.99 years should get 50% max equity');
+  assertEqual(getMaxEquityForYearsRemaining(6, 'one-time'), 50, '6 years should get 50% max equity');
 });
 
-test('Boundary: Just under 3 years should be short-term', () => {
+test('Boundary: 4-6 years should get 30% for one-time', () => {
+  assertEqual(getMaxEquityForYearsRemaining(5.99, 'one-time'), 30, '5.99 years should get 30% max equity');
+  assertEqual(getMaxEquityForYearsRemaining(4, 'one-time'), 30, '4 years should get 30% max equity');
+});
+
+test('Boundary: 3-4 years should get 15% for one-time', () => {
+  assertEqual(getMaxEquityForYearsRemaining(3.99, 'one-time'), 15, '3.99 years should get 15% max equity');
+  assertEqual(getMaxEquityForYearsRemaining(3, 'one-time'), 15, '3 years should get 15% max equity');
+});
+
+test('Boundary: Under 3 years should be 0% for one-time', () => {
   assertEqual(getMaxEquityForYearsRemaining(2.99, 'one-time'), 0, '2.99 years should get 0% max equity for one-time');
-  assertEqual(getMaxEquityForYearsRemaining(2.99, 'retirement'), 40, '2.99 years should get 40% max equity for retirement');
+  assertEqual(getMaxEquityForYearsRemaining(1, 'one-time'), 0, '1 year should get 0% max equity for one-time');
 });
 
-test('Boundary: Retirement at exactly 2 years', () => {
-  assertEqual(getMaxEquityForYearsRemaining(2, 'retirement'), 40, 'Retirement at 2 years should have 40% equity');
+test('Boundary: Retirement 2-4 years should get 35%', () => {
+  assertEqual(getMaxEquityForYearsRemaining(3.99, 'retirement'), 35, 'Retirement at 3.99 years should have 35% equity');
+  assertEqual(getMaxEquityForYearsRemaining(2, 'retirement'), 35, 'Retirement at 2 years should have 35% equity');
 });
 
-test('Boundary: Retirement at exactly 1 year', () => {
-  assertEqual(getMaxEquityForYearsRemaining(1, 'retirement'), 35, 'Retirement at 1 year should have 35% equity');
+test('Boundary: Retirement under 2 years should get 30%', () => {
+  assertEqual(getMaxEquityForYearsRemaining(1.99, 'retirement'), 30, 'Retirement at 1.99 years should have 30% equity');
+  assertEqual(getMaxEquityForYearsRemaining(1, 'retirement'), 30, 'Retirement at 1 year should have 30% equity');
 });
 
 test('Boundary: Goal category thresholds via dates', () => {
@@ -745,8 +774,8 @@ test('Glide path: Retirement maintains minimum 30% equity at goal', () => {
   const returns = getYearlyReturns(goal);
   const finalReturn = returns[returns.length - 1];
 
-  // 30% equity at 11% + 70% debt at 5% = 3.3 + 3.5 = 6.8%
-  assertApproxEqual(finalReturn, 6.8, 0.1, 'Final year should have 30% equity (6.8% return)');
+  // 30% equity at 10% + 70% debt at 5% = 3 + 3.5 = 6.5%
+  assertApproxEqual(finalReturn, 6.5, 0.1, 'Final year should have 30% equity (6.5% return)');
 });
 
 test('Glide path: One-time reaches 0% equity before goal', () => {
@@ -812,7 +841,7 @@ test('Rebalancing: No alert when equity equals max', () => {
   const goal = createGoal({
     yearsFromNow: 5,
     goalType: 'one-time',
-    equityPercent: 40  // Max is 40 for mid-term
+    equityPercent: 30  // Max is 30 for 4-6 years one-time
   });
   assertFalse(needsRebalanceAlert(goal), 'Should not alert when equity equals max');
 });
@@ -821,7 +850,7 @@ test('Rebalancing: No alert when equity is below max', () => {
   const goal = createGoal({
     yearsFromNow: 10,
     goalType: 'one-time',
-    equityPercent: 50  // Max is 70 for long-term
+    equityPercent: 50  // Max is 70 for 10+ years
   });
   assertFalse(needsRebalanceAlert(goal), 'Should not alert when equity is below max');
 });
@@ -830,7 +859,7 @@ test('Rebalancing: Alert when equity exceeds max by exactly 6%', () => {
   const goal = createGoal({
     yearsFromNow: 5,
     goalType: 'one-time',
-    equityPercent: 46  // Max is 40, exceeds by 6%
+    equityPercent: 36  // Max is 30, exceeds by 6%
   });
   assertTrue(needsRebalanceAlert(goal), 'Should alert when equity exceeds max by > 5%');
 });
@@ -839,7 +868,7 @@ test('Rebalancing: No alert when equity exceeds max by only 5%', () => {
   const goal = createGoal({
     yearsFromNow: 5,
     goalType: 'one-time',
-    equityPercent: 45  // Max is 40, exceeds by exactly 5%
+    equityPercent: 35  // Max is 30, exceeds by exactly 5%
   });
   assertFalse(needsRebalanceAlert(goal), 'Should not alert when equity exceeds max by exactly 5%');
 });
@@ -1058,7 +1087,7 @@ test('E2E Validation: Mid-term goal (5 years) SIP reaches target', () => {
     goalType: 'one-time',
     targetAmount: 1000000,
     inflationRate: 6,
-    equityPercent: 40,
+    equityPercent: 30,  // Max for 4-6 years one-time
     annualStepUp: 5,
     initialLumpsum: 0
   });

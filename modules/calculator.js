@@ -221,21 +221,24 @@ export function getMaxEquity(targetDate, goalType = 'one-time') {
  */
 export function getMaxEquityForYearsRemaining(yearsRemaining, goalType = 'one-time') {
   const isRetirement = goalType === 'retirement';
-  const minEquity = isRetirement ? 30 : 0;
 
-  if (yearsRemaining >= 8) return 70;  // Long term
-  if (yearsRemaining >= 3) return Math.max(40, minEquity);  // Mid term
-
-  // Short term - glide path
   if (isRetirement) {
-    // Retirement: gradual reduction to 30%
-    if (yearsRemaining >= 2) return 40;
-    if (yearsRemaining >= 1) return 35;
+    // Retirement goals: gradual reduction to 30% minimum
+    if (yearsRemaining >= 10) return 70;
+    if (yearsRemaining >= 8) return 60;
+    if (yearsRemaining >= 6) return 50;
+    if (yearsRemaining >= 4) return 40;
+    if (yearsRemaining >= 2) return 35;
     return 30;  // At retirement - maintain 30% equity
   } else {
-    // One-time goals: reach 0% equity 2 years before goal
-    if (yearsRemaining >= 2) return 0;  // 2+ years before - move to 0% equity
-    return 0;  // Less than 2 years - stay at 0% equity
+    // One-time goals: start earlier, slower taper to 0%
+    // 10+: 70%, 8-10: 60%, 6-8: 50%, 4-6: 30%, 3-4: 15%, <3: 0%
+    if (yearsRemaining >= 10) return 70;
+    if (yearsRemaining >= 8) return 60;
+    if (yearsRemaining >= 6) return 50;
+    if (yearsRemaining >= 4) return 30;
+    if (yearsRemaining >= 3) return 15;
+    return 0;  // Short term: 0% equity
   }
 }
 

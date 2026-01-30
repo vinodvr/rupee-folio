@@ -6,6 +6,7 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 
 ### Cash Flow Calculator
 - **Income Tracking**: Add multiple income sources (salary, freelance, rental income, etc.)
+- **EPF/NPS Tracking**: Track monthly EPF and NPS contributions and existing corpus
 - **Expense Management**: Track expenses with categories (housing, utilities, food, transport, etc.)
 - **Net Cash Flow**: Automatic calculation of monthly surplus available for investments
 
@@ -14,6 +15,9 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 - **Goal Types**:
   - **One-time Goals**: For specific targets with a defined end date
   - **Retirement Goals**: For ongoing income needs with special glide path considerations
+    - Automatic EPF/NPS integration from cash flow
+    - Optional EPF/NPS step-up with salary growth
+    - EPF at 8% and NPS at 10% returns
 - **Inflation Adjustment**: Each goal can have its own inflation rate (e.g., 6% for education, 4% for general expenses)
 - **Target Date**: Set absolute dates for your goals with automatic timeline calculation
 
@@ -27,9 +31,10 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 ### Currency Support
 Currently supports INR (₹) only.
 
-| Equity Return Range | Debt Return Range |
-|---------------------|-------------------|
-| 9% - 13.5%          | 4% - 6.5%         |
+| Asset Class | Range | Default | Labels |
+|-------------|-------|---------|--------|
+| Equity | 8% - 13% | 10% | 8-9% Conservative, 10-11% Realistic, 12-13% Optimistic |
+| Debt | 4% - 7% | 5% | 4% Conservative, 5-6% Realistic, 7% Optimistic |
 
 Returns are post-tax estimates based on historical market performance.
 
@@ -39,14 +44,22 @@ The app automatically suggests reducing equity exposure as goals approach:
 **One-time Goals:**
 | Years to Goal | Maximum Equity |
 |---------------|----------------|
-| 8+ years      | 70%            |
-| 3-8 years     | 40%            |
-| 2-3 years     | Gradual to 0%  |
-| < 2 years     | 0%             |
+| 10+ years     | 70%            |
+| 8-10 years    | 60%            |
+| 6-8 years     | 50%            |
+| 4-6 years     | 30%            |
+| 3-4 years     | 15%            |
+| < 3 years     | 0%             |
 
 **Retirement Goals:**
-- Maintains minimum 30% equity allocation
-- Gradual reduction from maximum to 30% as goal approaches
+| Years to Goal | Maximum Equity |
+|---------------|----------------|
+| 10+ years     | 70%            |
+| 8-10 years    | 60%            |
+| 6-8 years     | 50%            |
+| 4-6 years     | 40%            |
+| 2-4 years     | 35%            |
+| < 2 years     | 30% (minimum)  |
 
 ### Year-by-Year Projections
 - View detailed projections showing corpus growth over time
@@ -60,12 +73,16 @@ For INR currency, get specific fund recommendations from:
   - Nifty 50 Index Fund Direct Growth
   - Nifty Next 50 Index Fund Direct Growth
   - Money Market Fund Direct Growth
+  - Equity Arbitrage Fund Direct Growth
 - **HDFC**
   - Nifty 50 Index Fund Direct Growth
   - Nifty Next 50 Index Fund Direct Growth
   - Money Market Fund Direct Growth
+  - Arbitrage Fund Direct Growth
 
 **Equity Split**: 70% Nifty 50 + 30% Nifty Next 50
+**Debt**: Money Market for long/mid-term, Arbitrage for short-term (tax efficiency)
+**SIP Split**: Shows exact amounts per fund with total
 
 ### Investment Tracking
 - Log investments made towards each goal
@@ -83,6 +100,10 @@ For INR currency, get specific fund recommendations from:
 - **Multi-tab Sync**: Changes sync across browser tabs
 - **Responsive Design**: Works on desktop and mobile devices
 - **Data Persistence**: All data stored in browser localStorage
+
+### URL Routes
+- `?sample_plan=1` - Load sample data with example goals
+- `?clear=1` - Clear all data and start fresh
 
 ## Installation
 
@@ -135,11 +156,13 @@ The app includes unit tests for the calculator functions:
 
 Tests cover:
 - **Short-term goals** (< 3 years): Glide path to 0% equity
-- **Mid-term goals** (3-8 years): 40% max equity
-- **Long-term goals** (8+ years): 70% max equity
+- **Mid-term goals** (3-10 years): Gradual equity reduction
+- **Long-term goals** (10+ years): 70% max equity
 - **Retirement goals**: Maintains 30% minimum equity
 - **Effective XIRR**: Calculation with varying returns
 - **SIP calculations**: With step-up and glide path
+- **EPF/NPS calculations**: Corpus and SIP future values
+- **EPF/NPS step-up**: Growing contributions with salary
 - **Edge cases**: 0% step-up, 100% debt, initial lumpsum
 
 ## File Structure
@@ -232,10 +255,13 @@ return = (equity% × equity_return) + (debt% × debt_return)
 **Effective XIRR (with Glide Path):**
 The app calculates an effective XIRR that accounts for the changing asset allocation over time due to the glide path. This gives a more accurate picture of expected returns.
 
-For example, a 10-year goal starting at 70% equity:
-- Years 1-2: 9.2% return (70% equity)
-- Years 3-7: 7.4% return (40% equity)
-- Years 8-10: 5.0% return (0% equity for one-time goals)
+For example, a 10-year one-time goal starting at 70% equity:
+- Year 1: ~9% return (70% equity)
+- Years 2-4: ~8% return (60% equity)
+- Years 5-6: ~7% return (50% equity)
+- Years 7-8: ~6% return (30% equity)
+- Year 9: ~5.5% return (15% equity)
+- Year 10: ~5% return (0% equity)
 
 The effective XIRR is the single rate that would produce the same final corpus as these varying rates.
 
@@ -254,22 +280,31 @@ Uses iterative calculation to find the starting SIP amount that, when increased 
     "fundHouse": "icici"
   },
   "cashflow": {
-    "income": [{ "id": "uuid", "name": "Salary", "amount": 100000 }],
+    "income": [{
+      "id": "uuid",
+      "name": "Salary",
+      "amount": 100000,
+      "epf": 12000,        // Monthly EPF contribution
+      "nps": 5000,         // Monthly NPS contribution
+      "epfCorpus": 500000, // Existing EPF corpus
+      "npsCorpus": 200000  // Existing NPS corpus
+    }],
     "expenses": [{ "id": "uuid", "category": "Housing", "name": "Rent", "amount": 25000 }]
   },
   "goals": [
     {
       "id": "uuid",
       "name": "Child Education",
-      "goalType": "one-time",
+      "goalType": "one-time",  // or "retirement"
       "targetAmount": 2000000,
       "inflationRate": 6,
       "targetDate": "2039-01-28",
       "equityPercent": 70,
       "debtPercent": 30,
-      "equityReturn": 11,
+      "equityReturn": 10,
       "debtReturn": 5,
       "annualStepUp": 5,
+      "epfNpsStepUp": false,   // For retirement: grow EPF/NPS with salary
       "initialLumpsum": 100000,
       "startDate": "2024-01-28",
       "investments": []

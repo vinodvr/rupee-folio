@@ -81,17 +81,17 @@ test('Config: getCurrencyConfig defaults to INR for unknown currency', () => {
 // TESTS: INR Return Limits
 // ============================================
 
-test('INR Limits: Equity return range is 9-13.5%', () => {
+test('INR Limits: Equity return range is 8-13%', () => {
   const limits = getEquityLimits('INR');
-  assertEqual(limits.min, 9, 'INR equity min should be 9%');
-  assertEqual(limits.max, 13.5, 'INR equity max should be 13.5%');
-  assertEqual(limits.default, 11, 'INR equity default should be 11%');
+  assertEqual(limits.min, 8, 'INR equity min should be 8%');
+  assertEqual(limits.max, 13, 'INR equity max should be 13%');
+  assertEqual(limits.default, 10, 'INR equity default should be 10%');
 });
 
-test('INR Limits: Debt return range is 4-6.5%', () => {
+test('INR Limits: Debt return range is 4-7%', () => {
   const limits = getDebtLimits('INR');
   assertEqual(limits.min, 4, 'INR debt min should be 4%');
-  assertEqual(limits.max, 6.5, 'INR debt max should be 6.5%');
+  assertEqual(limits.max, 7, 'INR debt max should be 7%');
   assertEqual(limits.default, 5, 'INR debt default should be 5%');
 });
 
@@ -101,12 +101,12 @@ test('INR Limits: Debt return range is 4-6.5%', () => {
 
 test('Constraint: INR equity return clamped to min', () => {
   const result = constrainEquityReturn(5, 'INR');
-  assertEqual(result, 9, 'Should clamp to min 9%');
+  assertEqual(result, 8, 'Should clamp to min 8%');
 });
 
 test('Constraint: INR equity return clamped to max', () => {
   const result = constrainEquityReturn(20, 'INR');
-  assertEqual(result, 13.5, 'Should clamp to max 13.5%');
+  assertEqual(result, 13, 'Should clamp to max 13%');
 });
 
 test('Constraint: INR equity return unchanged when in range', () => {
@@ -121,7 +121,7 @@ test('Constraint: INR debt return clamped to min', () => {
 
 test('Constraint: INR debt return clamped to max', () => {
   const result = constrainDebtReturn(10, 'INR');
-  assertEqual(result, 6.5, 'Should clamp to max 6.5%');
+  assertEqual(result, 7, 'Should clamp to max 7%');
 });
 
 test('Constraint: INR debt return unchanged when in range', () => {
@@ -220,8 +220,8 @@ test('Recommendations: INR has generic recommendations', () => {
 // ============================================
 
 test('Edge case: Constraint at exact boundary', () => {
-  assertEqual(constrainEquityReturn(9, 'INR'), 9, 'Exact min should be allowed');
-  assertEqual(constrainEquityReturn(13.5, 'INR'), 13.5, 'Exact max should be allowed');
+  assertEqual(constrainEquityReturn(8, 'INR'), 8, 'Exact min should be allowed');
+  assertEqual(constrainEquityReturn(13, 'INR'), 13, 'Exact max should be allowed');
 });
 
 test('Edge case: Very large number formatting', () => {

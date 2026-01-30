@@ -64,18 +64,21 @@ function generateYearlyProjections(goal, projections) {
 
   // Calculate max equity for each year based on years remaining and goal type
   function getMaxEquityForYear(yearsRemaining) {
-    const minEquity = isRetirement ? 30 : 0;
-
-    if (yearsRemaining >= 8) return 70;
-    if (yearsRemaining >= 3) return Math.max(40, minEquity);
-
     if (isRetirement) {
-      // Retirement: gradual reduction to 30%
-      if (yearsRemaining >= 2) return 40;
-      if (yearsRemaining >= 1) return 35;
+      // Retirement goals: gradual reduction to 30% minimum
+      if (yearsRemaining >= 10) return 70;
+      if (yearsRemaining >= 8) return 60;
+      if (yearsRemaining >= 6) return 50;
+      if (yearsRemaining >= 4) return 40;
+      if (yearsRemaining >= 2) return 35;
       return 30;
     } else {
-      // One-time goals: 0% equity from 2 years before goal
+      // One-time goals: start earlier, slower taper to 0%
+      if (yearsRemaining >= 10) return 70;
+      if (yearsRemaining >= 8) return 60;
+      if (yearsRemaining >= 6) return 50;
+      if (yearsRemaining >= 4) return 30;
+      if (yearsRemaining >= 3) return 15;
       return 0;
     }
   }
