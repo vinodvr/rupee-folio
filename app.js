@@ -1,5 +1,5 @@
 // Main application initialization and event coordination
-import { loadData, saveData, setCurrency, getCurrency, getFundHouse, setFundHouse } from './modules/storage.js';
+import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse } from './modules/storage.js';
 import { initCashflow, updateCurrency as updateCashflowCurrency, refreshData as refreshCashflow } from './modules/cashflow.js';
 import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, refreshData as refreshGoals } from './modules/goals.js';
 import { initInvestments, updateCurrency as updateInvestmentsCurrency, refreshData as refreshInvestments } from './modules/investments.js';
@@ -98,18 +98,26 @@ function getSampleData() {
 }
 
 function init() {
-  // Check for sample data URL parameter
+  // Check for URL parameters
   const urlParams = new URLSearchParams(window.location.search);
-  const useSampleData = urlParams.get('sample_plan') === '1';
 
-  // Load data from localStorage or use sample data
-  if (useSampleData) {
-    appData = getSampleData();
-    saveData(appData); // Save to localStorage so it persists
-    console.log('Loaded sample financial plan');
-  } else {
-    appData = loadData();
+  // Handle clear data route
+  if (urlParams.get('clear') === '1') {
+    clearData();
+    window.location.href = window.location.pathname;
+    return;
   }
+
+  // Handle sample data route
+  if (urlParams.get('sample_plan') === '1') {
+    appData = getSampleData();
+    saveData(appData);
+    window.location.href = window.location.pathname;
+    return;
+  }
+
+  // Load data from localStorage
+  appData = loadData();
 
   const currency = getCurrency(appData);
   const fundHouse = getFundHouse(appData);
