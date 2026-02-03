@@ -12,6 +12,12 @@ const defaultData = {
     income: [],
     expenses: []
   },
+  assets: {
+    items: []
+  },
+  liabilities: {
+    items: []
+  },
   goals: []
 };
 
@@ -25,14 +31,64 @@ export function loadData() {
     if (stored) {
       const data = JSON.parse(stored);
       // Merge with defaults to handle schema updates
-      return {
+      const result = {
         settings: { ...defaultData.settings, ...data.settings },
         cashflow: {
           income: data.cashflow?.income || [],
           expenses: data.cashflow?.expenses || []
         },
+        assets: {
+          items: data.assets?.items || []
+        },
+        liabilities: {
+          items: data.liabilities?.items || []
+        },
         goals: data.goals || []
       };
+
+      // Migration: Move EPF/NPS corpus from income entries to assets
+      let migrated = false;
+      result.cashflow.income.forEach(income => {
+        if (income.epfCorpus && income.epfCorpus > 0) {
+          // Check if EPF asset already exists for this source
+          const existingEpf = result.assets.items.find(a =>
+            a.category === 'EPF' && a.name === `EPF - ${income.name}`
+          );
+          if (!existingEpf) {
+            result.assets.items.push({
+              id: generateId(),
+              name: `EPF - ${income.name}`,
+              category: 'EPF',
+              value: income.epfCorpus
+            });
+            migrated = true;
+          }
+          delete income.epfCorpus;
+        }
+        if (income.npsCorpus && income.npsCorpus > 0) {
+          // Check if NPS asset already exists for this source
+          const existingNps = result.assets.items.find(a =>
+            a.category === 'NPS' && a.name === `NPS - ${income.name}`
+          );
+          if (!existingNps) {
+            result.assets.items.push({
+              id: generateId(),
+              name: `NPS - ${income.name}`,
+              category: 'NPS',
+              value: income.npsCorpus
+            });
+            migrated = true;
+          }
+          delete income.npsCorpus;
+        }
+      });
+
+      // Save if migration occurred
+      if (migrated) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+      }
+
+      return result;
     }
   } catch (e) {
     console.error('Error loading data:', e);
@@ -185,5 +241,51 @@ export function deleteInvestment(data, goalId, investmentId) {
     goal.investments = goal.investments.filter(i => i.id !== investmentId);
     saveData(data);
   }
+  return data;
+}
+
+// Assets helpers
+export function addAsset(data, asset) {
+  asset.id = asset.id || generateId();
+  data.assets.items.push(asset);
+  saveData(data);
+  return data;
+}
+
+export function updateAsset(data, id, updates) {
+  const index = data.assets.items.findIndex(a => a.id === id);
+  if (index !== -1) {
+    data.assets.items[index] = { ...data.assets.items[index], ...updates };
+    saveData(data);
+  }
+  return data;
+}
+
+export function deleteAsset(data, id) {
+  data.assets.items = data.assets.items.filter(a => a.id !== id);
+  saveData(data);
+  return data;
+}
+
+// Liabilities helpers
+export function addLiability(data, liability) {
+  liability.id = liability.id || generateId();
+  data.liabilities.items.push(liability);
+  saveData(data);
+  return data;
+}
+
+export function updateLiability(data, id, updates) {
+  const index = data.liabilities.items.findIndex(l => l.id === id);
+  if (index !== -1) {
+    data.liabilities.items[index] = { ...data.liabilities.items[index], ...updates };
+    saveData(data);
+  }
+  return data;
+}
+
+export function deleteLiability(data, id) {
+  data.liabilities.items = data.liabilities.items.filter(l => l.id !== id);
+  saveData(data);
   return data;
 }

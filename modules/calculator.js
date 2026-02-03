@@ -223,22 +223,22 @@ export function getMaxEquityForYearsRemaining(yearsRemaining, goalType = 'one-ti
   const isRetirement = goalType === 'retirement';
 
   if (isRetirement) {
-    // Retirement goals: gradual reduction to 30% minimum
+    // Retirement goals: gradual reduction to 30% minimum at 4 years
+    // 10+: 70%, 8-10: 60%, 6-8: 50%, 4-6: 40%, <4: 30%
     if (yearsRemaining >= 10) return 70;
     if (yearsRemaining >= 8) return 60;
     if (yearsRemaining >= 6) return 50;
     if (yearsRemaining >= 4) return 40;
-    if (yearsRemaining >= 2) return 35;
-    return 30;  // At retirement - maintain 30% equity
+    return 30;  // < 4 years: maintain 30% equity minimum
   } else {
-    // One-time goals: start earlier, slower taper to 0%
-    // 10+: 70%, 8-10: 60%, 6-8: 50%, 4-6: 30%, 3-4: 15%, <3: 0%
+    // One-time goals: gradual taper to 0% at 4 years
+    // 10+: 70%, 8-10: 60%, 6-8: 50%, 5-6: 30%, 4-5: 15%, <4: 0%
     if (yearsRemaining >= 10) return 70;
     if (yearsRemaining >= 8) return 60;
     if (yearsRemaining >= 6) return 50;
-    if (yearsRemaining >= 4) return 30;
-    if (yearsRemaining >= 3) return 15;
-    return 0;  // Short term: 0% equity
+    if (yearsRemaining >= 5) return 30;
+    if (yearsRemaining >= 4) return 15;
+    return 0;  // Short term (< 4 years): 0% equity
   }
 }
 
@@ -253,7 +253,7 @@ export function getYearlyReturns(goal) {
   const returns = [];
 
   for (let year = 1; year <= totalYears; year++) {
-    const yearsRemaining = totalYears - year;
+    const yearsRemaining = totalYears - year + 1;  // Years remaining at START of this year
     const maxEquity = getMaxEquityForYearsRemaining(yearsRemaining, goal.goalType);
     const recommendedEquity = Math.min(goal.equityPercent, maxEquity);
     const recommendedDebt = 100 - recommendedEquity;

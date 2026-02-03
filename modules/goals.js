@@ -117,9 +117,10 @@ function generateYearlyProjections(goal, projections) {
       yearsRemaining,
       corpus: Math.round(currentCorpus),
       sip: Math.round(currentSIP),
+      startMaxEquity: maxEquity,
       maxEquity: endOfYearMaxEquity,
       recommendedEquity: endOfYearRecommendedEquity,
-      expectedReturn: endOfYearExpectedReturn
+      expectedReturn: expectedReturn
     };
 
     // Add EPF/NPS corpus for retirement goals
@@ -193,7 +194,7 @@ function renderProjectionsTable(goal, projections) {
           <table class="w-full text-sm border-collapse">
             <thead>
               <tr class="bg-gray-100">
-                <th class="px-3 py-2 text-left font-medium text-gray-600">Year</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600">FY</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600">Years Left</th>
                 <th class="px-3 py-2 text-right font-medium text-gray-600">Monthly SIP</th>
                 <th class="px-3 py-2 text-right font-medium text-gray-600">SIP Corpus</th>
@@ -206,31 +207,34 @@ function renderProjectionsTable(goal, projections) {
             </thead>
             <tbody>
               ${displayData.map((row, idx) => {
-                const prevMaxEquity = idx > 0 ? displayData[idx - 1].maxEquity : 70;
-                const needsRebalance = row.maxEquity < prevMaxEquity;
-                const currentExceedsMax = goal.equityPercent > row.maxEquity;
-                const calendarYear = targetYear + row.year;
+                const prevStartMaxEquity = idx > 0 ? displayData[idx - 1].startMaxEquity : 70;
+                const needsRebalance = row.startMaxEquity < prevStartMaxEquity;
+                const currentExceedsMax = goal.equityPercent > row.startMaxEquity;
+                const calendarYear = targetYear + row.year - 1;
 
                 let actionText = '';
-                if (needsRebalance) {
-                  actionText = `<span class="text-orange-600">Reduce Equity to ${row.maxEquity}%</span>`;
+                if (idx === 0) {
+                  // First year: show starting allocation
+                  actionText = `<span class="text-blue-600">Start with ${row.startMaxEquity}% equity</span>`;
+                } else if (needsRebalance) {
+                  actionText = `<span class="text-orange-600">Reduce Equity to ${row.startMaxEquity}%</span>`;
                 } else if (currentExceedsMax) {
-                  actionText = `<span class="text-orange-600">Equity should be ${row.maxEquity}%</span>`;
+                  actionText = `<span class="text-orange-600">Equity should be ${row.startMaxEquity}%</span>`;
                 } else {
                   actionText = '<span class="text-green-600">Maintain</span>';
                 }
 
                 return `
                   <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${row.yearsRemaining <= 3 ? 'text-orange-700' : ''}">
-                    <td class="px-3 py-2 border-t">${calendarYear}</td>
-                    <td class="px-3 py-2 border-t">${row.yearsRemaining}y</td>
+                    <td class="px-3 py-2 border-t">${calendarYear}-${(calendarYear + 1).toString().slice(-2)}</td>
+                    <td class="px-3 py-2 border-t">${row.yearsRemaining + 1}y</td>
                     <td class="px-3 py-2 border-t text-right">${formatCurrency(row.sip, currency)}</td>
                     <td class="px-3 py-2 border-t text-right font-medium">${formatCurrency(row.corpus, currency)}</td>
                     ${hasEpfNps ? `<td class="px-3 py-2 border-t text-right font-medium text-purple-600">${formatCurrency(row.epfNpsCorpus, currency)}</td>` : ''}
                     ${hasEpfNps ? `<td class="px-3 py-2 border-t text-right font-bold">${formatCurrency(row.totalCorpus, currency)}</td>` : ''}
                     <td class="px-3 py-2 border-t text-center">
-                      <span class="px-2 py-0.5 rounded text-xs ${row.maxEquity <= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
-                        ${row.maxEquity}%
+                      <span class="px-2 py-0.5 rounded text-xs ${row.startMaxEquity <= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
+                        ${row.startMaxEquity}%
                       </span>
                     </td>
                     <td class="px-3 py-2 border-t text-center">
@@ -697,6 +701,7 @@ function renderGoalCard(goal) {
         <div>
           <div class="text-gray-500">Timeline</div>
           <div class="font-medium">${formatTimeline(projections.years)}</div>
+          <div class="text-xs text-gray-400">Target: ${new Date(goal.targetDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</div>
         </div>
         <div>
           <div class="text-gray-500">Inflation</div>

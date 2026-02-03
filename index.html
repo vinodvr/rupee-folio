@@ -32,90 +32,156 @@
       <input type="hidden" id="currency-select" value="INR">
     </header>
 
-    <!-- Cash Flow Section -->
-    <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
-      <h2 class="text-lg font-semibold mb-4 text-gray-800">Cash Flow</h2>
+    <!-- Tab Navigation -->
+    <nav class="bg-white rounded-lg shadow-sm p-1 mb-6 flex gap-1">
+      <button id="tab-cashflow" class="tab-btn active flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+        Cash Flow
+      </button>
+      <button id="tab-assets" class="tab-btn flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+        Assets & Liabilities
+      </button>
+      <button id="tab-goals" class="tab-btn flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+        Financial Goals
+      </button>
+    </nav>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Income (1 column) -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-medium text-green-700">Monthly Income</h3>
-            <button id="add-income-btn" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
-              + Add
-            </button>
+    <!-- Cash Flow Panel -->
+    <div id="panel-cashflow" class="tab-panel">
+      <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
+        <h2 class="text-lg font-semibold mb-4 text-gray-800">Cash Flow</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Income (1 column) -->
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-medium text-green-700">Monthly Income</h3>
+              <button id="add-income-btn" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+                + Add
+              </button>
+            </div>
+            <div id="income-form-container"></div>
+            <div id="income-list" class="space-y-1"></div>
           </div>
-          <div id="income-form-container"></div>
-          <div id="income-list" class="space-y-1"></div>
+
+          <!-- Expenses (2 columns) -->
+          <div class="md:col-span-2">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-medium text-red-700">Monthly Expenses</h3>
+              <button id="add-expense-btn" class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
+                + Add
+              </button>
+            </div>
+            <div id="expense-form-container"></div>
+            <div id="expense-list" class="space-y-1"></div>
+          </div>
         </div>
 
-        <!-- Expenses (2 columns) -->
-        <div class="md:col-span-2">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-medium text-red-700">Monthly Expenses</h3>
-            <button id="add-expense-btn" class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
-              + Add
-            </button>
-          </div>
-          <div id="expense-form-container"></div>
-          <div id="expense-list" class="space-y-1"></div>
-        </div>
-      </div>
-
-      <!-- Monthly Summary -->
-      <div class="mt-6 pt-4 border-t">
-        <div class="flex flex-wrap justify-between items-center gap-4">
-          <div class="flex items-center gap-2">
-            <span class="text-gray-600">Total Income:</span>
-            <span id="total-income" class="font-semibold text-green-600">₹0</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-gray-600">Total Expenses:</span>
-            <span id="total-expenses" class="font-semibold text-red-600">₹0</span>
-          </div>
-          <div class="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg">
-            <span class="text-gray-700 font-medium">Net Cash Flow:</span>
-            <span id="net-cashflow" class="text-xl font-bold text-green-600">₹0</span>
+        <!-- Monthly Summary -->
+        <div class="mt-6 pt-4 border-t">
+          <div class="flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-gray-600">Total Income:</span>
+              <span id="total-income" class="font-semibold text-green-600">₹0</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-gray-600">Total Expenses:</span>
+              <span id="total-expenses" class="font-semibold text-red-600">₹0</span>
+            </div>
+            <div class="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg">
+              <span class="text-blue-800 font-medium">Available for Investment:</span>
+              <span id="net-cashflow" class="text-xl font-bold text-blue-600">₹0</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Financial Goals Section -->
-    <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-800">Financial Goals</h2>
-        <div class="flex gap-2">
-          <button id="review-plan-btn" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-            Review Plan
-          </button>
-          <button id="add-goal-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            + Add Goal
-          </button>
+    <!-- Assets & Liabilities Panel -->
+    <div id="panel-assets" class="tab-panel hidden">
+      <!-- Net Worth Summary -->
+      <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-5 mb-6 text-white">
+        <h2 class="text-lg font-semibold mb-4">Net Worth</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-white/10 rounded-lg p-4">
+            <div class="text-emerald-100 text-sm">Total Assets</div>
+            <div id="total-assets" class="text-2xl font-bold">₹0</div>
+          </div>
+          <div class="bg-white/10 rounded-lg p-4">
+            <div class="text-emerald-100 text-sm">Total Liabilities</div>
+            <div id="total-liabilities" class="text-2xl font-bold">₹0</div>
+          </div>
+          <div class="bg-white/10 rounded-lg p-4">
+            <div class="text-emerald-100 text-sm">Net Worth</div>
+            <div id="net-worth" class="text-2xl font-bold">₹0</div>
+          </div>
         </div>
       </div>
 
-      <div id="goals-list"></div>
+      <!-- Assets and Liabilities Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Assets -->
+        <div class="bg-white rounded-lg shadow-sm p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Assets</h2>
+            <button id="add-asset-btn" class="text-sm px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">
+              + Add
+            </button>
+          </div>
+          <div id="asset-form-container"></div>
+          <div id="assets-list" class="space-y-1"></div>
+        </div>
+
+        <!-- Liabilities -->
+        <div class="bg-white rounded-lg shadow-sm p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Liabilities</h2>
+            <button id="add-liability-btn" class="text-sm px-3 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors">
+              + Add
+            </button>
+          </div>
+          <div id="liability-form-container"></div>
+          <div id="liabilities-list" class="space-y-1"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Total Investment Summary -->
-    <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-5 text-white">
-      <h2 class="text-lg font-semibold mb-4">Investment Summary</h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-white/10 rounded-lg p-4">
-          <div class="text-blue-100 text-sm">Total Monthly SIP Needed</div>
-          <div id="total-monthly-sip" class="text-2xl font-bold">₹0</div>
+    <!-- Financial Goals Panel -->
+    <div id="panel-goals" class="tab-panel hidden">
+      <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-800">Financial Goals</h2>
+          <div class="flex gap-2">
+            <button id="review-plan-btn" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+              Review Plan
+            </button>
+            <button id="add-goal-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              + Add Goal
+            </button>
+          </div>
         </div>
 
-        <div class="bg-white/10 rounded-lg p-4">
-          <div class="text-blue-100 text-sm">Available from Cash Flow</div>
-          <div id="available-from-cashflow" class="text-2xl font-bold">₹0</div>
-        </div>
+        <div id="goals-list"></div>
+      </div>
 
-        <div class="bg-white/10 rounded-lg p-4">
-          <div id="gap-label" class="text-blue-100 text-sm">Gap</div>
-          <div id="investment-gap" class="text-2xl font-bold">₹0</div>
+      <!-- Total Investment Summary -->
+      <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-5 text-white">
+        <h2 class="text-lg font-semibold mb-4">Investment Summary</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-white/10 rounded-lg p-4">
+            <div class="text-blue-100 text-sm">Total Monthly SIP Needed</div>
+            <div id="total-monthly-sip" class="text-2xl font-bold">₹0</div>
+          </div>
+
+          <div class="bg-white/10 rounded-lg p-4">
+            <div class="text-blue-100 text-sm">Available from Cash Flow</div>
+            <div id="available-from-cashflow" class="text-2xl font-bold">₹0</div>
+          </div>
+
+          <div class="bg-white/10 rounded-lg p-4">
+            <div id="gap-label" class="text-blue-100 text-sm">Gap</div>
+            <div id="investment-gap" class="text-2xl font-bold">₹0</div>
+          </div>
         </div>
       </div>
     </div>

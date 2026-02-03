@@ -1,6 +1,7 @@
 // Main application initialization and event coordination
 import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn } from './modules/storage.js';
 import { initCashflow, updateCurrency as updateCashflowCurrency, refreshData as refreshCashflow } from './modules/cashflow.js';
+import { initAssets, updateCurrency as updateAssetsCurrency, refreshData as refreshAssets } from './modules/assets.js';
 import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, updateReturns as updateGoalsReturns, refreshData as refreshGoals } from './modules/goals.js';
 import { initInvestments, updateCurrency as updateInvestmentsCurrency, refreshData as refreshInvestments } from './modules/investments.js';
 
@@ -17,8 +18,8 @@ function getSampleData() {
     },
     cashflow: {
       income: [
-        { name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, epfCorpus: 1500000, npsCorpus: 500000, id: '421af97f-222b-4ec1-97f4-e0a9a071c3be' },
-        { name: 'Salary Spouse', amount: 150000, epf: 24000, nps: 0, epfCorpus: 800000, npsCorpus: 0, id: '77e29ba2-756f-4409-9f4a-e8a9c0285b72' }
+        { name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, id: '421af97f-222b-4ec1-97f4-e0a9a071c3be' },
+        { name: 'Salary Spouse', amount: 150000, epf: 24000, nps: 0, id: '77e29ba2-756f-4409-9f4a-e8a9c0285b72' }
       ],
       expenses: [
         { category: 'Housing', name: 'Rent', amount: 50000, id: '35c860f6-8a25-48f9-85ce-48d6ee333718' },
@@ -27,6 +28,22 @@ function getSampleData() {
         { category: 'Insurance', name: 'Health + Life', amount: 3000, id: 'a837f139-bef7-4485-b7f2-57f2633e4311' },
         { category: 'Entertainment', name: 'OTT + Partying', amount: 10000, id: '39cf5253-4092-4350-8149-a0ee16acba93' },
         { category: 'Shopping', name: 'Malls', amount: 8000, id: '59213d20-d9d5-455e-b132-5683d6213eb8' }
+      ]
+    },
+    assets: {
+      items: [
+        { id: 'asset-epf-1', name: 'EPF - Salary Self', category: 'EPF', value: 1500000 },
+        { id: 'asset-epf-2', name: 'EPF - Salary Spouse', category: 'EPF', value: 800000 },
+        { id: 'asset-nps-1', name: 'NPS - Salary Self', category: 'NPS', value: 500000 },
+        { id: 'asset-re-1', name: 'Apartment - Chennai', category: 'Real Estate', value: 8000000 },
+        { id: 'asset-car-1', name: 'Honda City', category: 'Vehicles', value: 800000 },
+        { id: 'asset-mf-1', name: 'ICICI Bluechip Fund', category: 'Mutual Funds', value: 500000 },
+        { id: 'asset-fd-1', name: 'HDFC FD', category: 'Bank/FDs', value: 300000 }
+      ]
+    },
+    liabilities: {
+      items: [
+        { id: 'liability-hl-1', name: 'Home Loan - HDFC', category: 'Home Loan', amount: 4500000 }
       ]
     },
     goals: [
@@ -91,6 +108,30 @@ function getSampleData() {
   };
 }
 
+function setupTabNavigation() {
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetId = tab.id.replace('tab-', 'panel-');
+
+      // Update tab active states
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      // Show/hide panels
+      panels.forEach(panel => {
+        if (panel.id === targetId) {
+          panel.classList.remove('hidden');
+        } else {
+          panel.classList.add('hidden');
+        }
+      });
+    });
+  });
+}
+
 function init() {
   // Check for URL parameters
   const urlParams = new URLSearchParams(window.location.search);
@@ -117,6 +158,9 @@ function init() {
   const fundHouse = getFundHouse(appData);
   const equityReturn = getEquityReturn(appData);
   const debtReturn = getDebtReturn(appData);
+
+  // Set up tab navigation
+  setupTabNavigation();
 
   // Set up currency selector
   const currencySelect = document.getElementById('currency-select');
@@ -150,6 +194,7 @@ function init() {
   };
 
   initCashflow(appData, currency, onDataChange);
+  initAssets(appData, currency, onDataChange);
   initInvestments(appData, currency, onDataChange);
   initGoals(appData, currency, fundHouse, equityReturn, debtReturn, onDataChange);
 
@@ -169,6 +214,7 @@ function handleCurrencyChange(e) {
   setCurrency(appData, newCurrency);
 
   updateCashflowCurrency(newCurrency);
+  updateAssetsCurrency(newCurrency);
   updateInvestmentsCurrency(newCurrency);
   updateGoalsCurrency(newCurrency);
 
@@ -240,6 +286,7 @@ function refreshAllModules() {
   const currency = getCurrency(appData);
   const fundHouse = getFundHouse(appData);
   refreshCashflow(appData);
+  refreshAssets(appData);
   refreshInvestments(appData);
   refreshGoals(appData);
 }

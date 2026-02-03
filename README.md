@@ -6,9 +6,15 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 
 ### Cash Flow Calculator
 - **Income Tracking**: Add multiple income sources (salary, freelance, rental income, etc.)
-- **EPF/NPS Tracking**: Track monthly EPF and NPS contributions and existing corpus
+- **EPF/NPS Tracking**: Track monthly EPF and NPS contributions
 - **Expense Management**: Track expenses with categories (housing, utilities, food, transport, etc.)
 - **Net Cash Flow**: Automatic calculation of monthly surplus available for investments
+
+### Assets & Liabilities
+- **Asset Tracking**: Track all your assets across categories (Real Estate, Vehicles, Bank/FDs, Stocks, Mutual Funds, Gold, EPF, NPS, Other)
+- **Liability Tracking**: Track loans and debts (Home Loan, Car Loan, Personal Loan, Credit Card, Other)
+- **Net Worth Calculation**: Automatic calculation of total assets, liabilities, and net worth
+- **EPF/NPS Integration**: EPF and NPS corpus tracked as assets, automatically used in retirement goal calculations
 
 ### Financial Goals Manager
 - **Create Multiple Goals**: Set up goals like retirement, child education, house down payment, emergency fund, etc.
@@ -47,9 +53,9 @@ The app automatically suggests reducing equity exposure as goals approach:
 | 10+ years     | 70%            |
 | 8-10 years    | 60%            |
 | 6-8 years     | 50%            |
-| 4-6 years     | 30%            |
-| 3-4 years     | 15%            |
-| < 3 years     | 0%             |
+| 5-6 years     | 30%            |
+| 4-5 years     | 15%            |
+| < 4 years     | 0%             |
 
 **Retirement Goals:**
 | Years to Goal | Maximum Equity |
@@ -58,8 +64,7 @@ The app automatically suggests reducing equity exposure as goals approach:
 | 8-10 years    | 60%            |
 | 6-8 years     | 50%            |
 | 4-6 years     | 40%            |
-| 2-4 years     | 35%            |
-| < 2 years     | 30% (minimum)  |
+| < 4 years     | 30% (minimum)  |
 
 ### Year-by-Year Projections
 - View detailed projections showing corpus growth over time
@@ -155,8 +160,8 @@ The app includes unit tests for the calculator functions:
 ### Test Coverage
 
 Tests cover:
-- **Short-term goals** (< 3 years): Glide path to 0% equity
-- **Mid-term goals** (3-10 years): Gradual equity reduction
+- **Short-term goals** (< 4 years): Glide path to 0% equity
+- **Mid-term goals** (4-10 years): Gradual equity reduction
 - **Long-term goals** (10+ years): 70% max equity
 - **Retirement goals**: Maintains 30% minimum equity
 - **Effective XIRR**: Calculation with varying returns
@@ -179,26 +184,38 @@ financial-planner/
 │   ├── currency.js     # Currency configuration
 │   ├── calculator.js   # Financial calculations
 │   ├── cashflow.js     # Cash flow UI & logic
+│   ├── assets.js       # Assets & Liabilities management
 │   ├── goals.js        # Goals management
 │   └── investments.js  # Investment summary
 └── tests/
     ├── test-runner.html    # Browser-based test runner
     ├── calculator.test.js  # Calculator unit tests
     ├── currency.test.js    # Currency formatting tests
-    └── storage.test.js     # Storage/CRUD tests
+    ├── storage.test.js     # Storage/CRUD tests
+    └── assets.test.js      # Assets module tests
 ```
 
 ## Usage Guide
 
+The app is organized into three tabs: **Cash Flow**, **Assets & Liabilities**, and **Financial Goals**.
+
 ### Setting Up Cash Flow
 
-1. Click **+ Add** under Income to add income sources
-2. Click **+ Add** under Expenses to add monthly expenses
-3. View your net cash flow in the summary section
+1. On the **Cash Flow** tab, click **+ Add** under Income to add income sources
+2. For salaried income, enter monthly EPF and NPS contributions
+3. Click **+ Add** under Expenses to add monthly expenses
+4. View your net cash flow and available investment amount in the summary
+
+### Managing Assets & Liabilities
+
+1. Switch to the **Assets & Liabilities** tab
+2. Add assets like EPF corpus, NPS corpus, real estate, vehicles, etc.
+3. Add liabilities like home loans, car loans, etc.
+4. View your net worth summary at the top
 
 ### Creating a Financial Goal
 
-1. Click **+ Add Goal** button
+1. Switch to the **Financial Goals** tab and click **+ Add Goal** button
 2. Fill in the goal details:
    - **Goal Name**: e.g., "Child Education"
    - **Goal Type**: One-time or Retirement
@@ -256,12 +273,12 @@ return = (equity% × equity_return) + (debt% × debt_return)
 The app calculates an effective XIRR that accounts for the changing asset allocation over time due to the glide path. This gives a more accurate picture of expected returns.
 
 For example, a 10-year one-time goal starting at 70% equity:
-- Year 1: ~9% return (70% equity)
-- Years 2-4: ~8% return (60% equity)
-- Years 5-6: ~7% return (50% equity)
-- Years 7-8: ~6% return (30% equity)
-- Year 9: ~5.5% return (15% equity)
-- Year 10: ~5% return (0% equity)
+- Year 1: ~8.5% return (70% equity, 10 years remaining)
+- Years 2-3: ~8% return (60% equity, 9-8 years remaining)
+- Years 4-5: ~7.5% return (50% equity, 7-6 years remaining)
+- Year 6: ~6.5% return (30% equity, 5 years remaining)
+- Year 7: ~5.75% return (15% equity, 4 years remaining)
+- Years 8-10: ~5% return (0% equity, < 4 years remaining)
 
 The effective XIRR is the single rate that would produce the same final corpus as these varying rates.
 
@@ -277,7 +294,9 @@ Uses iterative calculation to find the starting SIP amount that, when increased 
 {
   "settings": {
     "currency": "INR",
-    "fundHouse": "icici"
+    "fundHouse": "icici",
+    "equityReturn": 10,
+    "debtReturn": 5
   },
   "cashflow": {
     "income": [{
@@ -285,11 +304,21 @@ Uses iterative calculation to find the starting SIP amount that, when increased 
       "name": "Salary",
       "amount": 100000,
       "epf": 12000,        // Monthly EPF contribution
-      "nps": 5000,         // Monthly NPS contribution
-      "epfCorpus": 500000, // Existing EPF corpus
-      "npsCorpus": 200000  // Existing NPS corpus
+      "nps": 5000          // Monthly NPS contribution
     }],
     "expenses": [{ "id": "uuid", "category": "Housing", "name": "Rent", "amount": 25000 }]
+  },
+  "assets": {
+    "items": [
+      { "id": "uuid", "name": "EPF - Salary", "category": "EPF", "value": 500000 },
+      { "id": "uuid", "name": "NPS - Salary", "category": "NPS", "value": 200000 },
+      { "id": "uuid", "name": "Apartment", "category": "Real Estate", "value": 8000000 }
+    ]
+  },
+  "liabilities": {
+    "items": [
+      { "id": "uuid", "name": "Home Loan", "category": "Home Loan", "amount": 5000000 }
+    ]
   },
   "goals": [
     {
@@ -301,8 +330,6 @@ Uses iterative calculation to find the starting SIP amount that, when increased 
       "targetDate": "2039-01-28",
       "equityPercent": 70,
       "debtPercent": 30,
-      "equityReturn": 10,
-      "debtReturn": 5,
       "annualStepUp": 5,
       "epfNpsStepUp": false,   // For retirement: grow EPF/NPS with salary
       "initialLumpsum": 100000,

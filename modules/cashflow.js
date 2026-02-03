@@ -1,6 +1,7 @@
 // Cash flow management UI and logic
 import { addIncome, updateIncome, deleteIncome, addExpense, updateExpense, deleteExpense, generateId } from './storage.js';
 import { formatCurrency, getSymbol } from './currency.js';
+import { getRetirementAssets } from './assets.js';
 
 const expenseCategories = [
   'Housing',
@@ -69,7 +70,7 @@ function showAddIncomeForm() {
 
       <!-- EPF/NPS Section -->
       <details class="mb-2">
-        <summary class="cursor-pointer text-xs text-blue-600 hover:text-blue-800">+ Add EPF/NPS details (optional)</summary>
+        <summary class="cursor-pointer text-xs text-blue-600 hover:text-blue-800">+ Add EPF/NPS contributions (optional)</summary>
         <div class="mt-2 p-2 bg-white rounded border space-y-2">
           <div class="grid grid-cols-2 gap-2">
             <div class="relative">
@@ -85,21 +86,7 @@ function showAddIncomeForm() {
                 class="w-full pl-6 pr-2 py-1 border rounded text-sm">
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div class="relative">
-              <label class="text-xs text-gray-500">EPF Corpus</label>
-              <span class="absolute left-2 top-6 text-gray-500 text-sm">${getSymbol(currency)}</span>
-              <input type="number" id="new-income-epf-corpus" placeholder="0" value="0"
-                class="w-full pl-6 pr-2 py-1 border rounded text-sm">
-            </div>
-            <div class="relative">
-              <label class="text-xs text-gray-500">NPS Corpus</label>
-              <span class="absolute left-2 top-6 text-gray-500 text-sm">${getSymbol(currency)}</span>
-              <input type="number" id="new-income-nps-corpus" placeholder="0" value="0"
-                class="w-full pl-6 pr-2 py-1 border rounded text-sm">
-            </div>
-          </div>
-          <p class="text-xs text-gray-400">EPF/NPS will be used for retirement goal calculations</p>
+          <p class="text-xs text-gray-400">Monthly EPF/NPS contributions for retirement goal calculations</p>
         </div>
       </details>
 
@@ -122,15 +109,13 @@ function saveNewIncome() {
   const amount = parseFloat(document.getElementById('new-income-amount').value);
   const epf = parseFloat(document.getElementById('new-income-epf').value) || 0;
   const nps = parseFloat(document.getElementById('new-income-nps').value) || 0;
-  const epfCorpus = parseFloat(document.getElementById('new-income-epf-corpus').value) || 0;
-  const npsCorpus = parseFloat(document.getElementById('new-income-nps-corpus').value) || 0;
 
   if (!name || isNaN(amount) || amount <= 0) {
     alert('Please enter a valid name and amount');
     return;
   }
 
-  addIncome(appData, { name, amount, epf, nps, epfCorpus, npsCorpus });
+  addIncome(appData, { name, amount, epf, nps });
   document.getElementById('income-form-container').innerHTML = '';
   renderIncomeList();
   updateSummary();
@@ -147,7 +132,7 @@ function renderIncomeList() {
   }
 
   list.innerHTML = appData.cashflow.income.map(income => {
-    const hasEpfNps = (income.epf > 0 || income.nps > 0 || income.epfCorpus > 0 || income.npsCorpus > 0);
+    const hasEpfNps = (income.epf > 0 || income.nps > 0);
     const epfNpsInfo = hasEpfNps ? `
       <div class="text-xs text-gray-500 mt-0.5">
         ${income.epf > 0 ? `EPF: ${formatCurrency(income.epf, currency)}/mo` : ''}
@@ -204,8 +189,8 @@ function editIncome(id) {
     </div>
 
     <!-- EPF/NPS Edit Section -->
-    <details class="mb-2" ${(income.epf > 0 || income.nps > 0 || income.epfCorpus > 0 || income.npsCorpus > 0) ? 'open' : ''}>
-      <summary class="cursor-pointer text-xs text-blue-600 hover:text-blue-800">EPF/NPS details</summary>
+    <details class="mb-2" ${(income.epf > 0 || income.nps > 0) ? 'open' : ''}>
+      <summary class="cursor-pointer text-xs text-blue-600 hover:text-blue-800">EPF/NPS contributions</summary>
       <div class="mt-2 p-2 bg-gray-50 rounded border space-y-2">
         <div class="grid grid-cols-2 gap-2">
           <div class="relative">
@@ -215,16 +200,6 @@ function editIncome(id) {
           <div class="relative">
             <label class="text-xs text-gray-500">NPS (monthly)</label>
             <input type="number" value="${income.nps || 0}" class="edit-income-nps w-full px-2 py-1 border rounded text-sm">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div class="relative">
-            <label class="text-xs text-gray-500">EPF Corpus</label>
-            <input type="number" value="${income.epfCorpus || 0}" class="edit-income-epf-corpus w-full px-2 py-1 border rounded text-sm">
-          </div>
-          <div class="relative">
-            <label class="text-xs text-gray-500">NPS Corpus</label>
-            <input type="number" value="${income.npsCorpus || 0}" class="edit-income-nps-corpus w-full px-2 py-1 border rounded text-sm">
           </div>
         </div>
       </div>
@@ -241,17 +216,13 @@ function editIncome(id) {
     const newAmount = parseFloat(row.querySelector('.edit-income-amount').value);
     const newEpf = parseFloat(row.querySelector('.edit-income-epf').value) || 0;
     const newNps = parseFloat(row.querySelector('.edit-income-nps').value) || 0;
-    const newEpfCorpus = parseFloat(row.querySelector('.edit-income-epf-corpus').value) || 0;
-    const newNpsCorpus = parseFloat(row.querySelector('.edit-income-nps-corpus').value) || 0;
 
     if (newName && !isNaN(newAmount) && newAmount > 0) {
       updateIncome(appData, id, {
         name: newName,
         amount: newAmount,
         epf: newEpf,
-        nps: newNps,
-        epfCorpus: newEpfCorpus,
-        npsCorpus: newNpsCorpus
+        nps: newNps
       });
       renderIncomeList();
       updateSummary();
@@ -458,21 +429,14 @@ export function getTotalNpsMonthly() {
   return appData.cashflow.income.reduce((sum, i) => sum + (i.nps || 0), 0);
 }
 
-export function getTotalEpfCorpus() {
-  return appData.cashflow.income.reduce((sum, i) => sum + (i.epfCorpus || 0), 0);
-}
-
-export function getTotalNpsCorpus() {
-  return appData.cashflow.income.reduce((sum, i) => sum + (i.npsCorpus || 0), 0);
-}
-
 export function getRetirementContributions() {
+  const retirementAssets = getRetirementAssets(appData);
   return {
     monthlyEpf: getTotalEpfMonthly(),
     monthlyNps: getTotalNpsMonthly(),
-    epfCorpus: getTotalEpfCorpus(),
-    npsCorpus: getTotalNpsCorpus(),
+    epfCorpus: retirementAssets.epfCorpus,
+    npsCorpus: retirementAssets.npsCorpus,
     totalMonthly: getTotalEpfMonthly() + getTotalNpsMonthly(),
-    totalCorpus: getTotalEpfCorpus() + getTotalNpsCorpus()
+    totalCorpus: retirementAssets.totalCorpus
   };
 }

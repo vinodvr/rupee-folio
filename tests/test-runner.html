@@ -129,7 +129,7 @@
   <div style="margin-bottom: 20px;">
     <button id="runTests" class="run-button">Run All Tests</button>
     <span id="testSuites" style="margin-left: 15px; color: #666;">
-      Suites: Calculator, Currency, Storage
+      Suites: Calculator, Currency, Storage, Assets
     </span>
   </div>
 
@@ -159,7 +159,8 @@
     const testSuites = [
       { name: 'Calculator', file: './calculator.test.js' },
       { name: 'Currency', file: './currency.test.js' },
-      { name: 'Storage', file: './storage.test.js' }
+      { name: 'Storage', file: './storage.test.js' },
+      { name: 'Assets', file: './assets.test.js' }
     ];
 
     runButton.addEventListener('click', async () => {

@@ -157,6 +157,33 @@ input[type="number"] {
   }
 }
 
+/* Tab navigation styling */
+.tab-btn {
+  color: #6b7280;
+  background-color: transparent;
+}
+
+.tab-btn:hover {
+  color: #374151;
+  background-color: #f3f4f6;
+}
+
+.tab-btn.active {
+  color: #ffffff;
+  background-color: #2563eb;
+}
+
+.tab-btn.active:hover {
+  background-color: #1d4ed8;
+}
+
+/* Category badge styling */
+.category-badge-epf,
+.category-badge-nps {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
 /* Responsive adjustments */
 @media (max-width: 640px) {
   .grid-cols-2 {
@@ -167,5 +194,10 @@ input[type="number"] {
   #investment-modal-content > div {
     margin: 1rem;
     max-height: calc(100vh - 2rem);
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
   }
 }

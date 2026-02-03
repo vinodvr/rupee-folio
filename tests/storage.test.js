@@ -24,7 +24,13 @@ import {
   updateGoal,
   deleteGoal,
   addInvestment,
-  deleteInvestment
+  deleteInvestment,
+  addAsset,
+  updateAsset,
+  deleteAsset,
+  addLiability,
+  updateLiability,
+  deleteLiability
 } from '../modules/storage.js';
 
 // Simple test framework
@@ -81,6 +87,12 @@ function getFreshData() {
     cashflow: {
       income: [],
       expenses: []
+    },
+    assets: {
+      items: []
+    },
+    liabilities: {
+      items: []
     },
     goals: []
   };
@@ -529,6 +541,347 @@ test('Schema: Cashflow has income and expenses arrays', () => {
   const data = loadData();
   assertTrue(Array.isArray(data.cashflow.income), 'income should be array');
   assertTrue(Array.isArray(data.cashflow.expenses), 'expenses should be array');
+});
+
+test('Schema: Assets and liabilities have items arrays', () => {
+  const data = loadData();
+  assertTrue(data.assets !== undefined, 'Should have assets');
+  assertTrue(data.liabilities !== undefined, 'Should have liabilities');
+  assertTrue(Array.isArray(data.assets.items), 'assets.items should be array');
+  assertTrue(Array.isArray(data.liabilities.items), 'liabilities.items should be array');
+});
+
+// ============================================
+// TESTS: Asset CRUD
+// ============================================
+
+test('addAsset: Adds asset with generated ID', () => {
+  const data = getFreshData();
+  addAsset(data, { name: 'Primary Residence', category: 'Real Estate', value: 5000000 });
+
+  assertEqual(data.assets.items.length, 1, 'Should have 1 asset');
+  assertEqual(data.assets.items[0].name, 'Primary Residence', 'Name should match');
+  assertEqual(data.assets.items[0].category, 'Real Estate', 'Category should match');
+  assertEqual(data.assets.items[0].value, 5000000, 'Value should match');
+  assertTrue(data.assets.items[0].id !== undefined, 'Should have generated ID');
+});
+
+test('addAsset: Preserves provided ID', () => {
+  const data = getFreshData();
+  addAsset(data, { id: 'asset-1', name: 'EPF', category: 'EPF', value: 1000000 });
+
+  assertEqual(data.assets.items[0].id, 'asset-1', 'Should preserve custom ID');
+});
+
+test('updateAsset: Updates existing asset', () => {
+  const data = getFreshData();
+  addAsset(data, { id: 'asset-1', name: 'EPF', category: 'EPF', value: 1000000 });
+
+  updateAsset(data, 'asset-1', { value: 1200000 });
+
+  assertEqual(data.assets.items[0].value, 1200000, 'Value should be updated');
+  assertEqual(data.assets.items[0].name, 'EPF', 'Name should be unchanged');
+});
+
+test('updateAsset: Does nothing for non-existent ID', () => {
+  const data = getFreshData();
+  addAsset(data, { id: 'asset-1', name: 'EPF', category: 'EPF', value: 1000000 });
+
+  updateAsset(data, 'non-existent', { value: 2000000 });
+
+  assertEqual(data.assets.items[0].value, 1000000, 'Original should be unchanged');
+});
+
+test('deleteAsset: Removes asset by ID', () => {
+  const data = getFreshData();
+  addAsset(data, { id: 'asset-1', name: 'EPF', category: 'EPF', value: 1000000 });
+  addAsset(data, { id: 'asset-2', name: 'NPS', category: 'NPS', value: 500000 });
+
+  deleteAsset(data, 'asset-1');
+
+  assertEqual(data.assets.items.length, 1, 'Should have 1 asset');
+  assertEqual(data.assets.items[0].id, 'asset-2', 'Remaining should be asset-2');
+});
+
+test('addAsset: Multiple assets of same category', () => {
+  const data = getFreshData();
+  addAsset(data, { id: 'epf-1', name: 'EPF Self', category: 'EPF', value: 1000000 });
+  addAsset(data, { id: 'epf-2', name: 'EPF Spouse', category: 'EPF', value: 800000 });
+
+  assertEqual(data.assets.items.length, 2, 'Should have 2 assets');
+  const epfAssets = data.assets.items.filter(a => a.category === 'EPF');
+  assertEqual(epfAssets.length, 2, 'Should have 2 EPF assets');
+});
+
+// ============================================
+// TESTS: Liability CRUD
+// ============================================
+
+test('addLiability: Adds liability with generated ID', () => {
+  const data = getFreshData();
+  addLiability(data, { name: 'Home Loan - HDFC', category: 'Home Loan', amount: 4500000 });
+
+  assertEqual(data.liabilities.items.length, 1, 'Should have 1 liability');
+  assertEqual(data.liabilities.items[0].name, 'Home Loan - HDFC', 'Name should match');
+  assertEqual(data.liabilities.items[0].category, 'Home Loan', 'Category should match');
+  assertEqual(data.liabilities.items[0].amount, 4500000, 'Amount should match');
+  assertTrue(data.liabilities.items[0].id !== undefined, 'Should have generated ID');
+});
+
+test('addLiability: Preserves provided ID', () => {
+  const data = getFreshData();
+  addLiability(data, { id: 'loan-1', name: 'Car Loan', category: 'Car Loan', amount: 500000 });
+
+  assertEqual(data.liabilities.items[0].id, 'loan-1', 'Should preserve custom ID');
+});
+
+test('updateLiability: Updates existing liability', () => {
+  const data = getFreshData();
+  addLiability(data, { id: 'loan-1', name: 'Home Loan', category: 'Home Loan', amount: 4500000 });
+
+  updateLiability(data, 'loan-1', { amount: 4200000 });
+
+  assertEqual(data.liabilities.items[0].amount, 4200000, 'Amount should be updated');
+  assertEqual(data.liabilities.items[0].name, 'Home Loan', 'Name should be unchanged');
+});
+
+test('updateLiability: Does nothing for non-existent ID', () => {
+  const data = getFreshData();
+  addLiability(data, { id: 'loan-1', name: 'Home Loan', category: 'Home Loan', amount: 4500000 });
+
+  updateLiability(data, 'non-existent', { amount: 1000000 });
+
+  assertEqual(data.liabilities.items[0].amount, 4500000, 'Original should be unchanged');
+});
+
+test('deleteLiability: Removes liability by ID', () => {
+  const data = getFreshData();
+  addLiability(data, { id: 'loan-1', name: 'Home Loan', category: 'Home Loan', amount: 4500000 });
+  addLiability(data, { id: 'loan-2', name: 'Car Loan', category: 'Car Loan', amount: 500000 });
+
+  deleteLiability(data, 'loan-1');
+
+  assertEqual(data.liabilities.items.length, 1, 'Should have 1 liability');
+  assertEqual(data.liabilities.items[0].id, 'loan-2', 'Remaining should be loan-2');
+});
+
+// ============================================
+// TESTS: Migration - EPF/NPS Corpus to Assets
+// ============================================
+
+test('Migration: EPF corpus moved to assets', () => {
+  // Simulate old data format with epfCorpus in income
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+    cashflow: {
+      income: [
+        { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 0, epfCorpus: 1500000, npsCorpus: 0 }
+      ],
+      expenses: []
+    },
+    goals: []
+  }));
+
+  const data = loadData();
+
+  // EPF corpus should be moved to assets
+  const epfAssets = data.assets.items.filter(a => a.category === 'EPF');
+  assertEqual(epfAssets.length, 1, 'Should have 1 EPF asset');
+  assertEqual(epfAssets[0].value, 1500000, 'EPF asset should have corpus value');
+  assertEqual(epfAssets[0].name, 'EPF - Salary Self', 'EPF asset should have correct name');
+
+  // epfCorpus should be removed from income
+  assertEqual(data.cashflow.income[0].epfCorpus, undefined, 'epfCorpus should be removed from income');
+
+  clearData();
+});
+
+test('Migration: NPS corpus moved to assets', () => {
+  // Simulate old data format with npsCorpus in income
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+    cashflow: {
+      income: [
+        { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 0, nps: 10000, epfCorpus: 0, npsCorpus: 500000 }
+      ],
+      expenses: []
+    },
+    goals: []
+  }));
+
+  const data = loadData();
+
+  // NPS corpus should be moved to assets
+  const npsAssets = data.assets.items.filter(a => a.category === 'NPS');
+  assertEqual(npsAssets.length, 1, 'Should have 1 NPS asset');
+  assertEqual(npsAssets[0].value, 500000, 'NPS asset should have corpus value');
+  assertEqual(npsAssets[0].name, 'NPS - Salary Self', 'NPS asset should have correct name');
+
+  // npsCorpus should be removed from income
+  assertEqual(data.cashflow.income[0].npsCorpus, undefined, 'npsCorpus should be removed from income');
+
+  clearData();
+});
+
+test('Migration: Both EPF and NPS corpus moved to assets', () => {
+  // Simulate old data format with both epfCorpus and npsCorpus
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+    cashflow: {
+      income: [
+        { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, epfCorpus: 1500000, npsCorpus: 500000 }
+      ],
+      expenses: []
+    },
+    goals: []
+  }));
+
+  const data = loadData();
+
+  // Both should be in assets
+  const epfAssets = data.assets.items.filter(a => a.category === 'EPF');
+  const npsAssets = data.assets.items.filter(a => a.category === 'NPS');
+  assertEqual(epfAssets.length, 1, 'Should have 1 EPF asset');
+  assertEqual(npsAssets.length, 1, 'Should have 1 NPS asset');
+  assertEqual(epfAssets[0].value, 1500000, 'EPF value should match');
+  assertEqual(npsAssets[0].value, 500000, 'NPS value should match');
+
+  clearData();
+});
+
+test('Migration: Multiple income entries with corpus', () => {
+  // Simulate multiple incomes with corpus
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+    cashflow: {
+      income: [
+        { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, epfCorpus: 1500000, npsCorpus: 500000 },
+        { id: 'inc-2', name: 'Salary Spouse', amount: 150000, epf: 24000, nps: 0, epfCorpus: 800000, npsCorpus: 0 }
+      ],
+      expenses: []
+    },
+    goals: []
+  }));
+
+  const data = loadData();
+
+  // Should have EPF assets from both incomes, and 1 NPS asset
+  const epfAssets = data.assets.items.filter(a => a.category === 'EPF');
+  const npsAssets = data.assets.items.filter(a => a.category === 'NPS');
+
+  assertEqual(epfAssets.length, 2, 'Should have 2 EPF assets');
+  assertEqual(npsAssets.length, 1, 'Should have 1 NPS asset (only Self had NPS)');
+
+  // Total EPF should be sum of both
+  const totalEpf = epfAssets.reduce((sum, a) => sum + a.value, 0);
+  assertEqual(totalEpf, 2300000, 'Total EPF should be 15L + 8L = 23L');
+
+  clearData();
+});
+
+test('Migration: Does not create duplicate assets on reload', () => {
+  // First save with old format
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+    cashflow: {
+      income: [
+        { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 0, epfCorpus: 1500000, npsCorpus: 0 }
+      ],
+      expenses: []
+    },
+    goals: []
+  }));
+
+  // Load to trigger migration
+  let data = loadData();
+  assertEqual(data.assets.items.length, 1, 'Should have 1 asset after first migration');
+
+  // Load again - should not create duplicate
+  data = loadData();
+  assertEqual(data.assets.items.length, 1, 'Should still have 1 asset after reload');
+
+  clearData();
+});
+
+test('Migration: Zero corpus values not migrated', () => {
+  // Data with zero corpus values
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+    cashflow: {
+      income: [
+        { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, epfCorpus: 0, npsCorpus: 0 }
+      ],
+      expenses: []
+    },
+    goals: []
+  }));
+
+  const data = loadData();
+
+  // Should not create assets for zero values
+  assertEqual(data.assets.items.length, 0, 'Should have no assets for zero corpus values');
+
+  clearData();
+});
+
+test('Migration: Existing assets preserved', () => {
+  // Data that already has some assets
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+    cashflow: {
+      income: [
+        { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 0, epfCorpus: 1500000, npsCorpus: 0 }
+      ],
+      expenses: []
+    },
+    assets: {
+      items: [
+        { id: 'existing-1', name: 'House', category: 'Real Estate', value: 8000000 }
+      ]
+    },
+    liabilities: { items: [] },
+    goals: []
+  }));
+
+  const data = loadData();
+
+  // Should have both the existing asset and the migrated EPF
+  assertEqual(data.assets.items.length, 2, 'Should have 2 assets');
+  const realEstateAssets = data.assets.items.filter(a => a.category === 'Real Estate');
+  const epfAssets = data.assets.items.filter(a => a.category === 'EPF');
+  assertEqual(realEstateAssets.length, 1, 'Should preserve existing Real Estate asset');
+  assertEqual(epfAssets.length, 1, 'Should have migrated EPF asset');
+
+  clearData();
+});
+
+test('loadData: Includes assets and liabilities in default structure', () => {
+  localStorage.removeItem('financial-planner-data');
+  const data = loadData();
+
+  assertTrue(data.assets !== undefined, 'Should have assets');
+  assertTrue(data.liabilities !== undefined, 'Should have liabilities');
+  assertTrue(Array.isArray(data.assets.items), 'assets.items should be array');
+  assertTrue(Array.isArray(data.liabilities.items), 'liabilities.items should be array');
+  assertEqual(data.assets.items.length, 0, 'assets should start empty');
+  assertEqual(data.liabilities.items.length, 0, 'liabilities should start empty');
+});
+
+test('loadData: Schema migration adds assets and liabilities', () => {
+  // Save data without assets/liabilities (simulating old schema)
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici' },
+    cashflow: { income: [], expenses: [] },
+    goals: []
+  }));
+
+  const data = loadData();
+  assertTrue(data.assets !== undefined, 'Should add default assets');
+  assertTrue(data.liabilities !== undefined, 'Should add default liabilities');
+  assertTrue(Array.isArray(data.assets.items), 'assets.items should be array');
+  assertTrue(Array.isArray(data.liabilities.items), 'liabilities.items should be array');
+
+  clearData();
 });
 
 // ============================================
