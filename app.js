@@ -32,18 +32,17 @@ function getSampleData() {
     },
     assets: {
       items: [
-        { id: 'asset-epf-1', name: 'EPF - Salary Self', category: 'EPF', value: 1500000 },
-        { id: 'asset-epf-2', name: 'EPF - Salary Spouse', category: 'EPF', value: 800000 },
-        { id: 'asset-nps-1', name: 'NPS - Salary Self', category: 'NPS', value: 500000 },
-        { id: 'asset-re-1', name: 'Apartment - Chennai', category: 'Real Estate', value: 8000000 },
-        { id: 'asset-car-1', name: 'Honda City', category: 'Vehicles', value: 800000 },
-        { id: 'asset-mf-1', name: 'ICICI Bluechip Fund', category: 'Mutual Funds', value: 500000 },
-        { id: 'asset-fd-1', name: 'HDFC FD', category: 'Bank/FDs', value: 300000 }
+        { id: 'asset-epf-1', name: 'EPF Corpus - Self', category: 'EPF', value: 1500000 },
+        { id: 'asset-epf-2', name: 'EPF Corpus - Spouse', category: 'EPF', value: 800000 },
+        { id: 'asset-nps-1', name: 'NPS - Corpus', category: 'NPS', value: 500000 },
+        { id: 'asset-gold-1', name: 'Physical Gold', category: 'Gold', value: 500000 },
+        { id: 'asset-mf-1', name: 'Equity MF', category: 'Mutual Funds', value: 1500000 },
+        { id: 'asset-mf-2', name: 'Debt MFs', category: 'Mutual Funds', value: 500000 }
       ]
     },
     liabilities: {
       items: [
-        { id: 'liability-hl-1', name: 'Home Loan - HDFC', category: 'Home Loan', amount: 4500000 }
+        { id: 'liability-car-1', name: 'Car Loan (Honda City)', category: 'Car Loan', amount: 1500000 }
       ]
     },
     goals: [

@@ -11,6 +11,7 @@ import {
   getYearsRemaining,
   getCategoryDisplay,
   getMaxEquity,
+  getMaxEquityForYearsRemaining,
   constrainEquityAllocation,
   wasShortTermAtStart,
   calculateRetirementProjectionsWithEpfNps
@@ -41,9 +42,6 @@ function formatTimeline(years) {
 }
 
 function generateYearlyProjections(goal, projections) {
-  const years = Math.round(projections.years);
-  if (years <= 0) return [];
-
   const stepUpRate = (goal.annualStepUp || 0) / 100;
   const startingSIP = projections.monthlySIP;
   const isRetirement = goal.goalType === 'retirement';
@@ -65,39 +63,68 @@ function generateYearlyProjections(goal, projections) {
   let epfCorpus = hasEpfNps ? projections.epfNps.epfCorpus : 0;
   let npsCorpus = hasEpfNps ? projections.epfNps.npsCorpus : 0;
 
-  // Calculate max equity for each year based on years remaining and goal type
-  function getMaxEquityForYear(yearsRemaining) {
-    if (isRetirement) {
-      // Retirement goals: gradual reduction to 30% minimum
-      if (yearsRemaining >= 10) return 70;
-      if (yearsRemaining >= 8) return 60;
-      if (yearsRemaining >= 6) return 50;
-      if (yearsRemaining >= 4) return 40;
-      if (yearsRemaining >= 2) return 35;
-      return 30;
-    } else {
-      // One-time goals: start earlier, slower taper to 0%
-      if (yearsRemaining >= 10) return 70;
-      if (yearsRemaining >= 8) return 60;
-      if (yearsRemaining >= 6) return 50;
-      if (yearsRemaining >= 4) return 30;
-      if (yearsRemaining >= 3) return 15;
-      return 0;
-    }
+  // Calculate FY boundaries properly
+  // Indian FY: April (month 3) to March (month 2)
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0-indexed
+  const goalDate = new Date(goal.targetDate);
+  const goalMonth = goalDate.getMonth();
+  const goalYear = goalDate.getFullYear();
+
+  // Current FY start year: Jan-Mar means FY started previous year
+  const currentFYStart = currentMonth < 3 ? now.getFullYear() - 1 : now.getFullYear();
+
+  // Goal FY start year: Jan-Mar means goal is in FY that started previous year
+  const goalFYStart = goalMonth < 3 ? goalYear - 1 : goalYear;
+
+  // Number of FYs from current to goal (inclusive)
+  const years = goalFYStart - currentFYStart + 1;
+  if (years <= 0) return [];
+
+  // IMPORTANT: Use same total months as SIP calculation for consistency
+  const totalMonths = Math.round(projections.years * 12);
+
+  // First FY: months remaining from current month to end of FY (March)
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
+
+  // Last FY: months from April to goal month
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2);
+
+  // Calculate what the FY-based months would sum to
+  let fyBasedTotal = monthsInFirstFY + monthsInLastFY;
+  if (years > 2) {
+    fyBasedTotal += (years - 2) * 12; // Middle FYs
+  } else if (years === 1) {
+    fyBasedTotal = totalMonths; // Single FY case
   }
+
+  // Adjust last FY to match SIP calculation's total months
+  const adjustedMonthsInLastFY = years === 1 ? totalMonths : monthsInLastFY + (totalMonths - fyBasedTotal);
 
   for (let year = 1; year <= years; year++) {
     const yearsRemaining = years - year;
 
+    // Determine months to compound for this FY
+    let monthsThisYear = 12;
+    if (years === 1) {
+      monthsThisYear = totalMonths;
+    } else if (year === 1) {
+      monthsThisYear = monthsInFirstFY;
+    } else if (year === years) {
+      monthsThisYear = Math.max(1, adjustedMonthsInLastFY);
+    }
+
     // Get the expected return for THIS year based on current allocation
-    const maxEquity = getMaxEquityForYear(years - year + 1); // Current year's max equity
+    // For first year, use actual years remaining; for subsequent years, decrement from there
+    const actualYearsRemaining = year === 1 ? projections.years : (projections.years - (year - 1));
+    const maxEquity = getMaxEquityForYearsRemaining(actualYearsRemaining, goal.goalType);
     const recommendedEquity = Math.min(goal.equityPercent, maxEquity);
     const recommendedDebt = 100 - recommendedEquity;
     const expectedReturn = (recommendedEquity / 100 * equityReturn) + (recommendedDebt / 100 * debtReturn);
     const monthlyRate = expectedReturn / 100 / 12;
 
-    // Compound existing corpus for 12 months using THIS year's return rate
-    for (let month = 0; month < 12; month++) {
+    // Compound existing corpus for actual months in this FY
+    for (let month = 0; month < monthsThisYear; month++) {
       currentCorpus = currentCorpus * (1 + monthlyRate) + currentSIP;
 
       // Compound EPF/NPS separately
@@ -108,13 +135,15 @@ function generateYearlyProjections(goal, projections) {
     }
 
     // Get max equity for END of year (years remaining after this year)
-    const endOfYearMaxEquity = getMaxEquityForYear(yearsRemaining);
+    const endOfYearYearsRemaining = actualYearsRemaining - 1;
+    const endOfYearMaxEquity = getMaxEquityForYearsRemaining(endOfYearYearsRemaining, goal.goalType);
     const endOfYearRecommendedEquity = Math.min(goal.equityPercent, endOfYearMaxEquity);
     const endOfYearExpectedReturn = (endOfYearRecommendedEquity / 100 * equityReturn) + ((100 - endOfYearRecommendedEquity) / 100 * debtReturn);
 
     const rowData = {
       year,
       yearsRemaining,
+      months: monthsThisYear,
       corpus: Math.round(currentCorpus),
       sip: Math.round(currentSIP),
       startMaxEquity: maxEquity,
@@ -151,21 +180,13 @@ function renderProjectionsTable(goal, projections) {
     return '<p class="text-sm text-gray-500 italic">Goal timeline too short for projections</p>';
   }
 
-  // For long timelines, show key milestones instead of every year
-  let displayData = yearlyData;
-  if (yearlyData.length > 10) {
-    const milestones = [0, 2, 4]; // First 3 years
-    const lastYears = yearlyData.length - 3;
-    // Add years at 3-year intervals in between
-    for (let i = 6; i < lastYears; i += 3) {
-      milestones.push(i);
-    }
-    // Add last 3 years
-    milestones.push(yearlyData.length - 3, yearlyData.length - 2, yearlyData.length - 1);
-    displayData = milestones.filter(i => i >= 0 && i < yearlyData.length).map(i => yearlyData[i]);
-  }
+  // Show all FYs
+  const displayData = yearlyData;
 
-  const targetYear = new Date().getFullYear();
+  // Calculate current Financial Year (April-March)
+  // If we're in Jan-Mar, FY started in previous calendar year
+  const now = new Date();
+  const currentFYStart = now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
   const isRetirement = goal.goalType === 'retirement';
   const hasEpfNps = isRetirement && projections.epfNps;
 
@@ -195,7 +216,7 @@ function renderProjectionsTable(goal, projections) {
             <thead>
               <tr class="bg-gray-100">
                 <th class="px-3 py-2 text-left font-medium text-gray-600">FY</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-600">Years Left</th>
+                <th class="px-3 py-2 text-center font-medium text-gray-600">Months</th>
                 <th class="px-3 py-2 text-right font-medium text-gray-600">Monthly SIP</th>
                 <th class="px-3 py-2 text-right font-medium text-gray-600">SIP Corpus</th>
                 ${hasEpfNps ? '<th class="px-3 py-2 text-right font-medium text-purple-600">EPF+NPS</th>' : ''}
@@ -210,7 +231,7 @@ function renderProjectionsTable(goal, projections) {
                 const prevStartMaxEquity = idx > 0 ? displayData[idx - 1].startMaxEquity : 70;
                 const needsRebalance = row.startMaxEquity < prevStartMaxEquity;
                 const currentExceedsMax = goal.equityPercent > row.startMaxEquity;
-                const calendarYear = targetYear + row.year - 1;
+                const calendarYear = currentFYStart + row.year - 1;
 
                 let actionText = '';
                 if (idx === 0) {
@@ -227,7 +248,7 @@ function renderProjectionsTable(goal, projections) {
                 return `
                   <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${row.yearsRemaining <= 3 ? 'text-orange-700' : ''}">
                     <td class="px-3 py-2 border-t">${calendarYear}-${(calendarYear + 1).toString().slice(-2)}</td>
-                    <td class="px-3 py-2 border-t">${row.yearsRemaining + 1}y</td>
+                    <td class="px-3 py-2 border-t text-center">${row.months}</td>
                     <td class="px-3 py-2 border-t text-right">${formatCurrency(row.sip, currency)}</td>
                     <td class="px-3 py-2 border-t text-right font-medium">${formatCurrency(row.corpus, currency)}</td>
                     ${hasEpfNps ? `<td class="px-3 py-2 border-t text-right font-medium text-purple-600">${formatCurrency(row.epfNpsCorpus, currency)}</td>` : ''}
@@ -451,12 +472,13 @@ function showAddGoalModal(editGoal = null) {
   // Helper to update max equity and retirement options based on date and goal type
   function updateMaxEquity() {
     const newMaxEquity = getMaxEquity(dateInput.value, goalTypeSelect.value);
+
+    // Update slider max and set to max (optimal allocation for the new timeline)
     equitySlider.max = newMaxEquity;
-    if (parseInt(equitySlider.value) > newMaxEquity) {
-      equitySlider.value = newMaxEquity;
-      document.getElementById('equity-display').textContent = newMaxEquity;
-      document.getElementById('debt-display').textContent = 100 - newMaxEquity;
-    }
+    equitySlider.value = newMaxEquity;
+    document.getElementById('equity-display').textContent = newMaxEquity;
+    document.getElementById('debt-display').textContent = 100 - newMaxEquity;
+
     const typeLabel = goalTypeSelect.value === 'retirement' ? ' (Retirement)' : '';
     document.getElementById('max-equity-badge').textContent = `Max Equity: ${newMaxEquity}%${typeLabel}`;
 

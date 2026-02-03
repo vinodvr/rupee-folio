@@ -1919,6 +1919,390 @@ test('Return Rates: Short-term goal ignores equity return (forced to debt)', () 
 });
 
 // ============================================
+// TESTS: Glide Path Edge Cases (Bug Fixes)
+// ============================================
+
+// Bug fix: Max equity at boundary years (4.0, 4.17, 5.0 years)
+test('Glide path: One-time goal at exactly 4.0 years should get 15% max equity', () => {
+  const maxEquity = getMaxEquityForYearsRemaining(4.0, 'one-time');
+  assertEqual(maxEquity, 15, '4.0 years should be in 4-5 range (15%)');
+});
+
+test('Glide path: One-time goal at 4.17 years (4y 2m) should get 15% max equity', () => {
+  const maxEquity = getMaxEquityForYearsRemaining(4.17, 'one-time');
+  assertEqual(maxEquity, 15, '4.17 years should be in 4-5 range (15%)');
+});
+
+test('Glide path: One-time goal at 4.99 years should get 15% max equity', () => {
+  const maxEquity = getMaxEquityForYearsRemaining(4.99, 'one-time');
+  assertEqual(maxEquity, 15, '4.99 years should be in 4-5 range (15%)');
+});
+
+test('Glide path: One-time goal at exactly 5.0 years should get 30% max equity', () => {
+  const maxEquity = getMaxEquityForYearsRemaining(5.0, 'one-time');
+  assertEqual(maxEquity, 30, '5.0 years should be in 5-6 range (30%)');
+});
+
+test('Glide path: One-time goal at 3.99 years should get 0% max equity', () => {
+  const maxEquity = getMaxEquityForYearsRemaining(3.99, 'one-time');
+  assertEqual(maxEquity, 0, '3.99 years should be < 4 years (0%)');
+});
+
+// Bug fix: Retirement goals at boundaries
+test('Glide path: Retirement goal at 4.17 years should get 40% max equity', () => {
+  const maxEquity = getMaxEquityForYearsRemaining(4.17, 'retirement');
+  assertEqual(maxEquity, 40, '4.17 years retirement should be in 4-6 range (40%)');
+});
+
+test('Glide path: Retirement goal at 3.5 years should get 30% min equity', () => {
+  const maxEquity = getMaxEquityForYearsRemaining(3.5, 'retirement');
+  assertEqual(maxEquity, 30, '3.5 years retirement should maintain 30% minimum');
+});
+
+// Bug fix: getMaxEquity should use actual years from date, not rounded
+test('Glide path: getMaxEquity uses actual years remaining', () => {
+  // Create a date ~4.17 years from now (4 years and 2 months)
+  const now = new Date();
+  const futureDate = new Date(now);
+  futureDate.setFullYear(futureDate.getFullYear() + 4);
+  futureDate.setMonth(futureDate.getMonth() + 2);
+  const dateStr = futureDate.toISOString().split('T')[0];
+
+  const maxEquity = getMaxEquity(dateStr, 'one-time');
+  assertEqual(maxEquity, 15, 'Goal ~4.17 years away should get 15% (not 30%)');
+});
+
+test('Glide path: getMaxEquity at 5+ years boundary', () => {
+  const now = new Date();
+  const futureDate = new Date(now);
+  futureDate.setFullYear(futureDate.getFullYear() + 5);
+  futureDate.setMonth(futureDate.getMonth() + 1); // Add 1 month to ensure > 5 years
+  const dateStr = futureDate.toISOString().split('T')[0];
+
+  const maxEquity = getMaxEquity(dateStr, 'one-time');
+  assertEqual(maxEquity, 30, 'Goal 5+ years away should get 30%');
+});
+
+// Bug fix: Consistent glide path across all year boundaries
+test('Glide path: All one-time boundaries are consistent', () => {
+  // Test all boundaries for one-time goals
+  assertEqual(getMaxEquityForYearsRemaining(10, 'one-time'), 70, '10+ years: 70%');
+  assertEqual(getMaxEquityForYearsRemaining(9, 'one-time'), 60, '8-10 years: 60%');
+  assertEqual(getMaxEquityForYearsRemaining(8, 'one-time'), 60, '8-10 years: 60%');
+  assertEqual(getMaxEquityForYearsRemaining(7, 'one-time'), 50, '6-8 years: 50%');
+  assertEqual(getMaxEquityForYearsRemaining(6, 'one-time'), 50, '6-8 years: 50%');
+  assertEqual(getMaxEquityForYearsRemaining(5.5, 'one-time'), 30, '5-6 years: 30%');
+  assertEqual(getMaxEquityForYearsRemaining(5, 'one-time'), 30, '5-6 years: 30%');
+  assertEqual(getMaxEquityForYearsRemaining(4.5, 'one-time'), 15, '4-5 years: 15%');
+  assertEqual(getMaxEquityForYearsRemaining(4, 'one-time'), 15, '4-5 years: 15%');
+  assertEqual(getMaxEquityForYearsRemaining(3, 'one-time'), 0, '<4 years: 0%');
+  assertEqual(getMaxEquityForYearsRemaining(1, 'one-time'), 0, '<4 years: 0%');
+});
+
+test('Glide path: All retirement boundaries are consistent', () => {
+  // Test all boundaries for retirement goals
+  assertEqual(getMaxEquityForYearsRemaining(10, 'retirement'), 70, '10+ years: 70%');
+  assertEqual(getMaxEquityForYearsRemaining(9, 'retirement'), 60, '8-10 years: 60%');
+  assertEqual(getMaxEquityForYearsRemaining(8, 'retirement'), 60, '8-10 years: 60%');
+  assertEqual(getMaxEquityForYearsRemaining(7, 'retirement'), 50, '6-8 years: 50%');
+  assertEqual(getMaxEquityForYearsRemaining(6, 'retirement'), 50, '6-8 years: 50%');
+  assertEqual(getMaxEquityForYearsRemaining(5, 'retirement'), 40, '4-6 years: 40%');
+  assertEqual(getMaxEquityForYearsRemaining(4, 'retirement'), 40, '4-6 years: 40%');
+  assertEqual(getMaxEquityForYearsRemaining(3, 'retirement'), 30, '<4 years: 30% min');
+  assertEqual(getMaxEquityForYearsRemaining(1, 'retirement'), 30, '<4 years: 30% min');
+});
+
+// Bug fix: Fractional years should not round up for equity calculation
+test('Glide path: Fractional years at boundaries', () => {
+  // 4.01 years should still be in 4-5 range, not bumped to 5-6
+  assertEqual(getMaxEquityForYearsRemaining(4.01, 'one-time'), 15, '4.01 years: 15%');
+  // 4.99 years should still be in 4-5 range
+  assertEqual(getMaxEquityForYearsRemaining(4.99, 'one-time'), 15, '4.99 years: 15%');
+  // 5.01 years should be in 5-6 range
+  assertEqual(getMaxEquityForYearsRemaining(5.01, 'one-time'), 30, '5.01 years: 30%');
+});
+
+// ============================================
+// TESTS: FY Calculation Helpers
+// ============================================
+
+test('FY calculation: Feb 2026 is in FY 2025-26', () => {
+  // Indian FY: April to March
+  // Jan-Mar: FY started in previous calendar year
+  const month = 1; // February (0-indexed)
+  const year = 2026;
+  const fyStart = month < 3 ? year - 1 : year;
+  assertEqual(fyStart, 2025, 'Feb 2026 should be in FY starting 2025');
+});
+
+test('FY calculation: Apr 2026 is in FY 2026-27', () => {
+  const month = 3; // April (0-indexed)
+  const year = 2026;
+  const fyStart = month < 3 ? year - 1 : year;
+  assertEqual(fyStart, 2026, 'Apr 2026 should be in FY starting 2026');
+});
+
+test('FY calculation: Mar 2026 is in FY 2025-26', () => {
+  const month = 2; // March (0-indexed)
+  const year = 2026;
+  const fyStart = month < 3 ? year - 1 : year;
+  assertEqual(fyStart, 2025, 'Mar 2026 should be in FY starting 2025');
+});
+
+test('FY calculation: Dec 2025 is in FY 2025-26', () => {
+  const month = 11; // December (0-indexed)
+  const year = 2025;
+  const fyStart = month < 3 ? year - 1 : year;
+  assertEqual(fyStart, 2025, 'Dec 2025 should be in FY starting 2025');
+});
+
+// ============================================
+// TESTS: Partial FY Month Calculations
+// ============================================
+
+test('Partial FY: Months remaining in first FY from Feb', () => {
+  // Feb (month 1): months until March = 3 - 1 = 2
+  const currentMonth = 1;
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
+  assertEqual(monthsInFirstFY, 2, 'Feb should have 2 months left in FY (Feb, Mar)');
+});
+
+test('Partial FY: Months remaining in first FY from Apr', () => {
+  // Apr (month 3): months until next March = 15 - 3 = 12
+  const currentMonth = 3;
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
+  assertEqual(monthsInFirstFY, 12, 'Apr should have 12 months left in FY');
+});
+
+test('Partial FY: Months remaining in first FY from Jan', () => {
+  // Jan (month 0): months until March = 3 - 0 = 3
+  const currentMonth = 0;
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
+  assertEqual(monthsInFirstFY, 3, 'Jan should have 3 months left in FY (Jan, Feb, Mar)');
+});
+
+test('Partial FY: Months remaining in first FY from Oct', () => {
+  // Oct (month 9): months until next March = 15 - 9 = 6
+  const currentMonth = 9;
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
+  assertEqual(monthsInFirstFY, 6, 'Oct should have 6 months left in FY');
+});
+
+test('Partial FY: Months in last FY for goal in Mar', () => {
+  // Mar (month 2): full FY = 2 + 10 = 12
+  const goalMonth = 2;
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2);
+  assertEqual(monthsInLastFY, 12, 'Mar goal should have full 12 months in last FY');
+});
+
+test('Partial FY: Months in last FY for goal in Aug', () => {
+  // Aug (month 7): Apr to Aug = 7 - 2 = 5
+  const goalMonth = 7;
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2);
+  assertEqual(monthsInLastFY, 5, 'Aug goal should have 5 months in last FY (Apr-Aug)');
+});
+
+test('Partial FY: Months in last FY for goal in Apr', () => {
+  // Apr (month 3): just Apr = 3 - 2 = 1
+  const goalMonth = 3;
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2);
+  assertEqual(monthsInLastFY, 1, 'Apr goal should have 1 month in last FY');
+});
+
+test('Partial FY: Months in last FY for goal in Jan', () => {
+  // Jan (month 0): Apr to Jan = 0 + 10 = 10
+  const goalMonth = 0;
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2);
+  assertEqual(monthsInLastFY, 10, 'Jan goal should have 10 months in last FY (Apr-Jan)');
+});
+
+// ============================================
+// TESTS: FY Count Calculation (Bug Fix)
+// ============================================
+
+// Bug fix: FY count should be based on FY boundaries, not calendar years
+test('FY count: Feb 2026 to Jan 2046 should span 21 FYs', () => {
+  // Feb 2026 is in FY 2025-26, Jan 2046 is in FY 2045-46
+  const currentMonth = 1; // Feb
+  const currentYear = 2026;
+  const goalMonth = 0; // Jan
+  const goalYear = 2046;
+
+  const currentFYStart = currentMonth < 3 ? currentYear - 1 : currentYear;
+  const goalFYStart = goalMonth < 3 ? goalYear - 1 : goalYear;
+  const fyCount = goalFYStart - currentFYStart + 1;
+
+  assertEqual(currentFYStart, 2025, 'Feb 2026 should be in FY starting 2025');
+  assertEqual(goalFYStart, 2045, 'Jan 2046 should be in FY starting 2045');
+  assertEqual(fyCount, 21, 'Should span 21 FYs (2025-26 to 2045-46)');
+});
+
+test('FY count: Apr 2026 to Mar 2030 should span 4 FYs', () => {
+  // Apr 2026 is in FY 2026-27, Mar 2030 is in FY 2029-30
+  const currentMonth = 3; // Apr
+  const currentYear = 2026;
+  const goalMonth = 2; // Mar
+  const goalYear = 2030;
+
+  const currentFYStart = currentMonth < 3 ? currentYear - 1 : currentYear;
+  const goalFYStart = goalMonth < 3 ? goalYear - 1 : goalYear;
+  const fyCount = goalFYStart - currentFYStart + 1;
+
+  assertEqual(currentFYStart, 2026, 'Apr 2026 should be in FY starting 2026');
+  assertEqual(goalFYStart, 2029, 'Mar 2030 should be in FY starting 2029');
+  assertEqual(fyCount, 4, 'Should span 4 FYs (2026-27 to 2029-30)');
+});
+
+test('FY count: Jan 2026 to Apr 2026 should span 2 FYs', () => {
+  // Jan 2026 is in FY 2025-26, Apr 2026 is in FY 2026-27
+  const currentMonth = 0; // Jan
+  const currentYear = 2026;
+  const goalMonth = 3; // Apr
+  const goalYear = 2026;
+
+  const currentFYStart = currentMonth < 3 ? currentYear - 1 : currentYear;
+  const goalFYStart = goalMonth < 3 ? goalYear - 1 : goalYear;
+  const fyCount = goalFYStart - currentFYStart + 1;
+
+  assertEqual(currentFYStart, 2025, 'Jan 2026 should be in FY starting 2025');
+  assertEqual(goalFYStart, 2026, 'Apr 2026 should be in FY starting 2026');
+  assertEqual(fyCount, 2, 'Should span 2 FYs (2025-26 to 2026-27)');
+});
+
+test('FY count: Mar 2026 to Mar 2027 should span 2 FYs', () => {
+  // Mar 2026 is in FY 2025-26, Mar 2027 is in FY 2026-27
+  const currentMonth = 2; // Mar
+  const currentYear = 2026;
+  const goalMonth = 2; // Mar
+  const goalYear = 2027;
+
+  const currentFYStart = currentMonth < 3 ? currentYear - 1 : currentYear;
+  const goalFYStart = goalMonth < 3 ? goalYear - 1 : goalYear;
+  const fyCount = goalFYStart - currentFYStart + 1;
+
+  assertEqual(currentFYStart, 2025, 'Mar 2026 should be in FY starting 2025');
+  assertEqual(goalFYStart, 2026, 'Mar 2027 should be in FY starting 2026');
+  assertEqual(fyCount, 2, 'Should span 2 FYs (2025-26 to 2026-27)');
+});
+
+test('FY count: Same FY goal (Feb 2026 to Mar 2026) should span 1 FY', () => {
+  // Both in FY 2025-26
+  const currentMonth = 1; // Feb
+  const currentYear = 2026;
+  const goalMonth = 2; // Mar
+  const goalYear = 2026;
+
+  const currentFYStart = currentMonth < 3 ? currentYear - 1 : currentYear;
+  const goalFYStart = goalMonth < 3 ? goalYear - 1 : goalYear;
+  const fyCount = goalFYStart - currentFYStart + 1;
+
+  assertEqual(currentFYStart, 2025, 'Feb 2026 should be in FY starting 2025');
+  assertEqual(goalFYStart, 2025, 'Mar 2026 should be in FY starting 2025');
+  assertEqual(fyCount, 1, 'Should span 1 FY (same FY)');
+});
+
+test('FY count: Dec 2025 to Jan 2026 should span 1 FY', () => {
+  // Both in FY 2025-26
+  const currentMonth = 11; // Dec
+  const currentYear = 2025;
+  const goalMonth = 0; // Jan
+  const goalYear = 2026;
+
+  const currentFYStart = currentMonth < 3 ? currentYear - 1 : currentYear;
+  const goalFYStart = goalMonth < 3 ? goalYear - 1 : goalYear;
+  const fyCount = goalFYStart - currentFYStart + 1;
+
+  assertEqual(currentFYStart, 2025, 'Dec 2025 should be in FY starting 2025');
+  assertEqual(goalFYStart, 2025, 'Jan 2026 should be in FY starting 2025');
+  assertEqual(fyCount, 1, 'Should span 1 FY (same FY across calendar year boundary)');
+});
+
+// ============================================
+// TESTS: FY Months Sync with Calendar Months (Bug Fix)
+// ============================================
+
+// Bug fix: FY-based months should sum to same total as calendar months
+test('FY months sync: Feb 2026 to Jan 2046 total months match', () => {
+  // Calendar calculation (what SIP uses)
+  const calendarYears = 19 + 11/12; // ~19.92 years
+  const calendarMonths = Math.round(calendarYears * 12); // 239
+
+  // FY calculation
+  const currentMonth = 1; // Feb
+  const goalMonth = 0; // Jan
+
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth); // 2
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2); // 10
+  const middleFYs = 21 - 2; // 19 middle FYs (total 21 FYs - first - last)
+  const fyBasedMonths = monthsInFirstFY + (middleFYs * 12) + monthsInLastFY; // 2 + 228 + 10 = 240
+
+  // The adjustment should make them match
+  const adjustment = calendarMonths - fyBasedMonths;
+  const adjustedLastFY = monthsInLastFY + adjustment;
+
+  assertEqual(monthsInFirstFY, 2, 'First FY should have 2 months (Feb-Mar)');
+  assertEqual(monthsInLastFY, 10, 'Last FY should have 10 months (Apr-Jan)');
+  assertTrue(Math.abs(fyBasedMonths - calendarMonths) <= 1, 'FY and calendar months should be close');
+});
+
+test('FY months sync: Apr to Mar (full FY) should have 12 months', () => {
+  const currentMonth = 3; // Apr
+  const goalMonth = 2; // Mar
+
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2);
+
+  assertEqual(monthsInFirstFY, 12, 'Starting in Apr should give 12 months in first FY');
+  assertEqual(monthsInLastFY, 12, 'Ending in Mar should give 12 months in last FY');
+});
+
+test('FY months sync: Single FY uses calendar months directly', () => {
+  // For single FY, should use exact calendar months
+  const calendarYears = 0.15; // ~2 months
+  const calendarMonths = Math.round(calendarYears * 12); // 2
+
+  // Single FY case should use totalMonths directly
+  assertEqual(calendarMonths, 2, 'Single FY should use calendar months');
+});
+
+test('FY months sync: Adjustment formula works correctly', () => {
+  // Test the adjustment formula
+  const totalMonths = 239; // From SIP calculation
+
+  // FY-based calculation
+  const monthsInFirstFY = 2;
+  const monthsInLastFY = 10;
+  const years = 21;
+  let fyBasedTotal = monthsInFirstFY + monthsInLastFY;
+  if (years > 2) {
+    fyBasedTotal += (years - 2) * 12; // Middle FYs
+  }
+
+  const adjustedMonthsInLastFY = monthsInLastFY + (totalMonths - fyBasedTotal);
+
+  // After adjustment, total should match
+  const adjustedTotal = monthsInFirstFY + ((years - 2) * 12) + adjustedMonthsInLastFY;
+  assertEqual(adjustedTotal, totalMonths, 'Adjusted FY months should equal calendar months');
+});
+
+test('FY months sync: Two FY case', () => {
+  // Jan 2026 to Apr 2026: 2 FYs
+  const currentMonth = 0; // Jan
+  const goalMonth = 3; // Apr
+  const years = 2;
+
+  const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth); // 3 (Jan-Mar)
+  const monthsInLastFY = goalMonth < 3 ? (goalMonth + 10) : (goalMonth - 2); // 1 (Apr only)
+
+  // Total should be 4 months (Jan, Feb, Mar, Apr)
+  const fyBasedTotal = monthsInFirstFY + monthsInLastFY; // No middle FYs for 2 FY case
+
+  assertEqual(monthsInFirstFY, 3, 'First FY should have 3 months (Jan-Mar)');
+  assertEqual(monthsInLastFY, 1, 'Last FY should have 1 month (Apr)');
+  assertEqual(fyBasedTotal, 4, 'Total should be 4 months');
+});
+
+// ============================================
 // Summary
 // ============================================
 

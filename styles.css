@@ -1,5 +1,15 @@
 /* Custom styles for Financial Planner */
 
+/* Tabular figures for aligned numbers in tables and financial displays */
+table,
+.font-medium,
+.font-bold,
+.text-right,
+td,
+th {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Smooth transitions */
 * {
   transition-property: background-color, border-color, color, opacity;
