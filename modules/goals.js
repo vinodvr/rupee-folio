@@ -82,7 +82,7 @@ function generateYearlyProjections(goal, projections) {
   if (years <= 0) return [];
 
   // IMPORTANT: Use same total months as SIP calculation for consistency
-  const totalMonths = Math.round(projections.years * 12);
+  const totalMonths = Math.floor(projections.years * 12);
 
   // First FY: months remaining from current month to end of FY (March)
   const monthsInFirstFY = currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
@@ -124,13 +124,14 @@ function generateYearlyProjections(goal, projections) {
     const monthlyRate = expectedReturn / 100 / 12;
 
     // Compound existing corpus for actual months in this FY
+    // Use start-of-month deposits (SIP added before compounding) to match SIP calculation
     for (let month = 0; month < monthsThisYear; month++) {
-      currentCorpus = currentCorpus * (1 + monthlyRate) + currentSIP;
+      currentCorpus = (currentCorpus + currentSIP) * (1 + monthlyRate);
 
-      // Compound EPF/NPS separately
+      // Compound EPF/NPS separately (start-of-month deposits to match SIP calculation)
       if (hasEpfNps) {
-        epfCorpus = epfCorpus * (1 + epfMonthlyRate) + currentMonthlyEpf;
-        npsCorpus = npsCorpus * (1 + npsMonthlyRate) + currentMonthlyNps;
+        epfCorpus = (epfCorpus + currentMonthlyEpf) * (1 + epfMonthlyRate);
+        npsCorpus = (npsCorpus + currentMonthlyNps) * (1 + npsMonthlyRate);
       }
     }
 
