@@ -1,7 +1,7 @@
 // Main application initialization and event coordination
-import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse } from './modules/storage.js';
+import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn } from './modules/storage.js';
 import { initCashflow, updateCurrency as updateCashflowCurrency, refreshData as refreshCashflow } from './modules/cashflow.js';
-import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, refreshData as refreshGoals } from './modules/goals.js';
+import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, updateReturns as updateGoalsReturns, refreshData as refreshGoals } from './modules/goals.js';
 import { initInvestments, updateCurrency as updateInvestmentsCurrency, refreshData as refreshInvestments } from './modules/investments.js';
 
 let appData = null;
@@ -11,7 +11,9 @@ function getSampleData() {
   return {
     settings: {
       currency: 'INR',
-      fundHouse: 'icici'
+      fundHouse: 'icici',
+      equityReturn: 10,
+      debtReturn: 5
     },
     cashflow: {
       income: [
@@ -36,8 +38,6 @@ function getSampleData() {
         targetDate: '2028-01-29',
         equityPercent: 0,
         debtPercent: 100,
-        equityReturn: 10,
-        debtReturn: 5,
         annualStepUp: 0,
         initialLumpsum: 0,
         startDate: '2026-01-29',
@@ -52,8 +52,6 @@ function getSampleData() {
         targetDate: '2046-01-29',
         equityPercent: 70,
         debtPercent: 30,
-        equityReturn: 10,
-        debtReturn: 5,
         annualStepUp: 7,
         epfNpsStepUp: true,
         initialLumpsum: 0,
@@ -69,8 +67,6 @@ function getSampleData() {
         targetDate: '2032-01-29',
         equityPercent: 30,
         debtPercent: 70,
-        equityReturn: 10,
-        debtReturn: 5,
         annualStepUp: 7,
         initialLumpsum: 0,
         startDate: '2026-01-29',
@@ -85,8 +81,6 @@ function getSampleData() {
         targetDate: '2045-01-29',
         equityPercent: 70,
         debtPercent: 30,
-        equityReturn: 10,
-        debtReturn: 5,
         annualStepUp: 7,
         initialLumpsum: 0,
         startDate: '2026-01-29',
@@ -121,6 +115,8 @@ function init() {
 
   const currency = getCurrency(appData);
   const fundHouse = getFundHouse(appData);
+  const equityReturn = getEquityReturn(appData);
+  const debtReturn = getDebtReturn(appData);
 
   // Set up currency selector
   const currencySelect = document.getElementById('currency-select');
@@ -129,12 +125,24 @@ function init() {
 
   // Set up fund house selector
   const fundHouseSelect = document.getElementById('fund-house-select');
-  const fundHouseContainer = document.getElementById('fund-house-container');
   fundHouseSelect.value = fundHouse;
   fundHouseSelect.addEventListener('change', handleFundHouseChange);
 
-  // Show/hide fund house selector based on currency
-  updateFundHouseVisibility(currency);
+  // Set up return rate sliders
+  const equityReturnSlider = document.getElementById('equity-return-setting');
+  const equityReturnValue = document.getElementById('equity-return-value');
+  equityReturnSlider.value = equityReturn;
+  equityReturnValue.textContent = `${equityReturn}%`;
+  equityReturnSlider.addEventListener('input', handleEquityReturnChange);
+
+  const debtReturnSlider = document.getElementById('debt-return-setting');
+  const debtReturnValue = document.getElementById('debt-return-value');
+  debtReturnSlider.value = debtReturn;
+  debtReturnValue.textContent = `${debtReturn}%`;
+  debtReturnSlider.addEventListener('input', handleDebtReturnChange);
+
+  // Set up settings modal
+  setupSettingsModal(currency);
 
   // Initialize all modules
   const onDataChange = () => {
@@ -143,7 +151,7 @@ function init() {
 
   initCashflow(appData, currency, onDataChange);
   initInvestments(appData, currency, onDataChange);
-  initGoals(appData, currency, fundHouse, onDataChange);
+  initGoals(appData, currency, fundHouse, equityReturn, debtReturn, onDataChange);
 
   // Listen for storage changes from other tabs
   window.addEventListener('storage', (e) => {
@@ -153,7 +161,7 @@ function init() {
     }
   });
 
-  console.log('Rookie Financial Planner initialized');
+  console.log('GlidePath Planner initialized');
 }
 
 function handleCurrencyChange(e) {
@@ -163,7 +171,14 @@ function handleCurrencyChange(e) {
   updateCashflowCurrency(newCurrency);
   updateInvestmentsCurrency(newCurrency);
   updateGoalsCurrency(newCurrency);
-  updateFundHouseVisibility(newCurrency);
+
+  // Update fund house visibility in settings modal
+  const fundHouseContainer = document.getElementById('fund-house-container');
+  if (newCurrency === 'INR') {
+    fundHouseContainer.classList.remove('hidden');
+  } else {
+    fundHouseContainer.classList.add('hidden');
+  }
 }
 
 function handleFundHouseChange(e) {
@@ -172,13 +187,53 @@ function handleFundHouseChange(e) {
   updateGoalsFundHouse(newFundHouse);
 }
 
-function updateFundHouseVisibility(currency) {
+function handleEquityReturnChange(e) {
+  const newEquityReturn = parseFloat(e.target.value);
+  document.getElementById('equity-return-value').textContent = `${newEquityReturn}%`;
+  setEquityReturn(appData, newEquityReturn);
+  updateGoalsReturns(newEquityReturn, getDebtReturn(appData));
+}
+
+function handleDebtReturnChange(e) {
+  const newDebtReturn = parseFloat(e.target.value);
+  document.getElementById('debt-return-value').textContent = `${newDebtReturn}%`;
+  setDebtReturn(appData, newDebtReturn);
+  updateGoalsReturns(getEquityReturn(appData), newDebtReturn);
+}
+
+function setupSettingsModal(currency) {
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsModal = document.getElementById('settings-modal');
+  const closeSettingsBtn = document.getElementById('close-settings-btn');
+  const doneSettingsBtn = document.getElementById('done-settings-btn');
   const fundHouseContainer = document.getElementById('fund-house-container');
+
+  // Show/hide fund house based on currency
   if (currency === 'INR') {
     fundHouseContainer.classList.remove('hidden');
   } else {
     fundHouseContainer.classList.add('hidden');
   }
+
+  // Open modal
+  settingsBtn.addEventListener('click', () => {
+    settingsModal.classList.remove('hidden');
+  });
+
+  // Close modal
+  const closeModal = () => {
+    settingsModal.classList.add('hidden');
+  };
+
+  closeSettingsBtn.addEventListener('click', closeModal);
+  doneSettingsBtn.addEventListener('click', closeModal);
+
+  // Close on backdrop click
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+      closeModal();
+    }
+  });
 }
 
 function refreshAllModules() {

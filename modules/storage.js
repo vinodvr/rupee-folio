@@ -4,7 +4,9 @@ const STORAGE_KEY = 'financial-planner-data';
 const defaultData = {
   settings: {
     currency: 'INR',
-    fundHouse: 'icici'
+    fundHouse: 'icici',
+    equityReturn: 10,
+    debtReturn: 5
   },
   cashflow: {
     income: [],
@@ -70,6 +72,26 @@ export function getFundHouse(data) {
 
 export function setFundHouse(data, fundHouse) {
   data.settings.fundHouse = fundHouse;
+  saveData(data);
+  return data;
+}
+
+export function getEquityReturn(data) {
+  return data.settings?.equityReturn ?? 10;
+}
+
+export function setEquityReturn(data, value) {
+  data.settings.equityReturn = value;
+  saveData(data);
+  return data;
+}
+
+export function getDebtReturn(data) {
+  return data.settings?.debtReturn ?? 5;
+}
+
+export function setDebtReturn(data, value) {
+  data.settings.debtReturn = value;
   saveData(data);
   return data;
 }

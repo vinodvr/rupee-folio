@@ -486,8 +486,8 @@ export function wasShortTermAtStart(goal) {
 }
 
 // EPF and NPS return rates (fixed)
-const EPF_RETURN = 8;
-const NPS_RETURN = 10;
+export const EPF_RETURN = 8;
+export const NPS_RETURN = 10;
 
 /**
  * Calculate future value of EPF/NPS corpus at target date

@@ -10,6 +10,10 @@ import {
   setCurrency,
   getFundHouse,
   setFundHouse,
+  getEquityReturn,
+  setEquityReturn,
+  getDebtReturn,
+  setDebtReturn,
   addIncome,
   updateIncome,
   deleteIncome,
@@ -70,7 +74,9 @@ function getFreshData() {
   return {
     settings: {
       currency: 'INR',
-      fundHouse: 'icici'
+      fundHouse: 'icici',
+      equityReturn: 10,
+      debtReturn: 5
     },
     cashflow: {
       income: [],
@@ -216,6 +222,91 @@ test('setFundHouse: Updates and saves', () => {
   const data = getFreshData();
   setFundHouse(data, 'hdfc');
   assertEqual(data.settings.fundHouse, 'hdfc');
+});
+
+// ============================================
+// TESTS: Return Rate Settings
+// ============================================
+
+test('getEquityReturn: Returns equityReturn from data', () => {
+  const data = getFreshData();
+  data.settings.equityReturn = 12;
+  assertEqual(getEquityReturn(data), 12);
+});
+
+test('getEquityReturn: Returns 10 as default', () => {
+  assertEqual(getEquityReturn({}), 10);
+  assertEqual(getEquityReturn({ settings: {} }), 10);
+});
+
+test('setEquityReturn: Updates and saves', () => {
+  const data = getFreshData();
+  setEquityReturn(data, 12);
+  assertEqual(data.settings.equityReturn, 12);
+});
+
+test('setEquityReturn: Accepts decimal values', () => {
+  const data = getFreshData();
+  setEquityReturn(data, 11.5);
+  assertEqual(data.settings.equityReturn, 11.5);
+});
+
+test('getDebtReturn: Returns debtReturn from data', () => {
+  const data = getFreshData();
+  data.settings.debtReturn = 6;
+  assertEqual(getDebtReturn(data), 6);
+});
+
+test('getDebtReturn: Returns 5 as default', () => {
+  assertEqual(getDebtReturn({}), 5);
+  assertEqual(getDebtReturn({ settings: {} }), 5);
+});
+
+test('setDebtReturn: Updates and saves', () => {
+  const data = getFreshData();
+  setDebtReturn(data, 6);
+  assertEqual(data.settings.debtReturn, 6);
+});
+
+test('setDebtReturn: Accepts decimal values', () => {
+  const data = getFreshData();
+  setDebtReturn(data, 5.5);
+  assertEqual(data.settings.debtReturn, 5.5);
+});
+
+test('Return rates: Round-trip preserves values', () => {
+  const data = getFreshData();
+  setEquityReturn(data, 13);
+  setDebtReturn(data, 7);
+  saveData(data);
+
+  const loaded = loadData();
+  assertEqual(loaded.settings.equityReturn, 13, 'Equity return should be preserved');
+  assertEqual(loaded.settings.debtReturn, 7, 'Debt return should be preserved');
+
+  clearData();
+});
+
+test('Return rates: Default values in fresh load', () => {
+  clearData();
+  const data = loadData();
+  assertEqual(data.settings.equityReturn, 10, 'Default equity return should be 10');
+  assertEqual(data.settings.debtReturn, 5, 'Default debt return should be 5');
+});
+
+test('Return rates: Schema migration adds defaults', () => {
+  // Save data without return rates (simulating old schema)
+  localStorage.setItem('financial-planner-data', JSON.stringify({
+    settings: { currency: 'INR', fundHouse: 'icici' },
+    cashflow: { income: [], expenses: [] },
+    goals: []
+  }));
+
+  const data = loadData();
+  assertEqual(data.settings.equityReturn, 10, 'Should add default equity return');
+  assertEqual(data.settings.debtReturn, 5, 'Should add default debt return');
+
+  clearData();
 });
 
 // ============================================

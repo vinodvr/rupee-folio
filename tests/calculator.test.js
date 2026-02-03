@@ -1695,6 +1695,216 @@ test('Retirement with EPF/NPS Step-Up: stepUpEnabled is false when not set', () 
 });
 
 // ============================================
+// TESTS: Global Return Rate Impact on SIP
+// These tests verify that changing global return rates
+// correctly affects goal calculations
+// ============================================
+
+test('Return Rates: Higher equity return reduces required SIP', () => {
+  const lowReturnGoal = createGoal({
+    yearsFromNow: 15,
+    goalType: 'one-time',
+    targetAmount: 5000000,
+    inflationRate: 6,
+    equityPercent: 70,
+    equityReturn: 10,
+    debtReturn: 5,
+    annualStepUp: 5
+  });
+
+  const highReturnGoal = createGoal({
+    yearsFromNow: 15,
+    goalType: 'one-time',
+    targetAmount: 5000000,
+    inflationRate: 6,
+    equityPercent: 70,
+    equityReturn: 13,  // Higher equity return
+    debtReturn: 5,
+    annualStepUp: 5
+  });
+
+  const lowReturnProjections = calculateGoalProjections(lowReturnGoal);
+  const highReturnProjections = calculateGoalProjections(highReturnGoal);
+
+  assertTrue(
+    highReturnProjections.monthlySIP < lowReturnProjections.monthlySIP,
+    `Higher equity return SIP (${Math.round(highReturnProjections.monthlySIP)}) should be less than lower return SIP (${Math.round(lowReturnProjections.monthlySIP)})`
+  );
+});
+
+test('Return Rates: Higher debt return reduces required SIP', () => {
+  const lowReturnGoal = createGoal({
+    yearsFromNow: 10,
+    goalType: 'one-time',
+    targetAmount: 2000000,
+    inflationRate: 6,
+    equityPercent: 30,
+    equityReturn: 10,
+    debtReturn: 5,  // Lower debt return
+    annualStepUp: 5
+  });
+
+  const highReturnGoal = createGoal({
+    yearsFromNow: 10,
+    goalType: 'one-time',
+    targetAmount: 2000000,
+    inflationRate: 6,
+    equityPercent: 30,
+    equityReturn: 10,
+    debtReturn: 7,  // Higher debt return
+    annualStepUp: 5
+  });
+
+  const lowReturnProjections = calculateGoalProjections(lowReturnGoal);
+  const highReturnProjections = calculateGoalProjections(highReturnGoal);
+
+  assertTrue(
+    highReturnProjections.monthlySIP < lowReturnProjections.monthlySIP,
+    `Higher debt return SIP (${Math.round(highReturnProjections.monthlySIP)}) should be less than lower return SIP (${Math.round(lowReturnProjections.monthlySIP)})`
+  );
+});
+
+test('Return Rates: 100% debt goal uses only debt return', () => {
+  const goal1 = createGoal({
+    yearsFromNow: 5,
+    goalType: 'one-time',
+    targetAmount: 1000000,
+    equityPercent: 0,
+    debtPercent: 100,
+    equityReturn: 10,
+    debtReturn: 5
+  });
+
+  const goal2 = createGoal({
+    yearsFromNow: 5,
+    goalType: 'one-time',
+    targetAmount: 1000000,
+    equityPercent: 0,
+    debtPercent: 100,
+    equityReturn: 15,  // Different equity return should not matter
+    debtReturn: 5      // Same debt return
+  });
+
+  const proj1 = calculateGoalProjections(goal1);
+  const proj2 = calculateGoalProjections(goal2);
+
+  assertApproxEqual(
+    proj1.monthlySIP,
+    proj2.monthlySIP,
+    1,  // Allow 1 rupee difference
+    'SIP should be same when only debt return matters'
+  );
+});
+
+test('Return Rates: Effective XIRR changes with return rates', () => {
+  const lowReturnGoal = createGoal({
+    yearsFromNow: 10,
+    goalType: 'retirement',
+    equityPercent: 70,
+    equityReturn: 10,
+    debtReturn: 5
+  });
+
+  const highReturnGoal = createGoal({
+    yearsFromNow: 10,
+    goalType: 'retirement',
+    equityPercent: 70,
+    equityReturn: 13,
+    debtReturn: 7
+  });
+
+  const lowXIRR = calculateEffectiveXIRR(lowReturnGoal);
+  const highXIRR = calculateEffectiveXIRR(highReturnGoal);
+
+  assertTrue(
+    highXIRR > lowXIRR,
+    `Higher return rates should result in higher XIRR: ${highXIRR} > ${lowXIRR}`
+  );
+});
+
+test('Return Rates: Yearly returns use goal return rates', () => {
+  const goal = createGoal({
+    yearsFromNow: 10,
+    goalType: 'one-time',
+    equityPercent: 50,
+    equityReturn: 12,
+    debtReturn: 6
+  });
+
+  const returns = getYearlyReturns(goal);
+
+  // First year: some equity allowed, should be above debt return
+  assertTrue(returns[0] > 6, 'First year return should be above pure debt return');
+
+  // Last year: 0% equity for one-time, should equal debt return
+  assertApproxEqual(returns[returns.length - 1], 6, 0.1, 'Final year should use debt return only');
+});
+
+test('Return Rates: Blended return calculation is correct', () => {
+  // 60% equity at 12%, 40% debt at 6%
+  // Expected: 0.6 * 12 + 0.4 * 6 = 7.2 + 2.4 = 9.6%
+  const blended = calculateBlendedReturn(60, 12, 40, 6);
+  assertApproxEqual(blended, 9.6, 0.01, 'Blended return should be weighted average');
+});
+
+test('Return Rates: SIP difference is proportional to return rate change', () => {
+  // Compare SIP for same goal with 8% vs 12% equity return
+  const goal8 = createGoal({
+    yearsFromNow: 20,
+    goalType: 'retirement',
+    targetAmount: 10000000,
+    equityPercent: 70,
+    equityReturn: 8,
+    debtReturn: 5,
+    annualStepUp: 5
+  });
+
+  const goal12 = createGoal({
+    yearsFromNow: 20,
+    goalType: 'retirement',
+    targetAmount: 10000000,
+    equityPercent: 70,
+    equityReturn: 12,
+    debtReturn: 5,
+    annualStepUp: 5
+  });
+
+  const proj8 = calculateGoalProjections(goal8);
+  const proj12 = calculateGoalProjections(goal12);
+
+  // 4% higher return over 20 years should reduce SIP significantly
+  const sipReduction = (proj8.monthlySIP - proj12.monthlySIP) / proj8.monthlySIP * 100;
+  assertTrue(sipReduction > 15, `4% higher equity return should reduce SIP by >15%, actual: ${sipReduction.toFixed(1)}%`);
+});
+
+test('Return Rates: Short-term goal ignores equity return (forced to debt)', () => {
+  const goal1 = createGoal({
+    yearsFromNow: 2,
+    goalType: 'one-time',
+    targetAmount: 500000,
+    equityPercent: 70,  // Will be forced to 0%
+    equityReturn: 8,
+    debtReturn: 5
+  });
+
+  const goal2 = createGoal({
+    yearsFromNow: 2,
+    goalType: 'one-time',
+    targetAmount: 500000,
+    equityPercent: 70,  // Will be forced to 0%
+    equityReturn: 15,   // Different equity return
+    debtReturn: 5       // Same debt return
+  });
+
+  const proj1 = calculateGoalProjections(goal1);
+  const proj2 = calculateGoalProjections(goal2);
+
+  // Short-term one-time goals should have same effective XIRR (debt only)
+  assertApproxEqual(proj1.effectiveXIRR, proj2.effectiveXIRR, 0.1,
+    'Short-term goals should have same XIRR regardless of equity return setting');
+});
+
+// ============================================
 // Summary
 // ============================================
 

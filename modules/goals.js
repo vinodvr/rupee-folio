@@ -4,11 +4,7 @@ import {
   formatCurrency,
   getSymbol,
   getRecommendations,
-  getFunds,
-  getEquityLimits,
-  getDebtLimits,
-  constrainEquityReturn,
-  constrainDebtReturn
+  getFunds
 } from './currency.js';
 import {
   calculateGoalProjections,
@@ -25,7 +21,14 @@ import { getRetirementContributions } from './cashflow.js';
 let appData = null;
 let currency = 'INR';
 let fundHouse = 'icici';
+let equityReturn = 10;
+let debtReturn = 5;
 let onDataChange = null;
+
+// Helper to inject global return rates into goal object for calculator functions
+function withGlobalReturns(goal) {
+  return { ...goal, equityReturn, debtReturn };
+}
 
 function formatTimeline(years) {
   const totalMonths = Math.round(years * 12);
@@ -90,7 +93,7 @@ function generateYearlyProjections(goal, projections) {
     const maxEquity = getMaxEquityForYear(years - year + 1); // Current year's max equity
     const recommendedEquity = Math.min(goal.equityPercent, maxEquity);
     const recommendedDebt = 100 - recommendedEquity;
-    const expectedReturn = (recommendedEquity / 100 * goal.equityReturn) + (recommendedDebt / 100 * goal.debtReturn);
+    const expectedReturn = (recommendedEquity / 100 * equityReturn) + (recommendedDebt / 100 * debtReturn);
     const monthlyRate = expectedReturn / 100 / 12;
 
     // Compound existing corpus for 12 months using THIS year's return rate
@@ -107,7 +110,7 @@ function generateYearlyProjections(goal, projections) {
     // Get max equity for END of year (years remaining after this year)
     const endOfYearMaxEquity = getMaxEquityForYear(yearsRemaining);
     const endOfYearRecommendedEquity = Math.min(goal.equityPercent, endOfYearMaxEquity);
-    const endOfYearExpectedReturn = (endOfYearRecommendedEquity / 100 * goal.equityReturn) + ((100 - endOfYearRecommendedEquity) / 100 * goal.debtReturn);
+    const endOfYearExpectedReturn = (endOfYearRecommendedEquity / 100 * equityReturn) + ((100 - endOfYearRecommendedEquity) / 100 * debtReturn);
 
     const rowData = {
       year,
@@ -250,10 +253,12 @@ function renderProjectionsTable(goal, projections) {
   `;
 }
 
-export function initGoals(data, curr, fh, onChange) {
+export function initGoals(data, curr, fh, eqReturn, debtRet, onChange) {
   appData = data;
   currency = curr;
   fundHouse = fh || 'icici';
+  equityReturn = eqReturn ?? 10;
+  debtReturn = debtRet ?? 5;
   onDataChange = onChange;
   renderGoalsList();
   updateTotalSummary();
@@ -265,13 +270,15 @@ export function updateFundHouse(fh) {
   renderGoalsList();
 }
 
+export function updateReturns(eqReturn, debtRet) {
+  equityReturn = eqReturn;
+  debtReturn = debtRet;
+  renderGoalsList();
+  updateTotalSummary();
+}
+
 export function updateCurrency(curr) {
   currency = curr;
-  // Update goal return rates to fit new currency limits
-  appData.goals.forEach(goal => {
-    goal.equityReturn = constrainEquityReturn(goal.equityReturn, currency);
-    goal.debtReturn = constrainDebtReturn(goal.debtReturn, currency);
-  });
   renderGoalsList();
   updateTotalSummary();
 }
@@ -297,9 +304,6 @@ function showAddGoalModal(editGoal = null) {
   const content = document.getElementById('goal-modal-content');
   const isEdit = editGoal !== null;
 
-  const equityLimits = getEquityLimits(currency);
-  const debtLimits = getDebtLimits(currency);
-
   // Calculate default target date (10 years from now)
   const defaultDate = new Date();
   defaultDate.setFullYear(defaultDate.getFullYear() + 10);
@@ -313,8 +317,6 @@ function showAddGoalModal(editGoal = null) {
     targetDate: defaultDateStr,
     equityPercent: 60,
     debtPercent: 40,
-    equityReturn: equityLimits.default,
-    debtReturn: debtLimits.default,
     annualStepUp: 5,
     initialLumpsum: 0
   };
@@ -399,29 +401,6 @@ function showAddGoalModal(editGoal = null) {
           </div>
         </div>
 
-        <!-- Expected Returns -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Equity Return (post-tax)
-          </label>
-          <div class="flex items-center gap-2">
-            <input type="range" id="goal-equity-return" min="${equityLimits.min}" max="${equityLimits.max}" step="1"
-              value="${goal.equityReturn}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-            <span id="equity-return-display" class="text-sm font-medium w-12">${goal.equityReturn}%</span>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Debt Return (post-tax)
-          </label>
-          <div class="flex items-center gap-2">
-            <input type="range" id="goal-debt-return" min="${debtLimits.min}" max="${debtLimits.max}" step="1"
-              value="${goal.debtReturn}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-            <span id="debt-return-display" class="text-sm font-medium w-12">${goal.debtReturn}%</span>
-          </div>
-        </div>
-
         <!-- Annual Step-Up -->
         <div class="md:col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-1">Annual SIP Step-Up</label>
@@ -461,8 +440,6 @@ function showAddGoalModal(editGoal = null) {
 
   // Setup range slider updates
   const equitySlider = document.getElementById('goal-equity');
-  const equityReturnSlider = document.getElementById('goal-equity-return');
-  const debtReturnSlider = document.getElementById('goal-debt-return');
   const stepupSlider = document.getElementById('goal-stepup');
   const dateInput = document.getElementById('goal-date');
   const goalTypeSelect = document.getElementById('goal-type');
@@ -494,14 +471,6 @@ function showAddGoalModal(editGoal = null) {
     document.getElementById('debt-display').textContent = 100 - val;
   });
 
-  equityReturnSlider.addEventListener('input', () => {
-    document.getElementById('equity-return-display').textContent = equityReturnSlider.value + '%';
-  });
-
-  debtReturnSlider.addEventListener('input', () => {
-    document.getElementById('debt-return-display').textContent = debtReturnSlider.value + '%';
-  });
-
   stepupSlider.addEventListener('input', () => {
     document.getElementById('stepup-display').textContent = stepupSlider.value + '%';
   });
@@ -524,8 +493,6 @@ function showAddGoalModal(editGoal = null) {
     const targetDate = document.getElementById('goal-date').value;
     const equityPercent = parseInt(document.getElementById('goal-equity').value);
     const debtPercent = 100 - equityPercent;
-    const equityReturn = parseFloat(document.getElementById('goal-equity-return').value);
-    const debtReturn = parseFloat(document.getElementById('goal-debt-return').value);
     const annualStepUp = parseInt(document.getElementById('goal-stepup').value);
     const initialLumpsum = parseFloat(document.getElementById('goal-lumpsum').value) || 0;
     const epfNpsStepUp = goalType === 'retirement' ? document.getElementById('goal-epf-nps-stepup').checked : false;
@@ -551,8 +518,6 @@ function showAddGoalModal(editGoal = null) {
       targetDate,
       equityPercent,
       debtPercent,
-      equityReturn,
-      debtReturn,
       annualStepUp,
       initialLumpsum,
       epfNpsStepUp
@@ -669,10 +634,11 @@ function moveGoal(goalId, direction) {
 
 function renderGoalCard(goal) {
   // For retirement goals, get EPF/NPS adjusted projections
+  const goalWithReturns = withGlobalReturns(goal);
   const retirementContributions = goal.goalType === 'retirement' ? getRetirementContributions() : null;
   const projections = goal.goalType === 'retirement' && retirementContributions
-    ? calculateRetirementProjectionsWithEpfNps(goal, retirementContributions)
-    : calculateGoalProjections(goal);
+    ? calculateRetirementProjectionsWithEpfNps(goalWithReturns, retirementContributions)
+    : calculateGoalProjections(goalWithReturns);
   const recommendations = getRecommendations(currency);
   const funds = getFunds(currency);
 
@@ -814,7 +780,7 @@ function renderGoalCard(goal) {
       <hr class="my-4">
 
       <!-- Year-by-Year Projections -->
-      ${renderProjectionsTable(goal, projections)}
+      ${renderProjectionsTable(goalWithReturns, projections)}
 
       <hr class="my-4">
 
@@ -921,7 +887,7 @@ function updateTotalSummary() {
 
   let totalSIP = 0;
   appData.goals.forEach(goal => {
-    const projections = calculateGoalProjections(goal);
+    const projections = calculateGoalProjections(withGlobalReturns(goal));
     totalSIP += projections.monthlySIP;
   });
 
@@ -951,7 +917,7 @@ function updateTotalSummary() {
 export function getTotalMonthlySIP() {
   let total = 0;
   appData.goals.forEach(goal => {
-    const projections = calculateGoalProjections(goal);
+    const projections = calculateGoalProjections(withGlobalReturns(goal));
     total += projections.monthlySIP;
   });
   return total;
@@ -974,9 +940,10 @@ function showPlanReview() {
 
   let totalSIP = 0;
   const goalAnalyses = appData.goals.map(goal => {
-    const p = calculateGoalProjections(goal);
+    const goalWithReturns = withGlobalReturns(goal);
+    const p = calculateGoalProjections(goalWithReturns);
     totalSIP += p.monthlySIP;
-    return analyzeGoal(goal, p, availableForInvestment);
+    return analyzeGoal(goalWithReturns, p, availableForInvestment);
   });
 
   const overallAffordable = totalSIP <= availableForInvestment;
