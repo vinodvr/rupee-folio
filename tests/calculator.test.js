@@ -978,6 +978,63 @@ test('Step-up SIP: Same result for 0% step-up and regular SIP', () => {
   assertApproxEqual(stepUpSIP, regularSIP, regularSIP * 0.05, 'Should be within 5% of regular SIP');
 });
 
+test('Step-up SIP: Always delivers at least target corpus (conservative)', () => {
+  // Test various goal configurations to ensure SIP always meets or exceeds target
+  const testCases = [
+    { yearsFromNow: 6, annualStepUp: 7, equityPercent: 30, targetAmount: 2377359 },  // Original bug case
+    { yearsFromNow: 10, annualStepUp: 5, equityPercent: 70, targetAmount: 5000000 },
+    { yearsFromNow: 3, annualStepUp: 10, equityPercent: 0, targetAmount: 1000000 },
+    { yearsFromNow: 15, annualStepUp: 0, equityPercent: 70, targetAmount: 10000000 },
+    { yearsFromNow: 5, annualStepUp: 7, equityPercent: 30, targetAmount: 500000 },
+  ];
+
+  testCases.forEach((tc, idx) => {
+    const goal = createGoal(tc);
+    const targetFV = tc.targetAmount;
+    const sip = calculateStepUpSIPWithGlidePath(targetFV, goal);
+    const actualFV = simulateSIPInvestments(goal, sip);
+
+    assertTrue(
+      actualFV >= targetFV,
+      `Case ${idx + 1}: SIP should deliver at least target. Target: ${Math.round(targetFV)}, Actual: ${Math.round(actualFV)}, Diff: ${Math.round(actualFV - targetFV)}`
+    );
+  });
+});
+
+test('Step-up SIP: Overshoot is minimal (within 1%)', () => {
+  // Ensure we don't overshoot by too much - should be close to target
+  const goal = createGoal({ yearsFromNow: 10, annualStepUp: 7, equityPercent: 60, targetAmount: 5000000 });
+  const targetFV = 5000000;
+  const sip = calculateStepUpSIPWithGlidePath(targetFV, goal);
+  const actualFV = simulateSIPInvestments(goal, sip);
+
+  const overshootPercent = ((actualFV - targetFV) / targetFV) * 100;
+
+  assertTrue(actualFV >= targetFV, `Should meet target. Actual: ${Math.round(actualFV)}, Target: ${targetFV}`);
+  assertTrue(overshootPercent < 1, `Overshoot should be < 1%. Actual overshoot: ${overshootPercent.toFixed(3)}%`);
+});
+
+test('Step-up SIP: Conservative for edge case timelines', () => {
+  // Test boundary cases where rounding might cause issues
+  const edgeCases = [
+    { yearsFromNow: 1, annualStepUp: 5, equityPercent: 0 },   // Very short term
+    { yearsFromNow: 30, annualStepUp: 10, equityPercent: 70 }, // Very long term
+    { yearsFromNow: 4, annualStepUp: 7, equityPercent: 15 },   // At glide path boundary
+  ];
+
+  edgeCases.forEach((tc, idx) => {
+    const goal = createGoal({ ...tc, targetAmount: 1000000 });
+    const targetFV = 1000000;
+    const sip = calculateStepUpSIPWithGlidePath(targetFV, goal);
+    const actualFV = simulateSIPInvestments(goal, sip);
+
+    assertTrue(
+      actualFV >= targetFV,
+      `Edge case ${idx + 1}: Should meet target. Target: ${targetFV}, Actual: ${Math.round(actualFV)}`
+    );
+  });
+});
+
 // ============================================
 // TESTS: Full Projection Consistency
 // ============================================
@@ -1028,7 +1085,20 @@ test('Projections: All fields are present', () => {
 // ============================================
 
 /**
+ * Calculate months remaining in current Financial Year (until March)
+ * Indian FY: April (month 3) to March (month 2)
+ */
+function getMonthsInCurrentFY() {
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0-indexed (0 = Jan, 3 = Apr)
+  // If Jan-Mar (0-2), months until March end: 3 - currentMonth
+  // If Apr-Dec (3-11), months until March end: 15 - currentMonth (12 - currentMonth + 3)
+  return currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
+}
+
+/**
  * Simulates monthly SIP investments with step-up and glide path returns
+ * Uses FY-based step-ups (step-up happens at start of each April)
  * Returns the final corpus after all investments
  */
 function simulateSIPInvestments(goal, startingSIP) {
@@ -1037,6 +1107,9 @@ function simulateSIPInvestments(goal, startingSIP) {
   const stepUpRate = (goal.annualStepUp || 0) / 100;
 
   if (totalMonths <= 0 || yearlyReturns.length === 0) return 0;
+
+  // Calculate FY-based step-up schedule
+  const monthsInFirstFY = getMonthsInCurrentFY();
 
   // Build monthly returns array
   const monthlyReturns = [];
@@ -1052,19 +1125,21 @@ function simulateSIPInvestments(goal, startingSIP) {
     monthlyReturns.push(lastMonthlyRate);
   }
 
-  // Simulate month by month
+  // Simulate month by month with FY-based step-ups
   let corpus = 0;
   let currentSIP = startingSIP;
-  let monthInYear = 0;
 
   for (let month = 0; month < totalMonths; month++) {
     // Add SIP at start of month, then apply growth
     corpus = (corpus + currentSIP) * (1 + monthlyReturns[month]);
 
-    monthInYear++;
-    if (monthInYear >= 12) {
+    // Step-up at FY boundary (after first FY, then every 12 months)
+    const isFirstFYComplete = month + 1 === monthsInFirstFY;
+    const isSubsequentFYComplete = month + 1 > monthsInFirstFY &&
+      (month + 1 - monthsInFirstFY) % 12 === 0;
+
+    if (isFirstFYComplete || isSubsequentFYComplete) {
       currentSIP *= (1 + stepUpRate);
-      monthInYear = 0;
     }
   }
 

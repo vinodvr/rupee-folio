@@ -128,6 +128,7 @@ export function calculateStepUpSIP(futureValue, annualRate, months, annualStepUp
   const years = Math.ceil(months / 12);
 
   // Binary search for the starting SIP amount
+  // Always return a SIP that delivers >= target (conservative approach)
   let low = 0;
   let high = futureValue / months * 2; // Upper bound estimate
   const tolerance = 0.01;
@@ -137,7 +138,8 @@ export function calculateStepUpSIP(futureValue, annualRate, months, annualStepUp
     const fv = calculateStepUpSIPFutureValue(mid, monthlyRate, months, stepUpRate);
 
     if (Math.abs(fv - futureValue) < tolerance) {
-      return mid;
+      // Within tolerance - return mid if it meets target, otherwise nudge up
+      return fv >= futureValue ? mid : mid + 0.01;
     }
 
     if (fv < futureValue) {
@@ -147,7 +149,8 @@ export function calculateStepUpSIP(futureValue, annualRate, months, annualStepUp
     }
   }
 
-  return (low + high) / 2;
+  // Return high (not midpoint) to ensure we meet/exceed target
+  return high;
 }
 
 /**
@@ -324,6 +327,7 @@ export function calculateStepUpSIPWithGlidePath(futureValue, goal) {
   const stepUpRate = (goal.annualStepUp || 0) / 100;
 
   // Binary search for the starting SIP amount
+  // Always return a SIP that delivers >= target (conservative approach)
   let low = 0;
   let high = futureValue / months * 3; // Upper bound estimate
   const tolerance = 1; // Allow ₹1 tolerance
@@ -333,7 +337,8 @@ export function calculateStepUpSIPWithGlidePath(futureValue, goal) {
     const fv = calculateSIPFutureValueWithGlidePath(mid, goal, stepUpRate);
 
     if (Math.abs(fv - futureValue) < tolerance) {
-      return mid;
+      // Within tolerance - return mid if it meets target, otherwise nudge up
+      return fv >= futureValue ? mid : mid + 1;
     }
 
     if (fv < futureValue) {
@@ -343,17 +348,34 @@ export function calculateStepUpSIPWithGlidePath(futureValue, goal) {
     }
   }
 
-  return (low + high) / 2;
+  // Return high (not midpoint) to ensure we meet/exceed target
+  return high;
+}
+
+/**
+ * Calculate months remaining in current Financial Year (until March)
+ * Indian FY: April (month 3) to March (month 2)
+ */
+function getMonthsInCurrentFY() {
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0-indexed (0 = Jan, 3 = Apr)
+  // If Jan-Mar (0-2), months until March end: 3 - currentMonth
+  // If Apr-Dec (3-11), months until March end: 15 - currentMonth (12 - currentMonth + 3)
+  return currentMonth < 3 ? (3 - currentMonth) : (15 - currentMonth);
 }
 
 /**
  * Calculate future value of step-up SIP with varying yearly returns
+ * Uses FY-based step-ups (step-up happens at start of each April)
  */
 function calculateSIPFutureValueWithGlidePath(startingSIP, goal, stepUpRate) {
   const totalMonths = getMonthsRemaining(goal.targetDate);
   const yearlyReturns = getYearlyReturns(goal);
 
   if (totalMonths <= 0) return 0;
+
+  // Calculate FY-based step-up schedule
+  const monthsInFirstFY = getMonthsInCurrentFY();
 
   // If no yearly returns, use debt return as fallback
   const fallbackReturn = goal.debtReturn || 5;
@@ -362,14 +384,21 @@ function calculateSIPFutureValueWithGlidePath(startingSIP, goal, stepUpRate) {
     const monthlyRate = fallbackReturn / 100 / 12;
     let fv = 0;
     let currentSIP = startingSIP;
-    let monthInYear = 0;
+    let monthInFY = 0;
+    const monthsUntilFirstStepUp = monthsInFirstFY;
 
     for (let month = 0; month < totalMonths; month++) {
       fv += currentSIP * Math.pow(1 + monthlyRate, totalMonths - month);
-      monthInYear++;
-      if (monthInYear >= 12) {
+      monthInFY++;
+
+      // Step-up at FY boundary (after first FY, then every 12 months)
+      const isFirstFYComplete = month + 1 === monthsUntilFirstStepUp;
+      const isSubsequentFYComplete = month + 1 > monthsUntilFirstStepUp &&
+        (month + 1 - monthsUntilFirstStepUp) % 12 === 0;
+
+      if (isFirstFYComplete || isSubsequentFYComplete) {
         currentSIP *= (1 + stepUpRate);
-        monthInYear = 0;
+        monthInFY = 0;
       }
     }
     return fv;
@@ -395,10 +424,9 @@ function calculateSIPFutureValueWithGlidePath(startingSIP, goal, stepUpRate) {
     monthlyReturns.push(lastMonthlyRate);
   }
 
-  // Calculate FV of each SIP payment
+  // Calculate FV of each SIP payment with FY-based step-ups
   let fv = 0;
   let currentSIP = startingSIP;
-  let monthInYear = 0;
 
   for (let month = 0; month < totalMonths; month++) {
     // Add this month's SIP and compound to end
@@ -410,12 +438,14 @@ function calculateSIPFutureValueWithGlidePath(startingSIP, goal, stepUpRate) {
     }
 
     fv += sipValue;
-    monthInYear++;
 
-    // Annual step-up
-    if (monthInYear >= 12) {
+    // Step-up at FY boundary (after first FY, then every 12 months)
+    const isFirstFYComplete = month + 1 === monthsInFirstFY;
+    const isSubsequentFYComplete = month + 1 > monthsInFirstFY &&
+      (month + 1 - monthsInFirstFY) % 12 === 0;
+
+    if (isFirstFYComplete || isSubsequentFYComplete) {
       currentSIP *= (1 + stepUpRate);
-      monthInYear = 0;
     }
   }
 
