@@ -1,4 +1,4 @@
-# Rookie Financial Planner
+# RupeeFolio
 
 A client-side financial planning webapp that helps you manage cash flow, set financial goals, and calculate investment requirements. All data is stored locally in your browser - no server, no accounts, complete privacy.
 

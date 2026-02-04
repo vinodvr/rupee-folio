@@ -281,7 +281,7 @@ function init() {
     updateInvestmentPlanFundHouse(newFundHouse);
   });
 
-  console.log('GlidePath Planner initialized');
+  console.log('RupeeFolio initialized');
 }
 
 function handleCurrencyChange(e) {
