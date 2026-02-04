@@ -383,4 +383,4 @@ Feel free to submit issues and enhancement requests.
 
 ## License
 
-MIT License - feel free to use and modify for personal or commercial use.
+PolyForm Noncommercial 1.0.0 - free to use and modify for personal, educational, and non-commercial purposes. Commercial use is not permitted. See [LICENSE](LICENSE) for details.
