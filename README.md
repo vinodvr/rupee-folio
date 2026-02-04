@@ -20,57 +20,48 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 - **Create Multiple Goals**: Set up goals like retirement, child education, house down payment, emergency fund, etc.
 - **Goal Types**:
   - **One-time Goals**: For specific targets with a defined end date
-  - **Retirement Goals**: For ongoing income needs with special glide path considerations
+  - **Retirement Goals**: For ongoing income needs with EPF/NPS integration
     - Automatic EPF/NPS integration from cash flow
     - Optional EPF/NPS step-up with salary growth
-    - EPF at 8% and NPS at 10% returns
+    - Configurable EPF (default 8%) and NPS (default 9%) returns
 - **Inflation Adjustment**: Each goal can have its own inflation rate (e.g., 6% for education, 4% for general expenses)
 - **Target Date**: Set absolute dates for your goals with automatic timeline calculation
 
-### Investment Calculator
-- **Asset Allocation**: Configure equity/debt split for each goal
-- **Post-Tax Returns**: Enter expected returns after tax for realistic projections
-- **Annual SIP Step-Up**: Increase your SIP by a percentage each year (0-10%) to account for income growth
-- **Initial Lumpsum**: Account for existing investments towards a goal
-- **Monthly SIP Calculation**: Automatic calculation of required monthly investment
+### Unified Portfolio Model
+The app uses a simplified **Unified Portfolio** approach instead of per-goal allocations:
 
-### Currency Support
-Currently supports INR (₹) only.
+**Short-Term Goals (< 5 years):**
+- 100% invested in Arbitrage Fund
+- Low risk with equity taxation benefits
+- Expected return: ~6% post-tax
 
-| Asset Class | Range | Default | Labels |
-|-------------|-------|---------|--------|
-| Equity | 8% - 13% | 10% | 8-9% Conservative, 10-11% Realistic, 12-13% Optimistic |
-| Debt | 4% - 7% | 5% | 4% Conservative, 5-6% Realistic, 7% Optimistic |
+**Long-Term Goals (5+ years):**
+- Configurable equity/debt allocation (default 60/40)
+- Equity split: 70% Nifty 50 + 30% Nifty Next 50
+- Debt: Money Market Fund
+- Adjustable from 20% to 80% equity
+
+This unified approach simplifies portfolio management by consolidating all goals into two buckets rather than managing separate allocations per goal.
+
+### Investment Plan Tab
+A dedicated tab for viewing your consolidated investment plan:
+- **Goal Categorization**: Goals automatically sorted into short-term and long-term buckets
+- **Combined SIP Calculation**: Total monthly SIP needed per bucket
+- **Fund Recommendations**: Specific fund allocations from ICICI Prudential or HDFC
+- **Cashflow Comparison**: Shows total SIP needed vs available cash flow with surplus/shortfall
+- **Asset Allocation Controls**: Adjust equity/debt split for long-term goals
+- **Return Settings**: Configure expected returns for equity, debt, arbitrage, EPF, and NPS
+
+### Expected Returns
+| Asset Class | Range | Default |
+|-------------|-------|---------|
+| Equity | 8% - 13% | 10% |
+| Debt | 4% - 7% | 5% |
+| Arbitrage | 4% - 8% | 6% |
+| EPF | 7% - 9% | 8% |
+| NPS | 8% - 11% | 9% |
 
 Returns are post-tax estimates based on historical market performance.
-
-### Glide Path (Automatic Rebalancing)
-The app automatically suggests reducing equity exposure as goals approach:
-
-**One-time Goals:**
-| Years to Goal | Maximum Equity |
-|---------------|----------------|
-| 10+ years     | 70%            |
-| 8-10 years    | 60%            |
-| 6-8 years     | 50%            |
-| 5-6 years     | 30%            |
-| 4-5 years     | 15%            |
-| < 4 years     | 0%             |
-
-**Retirement Goals:**
-| Years to Goal | Maximum Equity |
-|---------------|----------------|
-| 10+ years     | 70%            |
-| 8-10 years    | 60%            |
-| 6-8 years     | 50%            |
-| 4-6 years     | 40%            |
-| < 4 years     | 30% (minimum)  |
-
-### Year-by-Year Projections
-- View detailed projections showing corpus growth over time
-- See expected returns for each year
-- Track recommended rebalancing actions
-- Collapsible table for clean interface
 
 ### Fund Recommendations (INR)
 For INR currency, get specific fund recommendations from:
@@ -85,20 +76,11 @@ For INR currency, get specific fund recommendations from:
   - Money Market Fund Direct Growth
   - Arbitrage Fund Direct Growth
 
-**Equity Split**: 70% Nifty 50 + 30% Nifty Next 50
-**Debt**: Money Market for long/mid-term, Arbitrage for short-term (tax efficiency)
-**SIP Split**: Shows exact amounts per fund with total
-
-### Investment Tracking
-- Log investments made towards each goal
-- Track investment history with dates and notes
-- Automatic corpus calculation based on logged investments
-- Dynamic SIP recalculation based on current progress
-
-### Review Plan
-- Comprehensive analysis of all goals
-- Identifies goals that need attention
-- Shows funding gaps and rebalancing needs
+**Short-Term Goals**: 100% Arbitrage Fund (equity taxation with debt-like risk)
+**Long-Term Goals**:
+- Equity (70% Nifty 50 + 30% Nifty Next 50)
+- Debt (Money Market Fund)
+**SIP Split**: Shows exact amounts per fund with total in the Investment Plan tab
 
 ### Additional Features
 - **Goal Reordering**: Prioritize goals with up/down buttons
@@ -113,80 +95,138 @@ For INR currency, get specific fund recommendations from:
 ## Installation
 
 ### Prerequisites
+- Node.js 16+ and npm
 - A modern web browser (Chrome, Firefox, Safari, Edge)
-- Python 3.x (for running local server) OR any other HTTP server
 
 ### Quick Start
 
-1. **Clone or download the repository**
-   ```bash
-   git clone <repository-url>
-   cd financial-planner
-   ```
+```bash
+# Clone the repository
+git clone <repository-url>
+cd financial-planner
 
-2. **Start a local HTTP server**
+# Install dependencies
+npm install
 
-   Using Python 3:
-   ```bash
-   python3 -m http.server 8080
-   ```
+# Start the app (opens browser automatically)
+npm start
+```
 
-   Or using Python 2:
-   ```bash
-   python -m SimpleHTTPServer 8080
-   ```
+The app will open at [http://localhost:8080](http://localhost:8080)
 
-   Or using Node.js (if you have `http-server` installed):
-   ```bash
-   npx http-server -p 8080
-   ```
+### Alternative (No Node.js)
 
-3. **Open in browser**
+If you don't have Node.js, you can use Python:
 
-   Navigate to: [http://localhost:8080](http://localhost:8080)
+```bash
+python3 -m http.server 8080
+# Then open http://localhost:8080 in your browser
+```
 
 ### Why a Local Server?
 
 The app uses ES6 modules which require HTTP protocol to work properly. Opening `index.html` directly (using `file://` protocol) will result in CORS errors.
 
-## Running Tests
+## Development
 
-The app includes unit tests for the calculator functions:
+### Prerequisites
 
-1. Start the local server (see Quick Start above)
-2. Navigate to: [http://localhost:8080/tests/test-runner.html](http://localhost:8080/tests/test-runner.html)
-3. Click "Run Tests" to execute all tests
+- Node.js 16+ (for npm scripts)
+- A modern web browser
+
+### Setup
+
+```bash
+# Install dependencies
+npm install
+```
+
+### Running Locally
+
+```bash
+# Start dev server and open browser
+npm start
+
+# Start dev server only (no browser auto-open)
+npm run dev
+```
+
+The app will be available at [http://localhost:8080](http://localhost:8080)
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode during development
+npm run test:watch
+```
+
+**133 tests** organized into 4 suites:
+
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| Calculator | 35 | SIP calculations, unified portfolio, EPF/NPS projections |
+| Storage | 57 | CRUD operations, settings, schema migrations |
+| Currency | 26 | Formatting, return limits, fund recommendations |
+| Assets | 15 | EPF/NPS corpus, retirement assets |
 
 ### Test Coverage
 
 Tests cover:
-- **Short-term goals** (< 4 years): Glide path to 0% equity
-- **Mid-term goals** (4-10 years): Gradual equity reduction
-- **Long-term goals** (10+ years): 70% max equity
-- **Retirement goals**: Maintains 30% minimum equity
-- **Effective XIRR**: Calculation with varying returns
-- **SIP calculations**: With step-up and glide path
+- **Short-term goals** (< 5 years): 100% arbitrage allocation
+- **Long-term goals** (5+ years): Configurable equity/debt split
+- **Unified portfolio categorization**: Correct bucket assignment
+- **SIP calculations**: Regular SIP with blended returns
 - **EPF/NPS calculations**: Corpus and SIP future values
-- **EPF/NPS step-up**: Growing contributions with salary
-- **Edge cases**: 0% step-up, 100% debt, initial lumpsum
+- **Retirement projections**: With EPF/NPS integration
+- **Inflation adjustment**: Future value calculations
+- **Edge cases**: Zero months remaining, boundary conditions
+
+### Project Architecture
+
+```
+modules/
+├── calculator.js     # Pure functions for financial calculations
+├── currency.js       # Currency formatting and fund data
+├── storage.js        # LocalStorage CRUD operations
+├── cashflow.js       # Cash Flow tab UI and logic
+├── assets.js         # Assets & Liabilities tab UI and logic
+├── goals.js          # Goals tab UI and logic
+└── investmentplan.js # Investment Plan tab (aggregates all goals)
+```
+
+**Key principles:**
+- All modules use ES6 exports/imports
+- UI modules manage their own DOM rendering
+- `calculator.js` contains pure functions with no side effects (easy to test)
+- `storage.js` is the only module that touches localStorage
+- `app.js` coordinates initialization and cross-module communication
+
+### Adding New Features
+
+1. **New calculations**: Add to `modules/calculator.js` with corresponding tests in `tests/calculator.test.js`
+2. **New UI sections**: Create a new module following the pattern in existing modules
+3. **New settings**: Add to the settings object in `storage.js` and update `app.js` initialization
 
 ## File Structure
 
 ```
 financial-planner/
-├── index.html          # Main HTML file
-├── app.js              # Application initialization
-├── styles.css          # Custom styles
-├── favicon.svg         # App favicon
-├── README.md           # This file
+├── index.html            # Main HTML file
+├── app.js                # Application initialization
+├── styles.css            # Custom styles
+├── favicon.svg           # App favicon
+├── README.md             # This file
 ├── modules/
-│   ├── storage.js      # LocalStorage wrapper
-│   ├── currency.js     # Currency configuration
-│   ├── calculator.js   # Financial calculations
-│   ├── cashflow.js     # Cash flow UI & logic
-│   ├── assets.js       # Assets & Liabilities management
-│   ├── goals.js        # Goals management
-│   └── investments.js  # Investment summary
+│   ├── storage.js        # LocalStorage wrapper
+│   ├── currency.js       # Currency configuration
+│   ├── calculator.js     # Financial calculations (unified portfolio model)
+│   ├── cashflow.js       # Cash flow UI & logic
+│   ├── assets.js         # Assets & Liabilities management
+│   ├── goals.js          # Goals management
+│   └── investmentplan.js # Investment Plan tab (unified portfolio view)
 └── tests/
     ├── test-runner.html    # Browser-based test runner
     ├── calculator.test.js  # Calculator unit tests
@@ -197,7 +237,7 @@ financial-planner/
 
 ## Usage Guide
 
-The app is organized into three tabs: **Cash Flow**, **Assets & Liabilities**, and **Financial Goals**.
+The app is organized into four tabs: **Cash Flow**, **Assets**, **Goals**, and **Investment Plan**.
 
 ### Setting Up Cash Flow
 
@@ -208,38 +248,33 @@ The app is organized into three tabs: **Cash Flow**, **Assets & Liabilities**, a
 
 ### Managing Assets & Liabilities
 
-1. Switch to the **Assets & Liabilities** tab
+1. Switch to the **Assets** tab
 2. Add assets like EPF corpus, NPS corpus, real estate, vehicles, etc.
 3. Add liabilities like home loans, car loans, etc.
 4. View your net worth summary at the top
 
 ### Creating a Financial Goal
 
-1. Switch to the **Financial Goals** tab and click **+ Add Goal** button
+1. Switch to the **Goals** tab and click **+ Add Goal** button
 2. Fill in the goal details:
    - **Goal Name**: e.g., "Child Education"
    - **Goal Type**: One-time or Retirement
    - **Target Amount**: Amount needed in today's value
    - **Inflation Rate**: Expected annual inflation for this goal
    - **Target Date**: When you need the money
-   - **Equity/Debt Allocation**: Investment mix (limited by glide path)
-   - **Expected Returns**: Post-tax returns for equity and debt
-   - **Annual Step-Up**: Yearly increase in SIP amount
-   - **Initial Lumpsum**: Existing investment towards this goal
+   - For Retirement goals: Configure EPF/NPS step-up with salary growth
 3. Click **Save Goal**
 
-### Tracking Investments
+### Using the Investment Plan
 
-1. On any goal card, click **+ Add Investment**
-2. Enter the investment amount, date, and optional note
-3. View investment history by clicking the investments count link
-
-### Reviewing Your Plan
-
-Click **Review Plan** to see:
-- Overall funding status
-- Goals that need attention
-- Rebalancing recommendations
+1. Switch to the **Investment Plan** tab to see your consolidated investment view
+2. Goals are automatically categorized:
+   - **Short-term** (< 5 years): Invested in Arbitrage Fund
+   - **Long-term** (5+ years): Split between Equity and Debt funds
+3. Adjust the **Asset Allocation** slider to change equity/debt split for long-term goals
+4. Configure **Expected Returns** for each asset class
+5. View **Fund Recommendations** with exact SIP amounts per fund
+6. Compare total SIP needed against your available cash flow
 
 ## Data Privacy
 
@@ -264,29 +299,32 @@ Click **Review Plan** to see:
 Future Value = Present Value × (1 + inflation_rate)^years
 ```
 
-**Starting Blended Return:**
+**Unified Portfolio Model:**
+The app uses a simplified two-bucket approach:
+
+- **Short-term (< 5 years)**: 100% Arbitrage Fund
+  - Return = arbitrage_return (default 6%)
+
+- **Long-term (5+ years)**: Configurable equity/debt split
+  - Return = (equity% × equity_return) + (debt% × debt_return)
+  - Default: 60% equity (10%) + 40% debt (5%) = 8% blended return
+
+**Monthly SIP Calculation:**
+Standard future value of annuity formula:
 ```
-return = (equity% × equity_return) + (debt% × debt_return)
+FV = PMT × [(1 + r)^n - 1] / r
+Solving for PMT: PMT = FV × r / [(1 + r)^n - 1]
 ```
+Where:
+- FV = inflation-adjusted target amount
+- r = monthly return (blended annual return / 12)
+- n = months remaining
 
-**Effective XIRR (with Glide Path):**
-The app calculates an effective XIRR that accounts for the changing asset allocation over time due to the glide path. This gives a more accurate picture of expected returns.
-
-For example, a 10-year one-time goal starting at 70% equity:
-- Year 1: ~8.5% return (70% equity, 10 years remaining)
-- Years 2-3: ~8% return (60% equity, 9-8 years remaining)
-- Years 4-5: ~7.5% return (50% equity, 7-6 years remaining)
-- Year 6: ~6.5% return (30% equity, 5 years remaining)
-- Year 7: ~5.75% return (15% equity, 4 years remaining)
-- Years 8-10: ~5% return (0% equity, < 4 years remaining)
-
-The effective XIRR is the single rate that would produce the same final corpus as these varying rates.
-
-**SIP Calculation with Varying Returns:**
-The SIP calculation uses the actual year-by-year expected returns based on the glide path, rather than a single fixed rate. This provides a more accurate required SIP amount.
-
-**Monthly SIP with Step-Up:**
-Uses iterative calculation to find the starting SIP amount that, when increased annually by the step-up percentage and compounded at year-appropriate returns, will reach the goal amount.
+**Retirement Goals with EPF/NPS:**
+For retirement goals, EPF and NPS contributions are factored in separately:
+- EPF return: 8% (configurable)
+- NPS return: 9% (configurable)
+- Optional step-up: EPF/NPS contributions can grow with salary
 
 ### LocalStorage Schema
 
@@ -295,8 +333,12 @@ Uses iterative calculation to find the starting SIP amount that, when increased 
   "settings": {
     "currency": "INR",
     "fundHouse": "icici",
+    "equityAllocation": 60,    // Long-term equity allocation (20-80%)
     "equityReturn": 10,
-    "debtReturn": 5
+    "debtReturn": 5,
+    "arbitrageReturn": 6,
+    "epfReturn": 8,
+    "npsReturn": 9
   },
   "cashflow": {
     "income": [{
@@ -328,13 +370,8 @@ Uses iterative calculation to find the starting SIP amount that, when increased 
       "targetAmount": 2000000,
       "inflationRate": 6,
       "targetDate": "2039-01-28",
-      "equityPercent": 70,
-      "debtPercent": 30,
-      "annualStepUp": 5,
       "epfNpsStepUp": false,   // For retirement: grow EPF/NPS with salary
-      "initialLumpsum": 100000,
-      "startDate": "2024-01-28",
-      "investments": []
+      "startDate": "2024-01-28"
     }
   ]
 }

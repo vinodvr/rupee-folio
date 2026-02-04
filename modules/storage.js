@@ -5,8 +5,12 @@ const defaultData = {
   settings: {
     currency: 'INR',
     fundHouse: 'icici',
+    equityAllocation: 60,
     equityReturn: 10,
-    debtReturn: 5
+    debtReturn: 5,
+    arbitrageReturn: 6,
+    epfReturn: 8,
+    npsReturn: 9
   },
   cashflow: {
     income: [],
@@ -83,6 +87,17 @@ export function loadData() {
         }
       });
 
+      // Migration: Strip deprecated fields from goals (unified portfolio)
+      result.goals.forEach(goal => {
+        const deprecatedFields = ['investments', 'initialLumpsum', 'equityPercent', 'debtPercent', 'annualStepUp'];
+        deprecatedFields.forEach(field => {
+          if (goal.hasOwnProperty(field)) {
+            delete goal[field];
+            migrated = true;
+          }
+        });
+      });
+
       // Save if migration occurred
       if (migrated) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
@@ -132,6 +147,16 @@ export function setFundHouse(data, fundHouse) {
   return data;
 }
 
+export function getEquityAllocation(data) {
+  return data.settings?.equityAllocation ?? 60;
+}
+
+export function setEquityAllocation(data, value) {
+  data.settings.equityAllocation = value;
+  saveData(data);
+  return data;
+}
+
 export function getEquityReturn(data) {
   return data.settings?.equityReturn ?? 10;
 }
@@ -148,6 +173,36 @@ export function getDebtReturn(data) {
 
 export function setDebtReturn(data, value) {
   data.settings.debtReturn = value;
+  saveData(data);
+  return data;
+}
+
+export function getArbitrageReturn(data) {
+  return data.settings?.arbitrageReturn ?? 6;
+}
+
+export function setArbitrageReturn(data, value) {
+  data.settings.arbitrageReturn = value;
+  saveData(data);
+  return data;
+}
+
+export function getEpfReturn(data) {
+  return data.settings?.epfReturn ?? 8;
+}
+
+export function setEpfReturn(data, value) {
+  data.settings.epfReturn = value;
+  saveData(data);
+  return data;
+}
+
+export function getNpsReturn(data) {
+  return data.settings?.npsReturn ?? 9;
+}
+
+export function setNpsReturn(data, value) {
+  data.settings.npsReturn = value;
   saveData(data);
   return data;
 }
@@ -200,8 +255,8 @@ export function deleteExpense(data, id) {
 // Goals helpers
 export function addGoal(data, goal) {
   goal.id = goal.id || generateId();
-  goal.investments = goal.investments || [];
   goal.startDate = goal.startDate || new Date().toISOString().split('T')[0];
+  // Simplified schema for unified portfolio - no per-goal allocation or investments
   data.goals.push(goal);
   saveData(data);
   return data;
@@ -219,28 +274,6 @@ export function updateGoal(data, id, updates) {
 export function deleteGoal(data, id) {
   data.goals = data.goals.filter(g => g.id !== id);
   saveData(data);
-  return data;
-}
-
-// Investment tracking helpers
-export function addInvestment(data, goalId, investment) {
-  const goal = data.goals.find(g => g.id === goalId);
-  if (goal) {
-    investment.id = investment.id || generateId();
-    investment.date = investment.date || new Date().toISOString().split('T')[0];
-    goal.investments = goal.investments || [];
-    goal.investments.push(investment);
-    saveData(data);
-  }
-  return data;
-}
-
-export function deleteInvestment(data, goalId, investmentId) {
-  const goal = data.goals.find(g => g.id === goalId);
-  if (goal && goal.investments) {
-    goal.investments = goal.investments.filter(i => i.id !== investmentId);
-    saveData(data);
-  }
   return data;
 }
 

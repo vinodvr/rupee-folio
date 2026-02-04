@@ -171,20 +171,24 @@ input[type="number"] {
 .tab-btn {
   color: #6b7280;
   background-color: transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
 }
 
 .tab-btn:hover {
   color: #374151;
-  background-color: #f3f4f6;
+  background-color: transparent;
 }
 
 .tab-btn.active {
-  color: #ffffff;
-  background-color: #2563eb;
+  color: #2563eb;
+  background-color: transparent;
+  border-bottom-color: #2563eb;
 }
 
 .tab-btn.active:hover {
-  background-color: #1d4ed8;
+  color: #1d4ed8;
+  border-bottom-color: #1d4ed8;
 }
 
 /* Category badge styling */
