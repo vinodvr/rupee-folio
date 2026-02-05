@@ -6,7 +6,6 @@ import {
   getUnifiedCategory,
   getCategoryDisplay
 } from './calculator.js';
-import { isDataEmpty, getQuickSetupButtonHTML, openWizard } from './wizard.js';
 
 let appData = null;
 let currency = 'INR';
@@ -254,35 +253,20 @@ function showAddGoalModal(editGoal = null) {
   });
 }
 
-function setupQuickSetupButton() {
-  const btn = document.getElementById('quick-setup-btn');
-  if (btn) {
-    btn.addEventListener('click', openWizard);
-  }
-}
-
 function renderGoalsList() {
   const container = document.getElementById('goals-list');
   if (!container) return;
 
   if (appData.goals.length === 0) {
-    // Show Quick Setup button if all data is empty
-    const showQuickSetup = isDataEmpty(appData);
-
     container.innerHTML = `
       <div class="text-center py-12 text-gray-500">
         <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
         </svg>
         <p class="text-lg mb-2">No financial goals yet</p>
-        <p class="text-sm mb-4">${showQuickSetup ? 'Use Quick Setup to get started, or add goals manually' : 'Click "Add Goal" to start planning your financial future'}</p>
-        ${showQuickSetup ? getQuickSetupButtonHTML() : ''}
+        <p class="text-sm mb-4">Click "Add Goal" to start planning your financial future</p>
       </div>
     `;
-
-    if (showQuickSetup) {
-      setupQuickSetupButton();
-    }
     return;
   }
 

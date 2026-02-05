@@ -297,7 +297,6 @@ function renderExpenseList() {
   if (!list) return;
 
   if (appData.cashflow.expenses.length === 0) {
-    // Only show plain message (Quick Setup is already in income section)
     list.innerHTML = '<p class="text-gray-500 text-sm italic">No expenses added</p>';
     return;
   }
