@@ -19,9 +19,11 @@ let debtReturn = 5;
 let arbitrageReturn = 6;
 let epfReturn = 8;
 let npsReturn = 9;
+let epfNpsStepUp = 5;
+let investmentStepUp = 5;
 let onDataChange = null;
 
-export function initInvestmentPlan(data, curr, fh, eqAlloc, eqReturn, debtRet, arbReturn, epfRet, npsRet, onChange) {
+export function initInvestmentPlan(data, curr, fh, eqAlloc, eqReturn, debtRet, arbReturn, epfRet, npsRet, epfNpsStep, invStep, onChange) {
   appData = data;
   currency = curr;
   fundHouse = fh || 'icici';
@@ -31,6 +33,8 @@ export function initInvestmentPlan(data, curr, fh, eqAlloc, eqReturn, debtRet, a
   arbitrageReturn = arbReturn ?? 6;
   epfReturn = epfRet ?? 8;
   npsReturn = npsRet ?? 9;
+  epfNpsStepUp = epfNpsStep ?? 5;
+  investmentStepUp = invStep ?? 5;
   onDataChange = onChange;
   renderInvestmentPlan();
 }
@@ -59,6 +63,12 @@ export function updateReturns(eqReturn, debtRet, arbReturn, epfRet, npsRet) {
   renderInvestmentPlan();
 }
 
+export function updateStepUp(epfNpsStep, invStep) {
+  epfNpsStepUp = epfNpsStep ?? epfNpsStepUp;
+  investmentStepUp = invStep ?? investmentStepUp;
+  renderInvestmentPlan();
+}
+
 export function refreshData(data) {
   appData = data;
   renderInvestmentPlan();
@@ -74,8 +84,8 @@ function categorizeGoals() {
   appData.goals.forEach(goal => {
     const category = getUnifiedCategory(goal.targetDate);
     const projections = goal.goalType === 'retirement'
-      ? calculateRetirementProjectionsWithEpfNps(goal, getRetirementContributions(), equityReturn, debtReturn, arbitrageReturn, equityAllocation, epfReturn, npsReturn)
-      : calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation);
+      ? calculateRetirementProjectionsWithEpfNps(goal, getRetirementContributions(), equityReturn, debtReturn, arbitrageReturn, equityAllocation, epfReturn, npsReturn, epfNpsStepUp, investmentStepUp)
+      : calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation, investmentStepUp);
 
     const goalData = {
       ...goal,
@@ -147,6 +157,13 @@ function formatTimeline(years) {
 }
 
 /**
+ * Format target date for display
+ */
+function formatTargetDate(targetDate) {
+  return new Date(targetDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+
+/**
  * Render goal row in the investment plan
  */
 function renderGoalRow(goal) {
@@ -154,22 +171,33 @@ function renderGoalRow(goal) {
   const hasEpfNps = isRetirement && goal.projections.epfNps;
 
   return `
-    <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-      <div class="flex-1">
-        <div class="font-medium text-gray-800">${goal.name}</div>
-        <div class="text-sm text-gray-500">
-          ${formatCurrency(goal.targetAmount, currency)} in ${formatTimeline(goal.projections.years)}
-          ${isRetirement ? '<span class="ml-1 px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">Retirement</span>' : ''}
+    <div class="py-3 border-b border-gray-100 last:border-0">
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-medium text-gray-800">
+          <a href="#goals" class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">${goal.name}</a>
+          ${isRetirement ? '<span class="ml-2 px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">Retirement</span>' : ''}
         </div>
-        ${hasEpfNps ? `
-          <div class="text-xs text-purple-600 mt-1">
-            EPF/NPS is contributing additional ${formatCurrency(Math.round(goal.projections.epfNps.totalMonthly), currency)}/month
-          </div>
-        ` : ''}
       </div>
-      <div class="text-right">
-        <div class="font-semibold text-blue-600">${formatCurrency(Math.round(goal.projections.monthlySIP), currency)}</div>
-        <div class="text-xs text-gray-500">per month</div>
+
+      <!-- Goal Details (same as Goals tab) -->
+      <div class="text-sm text-gray-500 space-y-0.5 mb-2">
+        <div>Target: <span class="font-medium text-gray-700">${formatCurrency(goal.targetAmount, currency)}</span> (today's value)</div>
+        <div>Timeline: <span class="font-medium text-gray-700">${formatTimeline(goal.projections.years)}</span> (${formatTargetDate(goal.targetDate)})</div>
+        <div>Inflation: <span class="font-medium text-gray-700">${goal.inflationRate}%</span></div>
+        ${hasEpfNps ? '<div class="text-purple-600">EPF/NPS deductions included</div>' : ''}
+      </div>
+
+      <!-- Calculated Values -->
+      <div class="bg-gray-50 rounded p-2 flex items-center justify-between">
+        <div class="text-xs text-gray-600">
+          <div>Future Value: <span class="font-medium text-gray-700">${formatCurrency(Math.round(goal.projections.inflationAdjustedTarget), currency)}</span></div>
+          ${hasEpfNps ? `<div>After EPF/NPS: <span class="font-medium text-gray-700">${formatCurrency(Math.round(goal.projections.gapAmount), currency)}</span></div>` : ''}
+        </div>
+        <div class="text-right">
+          <div class="font-semibold text-blue-600">${formatCurrency(Math.round(goal.projections.monthlySIP), currency)}</div>
+          <div class="text-xs text-gray-500">per month</div>
+          ${goal.projections.annualStepUp > 0 ? `<div class="text-xs text-gray-400">${goal.projections.annualStepUp}% annual step-up</div>` : ''}
+        </div>
       </div>
     </div>
   `;
@@ -226,7 +254,7 @@ function renderInvestmentPlan() {
 
           <div class="border-t pt-4">
             <div class="flex justify-between items-center">
-              <span class="font-medium text-gray-700">Combined Monthly SIP</span>
+              <span class="font-medium text-gray-700">Total SIP for Short Term Goals</span>
               <span class="text-xl font-bold text-amber-600">${formatCurrency(Math.round(shortTermSummary.totalSIP), currency)}</span>
             </div>
             <div class="text-xs text-gray-500">Expected return: ${shortTermSummary.blendedReturn.toFixed(1)}% p.a. post tax</div>
@@ -255,7 +283,7 @@ function renderInvestmentPlan() {
 
           <div class="border-t pt-4">
             <div class="flex justify-between items-center">
-              <span class="font-medium text-gray-700">Combined Monthly SIP</span>
+              <span class="font-medium text-gray-700">Total SIP for Long Term Goals</span>
               <span class="text-xl font-bold text-green-600">${formatCurrency(Math.round(longTermSummary.totalSIP), currency)}</span>
             </div>
             <div class="text-xs text-gray-500">Expected return: ${longTermSummary.blendedReturn.toFixed(1)}% p.a. post tax</div>
@@ -369,7 +397,7 @@ function updateSummary(totalSIP) {
   const gapElement = document.getElementById('plan-gap');
   const gapLabel = document.getElementById('plan-gap-label');
 
-  if (!totalSIPElement) return;
+  if (!totalSIPElement || !availableElement || !gapElement || !gapLabel) return;
 
   totalSIPElement.textContent = formatCurrency(Math.round(totalSIP), currency);
 
