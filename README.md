@@ -165,14 +165,16 @@ npm test
 npm run test:watch
 ```
 
-**133 tests** organized into 4 suites:
+**208 tests** organized into 6 suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
-| Calculator | 35 | SIP calculations, unified portfolio, EPF/NPS projections |
-| Storage | 57 | CRUD operations, settings, schema migrations |
+| Calculator | 62 | SIP calculations, step-up SIP, unified portfolio, EPF/NPS projections |
+| Storage | 64 | CRUD operations, settings, schema migrations |
 | Currency | 26 | Formatting, return limits, fund recommendations |
 | Assets | 15 | EPF/NPS corpus, retirement assets |
+| Cash Flow | 16 | Income/expense tracking, EPF/NPS contributions |
+| Persona Data | 25 | Sample data generation, persona profiles |
 
 ### Test Coverage
 
@@ -180,11 +182,16 @@ Tests cover:
 - **Short-term goals** (< 5 years): 100% arbitrage allocation
 - **Long-term goals** (5+ years): Configurable equity/debt split
 - **Unified portfolio categorization**: Correct bucket assignment
-- **SIP calculations**: Regular SIP with blended returns
-- **EPF/NPS calculations**: Corpus and SIP future values
+- **SIP calculations**: Regular SIP and step-up SIP with blended returns
+- **Step-up SIP validation**: 0% step-up equals regular SIP, monotonic property, round-trip verification
+- **EPF/NPS calculations**: Corpus and SIP future values with step-up
 - **Retirement projections**: With EPF/NPS integration
 - **Inflation adjustment**: Future value calculations
-- **Edge cases**: Zero months remaining, boundary conditions
+- **Golden values**: Verified against known correct calculations
+- **Mathematical properties**: Linearity, rate/horizon relationships
+- **Numerical stability**: Small/large targets, long horizons
+- **Boundary conditions**: 5-year threshold, short horizons, past dates
+- **Annuity due verification**: Confirms payment-at-start-of-period formula
 
 ### Project Architecture
 
@@ -230,11 +237,12 @@ financial-planner/
 │   ├── goals.js          # Goals management
 │   └── investmentplan.js # Investment Plan tab (unified portfolio view)
 └── tests/
-    ├── test-runner.html    # Browser-based test runner
-    ├── calculator.test.js  # Calculator unit tests
-    ├── currency.test.js    # Currency formatting tests
-    ├── storage.test.js     # Storage/CRUD tests
-    └── assets.test.js      # Assets module tests
+    ├── calculator.vitest.js  # SIP calculations, step-up, EPF/NPS (62 tests)
+    ├── storage.vitest.js     # Storage/CRUD tests (64 tests)
+    ├── currency.vitest.js    # Currency formatting tests (26 tests)
+    ├── assets.vitest.js      # Assets module tests (15 tests)
+    ├── cashflow.vitest.js    # Cash flow tests (16 tests)
+    └── personaData.vitest.js # Sample data tests (25 tests)
 ```
 
 ## Usage Guide
@@ -312,15 +320,18 @@ The app uses a simplified two-bucket approach:
   - Default: 60% equity (10%) + 40% debt (5%) = 8% blended return
 
 **Monthly SIP Calculation:**
-Standard future value of annuity formula:
+Uses annuity due formula (payment at beginning of period):
 ```
-FV = PMT × [(1 + r)^n - 1] / r
-Solving for PMT: PMT = FV × r / [(1 + r)^n - 1]
+FV = PMT × [(1 + r)^n - 1] / r × (1 + r)
+Solving for PMT: PMT = FV × r / [(1 + r)^n - 1] / (1 + r)
 ```
 Where:
 - FV = inflation-adjusted target amount
 - r = monthly return (blended annual return / 12)
 - n = months remaining
+
+**Step-up SIP Calculation:**
+For goals with annual step-up (e.g., 10% yearly increase), the app calculates the starting SIP that will accumulate to the target when contributions increase annually. This allows starting with a lower SIP that grows with income.
 
 **Retirement Goals with EPF/NPS:**
 For retirement goals, EPF and NPS contributions are factored in separately:
@@ -372,7 +383,7 @@ For retirement goals, EPF and NPS contributions are factored in separately:
       "targetAmount": 2000000,
       "inflationRate": 6,
       "targetDate": "2039-01-28",
-      "epfNpsStepUp": false,   // For retirement: grow EPF/NPS with salary
+      "includeEpfNps": false,   // For retirement: include EPF/NPS deductions
       "startDate": "2024-01-28"
     }
   ]
