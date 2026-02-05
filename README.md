@@ -4,6 +4,8 @@
 
 **Try the app:** [https://vinodvr.github.io/rupee-folio/](https://vinodvr.github.io/rupee-folio/)
 
+> **Note:** This is an experimental project. Please use caution and do not rely solely on this tool for financial decisions.
+
 A client-side financial planning webapp that helps you manage cash flow, set financial goals, and calculate investment requirements. All data is stored locally in your browser - no server, no accounts, complete privacy.
 
 ## Features
