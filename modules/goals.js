@@ -220,6 +220,11 @@ function showAddGoalModal(editGoal = null) {
       alert('Please enter a valid target amount');
       return;
     }
+    const maxTargetAmount = 100000000; // 10 Crore
+    if (targetAmount > maxTargetAmount) {
+      alert('Target amount cannot exceed ₹10 Crore');
+      return;
+    }
 
     // Construct targetDate as first day of selected month/year
     const targetDate = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-01`;
