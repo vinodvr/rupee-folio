@@ -2,6 +2,7 @@
 import { addIncome, updateIncome, deleteIncome, addExpense, updateExpense, deleteExpense, generateId } from './storage.js';
 import { formatCurrency, getSymbol } from './currency.js';
 import { getRetirementAssets } from './assets.js';
+import { isDataEmpty, getQuickSetupButtonHTML, openWizard } from './wizard.js';
 
 const expenseCategories = [
   'Housing',
@@ -63,7 +64,7 @@ function showAddIncomeForm() {
       <div class="flex gap-2 mb-2">
         <div class="relative flex-1">
           <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-          <input type="number" id="new-income-amount" placeholder="In-hand Amount"
+          <input type="number" id="new-income-amount" placeholder="In-hand amount after tax/deductions"
             class="w-full pl-8 pr-3 py-2 border rounded text-sm">
         </div>
       </div>
@@ -127,7 +128,18 @@ function renderIncomeList() {
   if (!list) return;
 
   if (appData.cashflow.income.length === 0) {
-    list.innerHTML = '<p class="text-gray-500 text-sm italic">No income sources added</p>';
+    // Show Quick Setup button if all data is empty
+    if (isDataEmpty(appData)) {
+      list.innerHTML = `
+        <div class="text-center py-6">
+          <p class="text-gray-500 text-sm mb-4">No income sources added</p>
+          ${getQuickSetupButtonHTML()}
+        </div>
+      `;
+      setupQuickSetupButton();
+    } else {
+      list.innerHTML = '<p class="text-gray-500 text-sm italic">No income sources added</p>';
+    }
     return;
   }
 
@@ -290,11 +302,19 @@ function saveNewExpense() {
   if (onDataChange) onDataChange();
 }
 
+function setupQuickSetupButton() {
+  const btn = document.getElementById('quick-setup-btn');
+  if (btn) {
+    btn.addEventListener('click', openWizard);
+  }
+}
+
 function renderExpenseList() {
   const list = document.getElementById('expense-list');
   if (!list) return;
 
   if (appData.cashflow.expenses.length === 0) {
+    // Only show plain message (Quick Setup is already in income section)
     list.innerHTML = '<p class="text-gray-500 text-sm italic">No expenses added</p>';
     return;
   }
@@ -406,6 +426,48 @@ function updateSummary() {
   if (availableEl) {
     availableEl.textContent = formatCurrency(Math.max(0, netFlow), currency);
   }
+
+  // Update savings rate
+  const savingsRateEl = document.getElementById('savings-rate');
+  const savingsRateLabelEl = document.getElementById('savings-rate-label');
+  if (savingsRateEl && savingsRateLabelEl) {
+    const savingsRate = totalIncome > 0 ? Math.round((netFlow / totalIncome) * 100) : 0;
+    savingsRateEl.textContent = `${savingsRate}%`;
+
+    // Determine label and styling based on rate
+    let label, bgClass, textClass;
+    if (savingsRate >= 60) {
+      label = 'Excellent';
+      bgClass = 'bg-green-100';
+      textClass = 'text-green-700';
+    } else if (savingsRate >= 40) {
+      label = 'Good';
+      bgClass = 'bg-blue-100';
+      textClass = 'text-blue-700';
+    } else if (savingsRate >= 30) {
+      label = 'Reasonable';
+      bgClass = 'bg-yellow-100';
+      textClass = 'text-yellow-700';
+    } else {
+      label = 'Poor';
+      bgClass = 'bg-red-100';
+      textClass = 'text-red-700';
+    }
+
+    savingsRateEl.className = `font-semibold ${textClass}`;
+    savingsRateLabelEl.textContent = label;
+    savingsRateLabelEl.className = `text-xs px-2 py-1 rounded-full ${bgClass} ${textClass}`;
+
+    // Show/hide suggestion for low savings rate
+    const suggestionEl = document.getElementById('savings-rate-suggestion');
+    if (suggestionEl) {
+      if (totalIncome > 0 && savingsRate < 40) {
+        suggestionEl.classList.remove('hidden');
+      } else {
+        suggestionEl.classList.add('hidden');
+      }
+    }
+  }
 }
 
 export function getTotalIncome() {
@@ -418,6 +480,40 @@ export function getTotalExpenses() {
 
 export function getNetCashflow() {
   return getTotalIncome() - getTotalExpenses();
+}
+
+/**
+ * Calculate savings rate as a percentage
+ */
+export function getSavingsRate(totalIncome, netCashflow) {
+  if (totalIncome <= 0) return 0;
+  return Math.round((netCashflow / totalIncome) * 100);
+}
+
+/**
+ * Get savings rate label and styling based on rate
+ * >= 60%: Excellent (green)
+ * 40-59%: Good (blue)
+ * 30-39%: Reasonable (yellow)
+ * < 30%: Poor (red)
+ */
+export function getSavingsRateLabel(savingsRate) {
+  if (savingsRate >= 60) {
+    return { label: 'Excellent', level: 'excellent' };
+  } else if (savingsRate >= 40) {
+    return { label: 'Good', level: 'good' };
+  } else if (savingsRate >= 30) {
+    return { label: 'Reasonable', level: 'reasonable' };
+  } else {
+    return { label: 'Poor', level: 'poor' };
+  }
+}
+
+/**
+ * Check if savings rate suggestion should be shown
+ */
+export function shouldShowSavingsSuggestion(totalIncome, savingsRate) {
+  return totalIncome > 0 && savingsRate < 40;
 }
 
 // EPF/NPS helper functions for retirement goal calculations
