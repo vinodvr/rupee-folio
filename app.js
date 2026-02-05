@@ -1,9 +1,10 @@
 // Main application initialization and event coordination
-import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse, getEquityAllocation, setEquityAllocation, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn, getArbitrageReturn, setArbitrageReturn, getEpfReturn, setEpfReturn, getNpsReturn, setNpsReturn } from './modules/storage.js';
+import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse, getEquityAllocation, setEquityAllocation, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn, getArbitrageReturn, setArbitrageReturn, getEpfReturn, setEpfReturn, getNpsReturn, setNpsReturn, getEpfNpsStepUp, setEpfNpsStepUp, getInvestmentStepUp, setInvestmentStepUp } from './modules/storage.js';
 import { initCashflow, updateCurrency as updateCashflowCurrency, refreshData as refreshCashflow } from './modules/cashflow.js';
 import { initAssets, updateCurrency as updateAssetsCurrency, refreshData as refreshAssets } from './modules/assets.js';
 import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, updateReturns as updateGoalsReturns, refreshData as refreshGoals } from './modules/goals.js';
-import { initInvestmentPlan, updateCurrency as updateInvestmentPlanCurrency, updateFundHouse as updateInvestmentPlanFundHouse, updateAllocation as updateInvestmentPlanAllocation, updateReturns as updateInvestmentPlanReturns, refreshData as refreshInvestmentPlan } from './modules/investmentplan.js';
+import { initInvestmentPlan, updateCurrency as updateInvestmentPlanCurrency, updateFundHouse as updateInvestmentPlanFundHouse, updateAllocation as updateInvestmentPlanAllocation, updateReturns as updateInvestmentPlanReturns, updateStepUp as updateInvestmentPlanStepUp, refreshData as refreshInvestmentPlan } from './modules/investmentplan.js';
+import { initWizard } from './modules/wizard.js';
 
 let appData = null;
 
@@ -65,7 +66,7 @@ function getSampleData() {
         targetAmount: 40000000,
         inflationRate: 6,
         targetDate: '2046-01-29',
-        epfNpsStepUp: true,
+        includeEpfNps: true,
         startDate: '2026-01-29',
         id: '5c582900-7783-4f61-b700-920a5cf67d1b'
       },
@@ -91,9 +92,89 @@ function getSampleData() {
   };
 }
 
+// Tab order for navigation
+const TAB_ORDER = ['cashflow', 'assets', 'goals', 'investmentplan'];
+const TAB_LABELS = {
+  cashflow: 'Cash Flow',
+  assets: 'Assets',
+  goals: 'Goals',
+  investmentplan: 'Investment Plan'
+};
+
+// Helper: Set up a collapsible section
+function setupCollapsible(toggleId, contentId, chevronId, summaryId) {
+  const toggleBtn = document.getElementById(toggleId);
+  const content = document.getElementById(contentId);
+  const chevron = document.getElementById(chevronId);
+  const summary = document.getElementById(summaryId);
+
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = content.classList.toggle('hidden');
+    chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
+    summary.classList.toggle('hidden', !isHidden);
+  });
+}
+
+// Helper: Initialize a slider with value display
+function initSlider(sliderId, valueId, initialValue, handler, formatter = v => `${v}%`) {
+  const slider = document.getElementById(sliderId);
+  const valueEl = document.getElementById(valueId);
+  slider.value = initialValue;
+  valueEl.textContent = formatter(initialValue);
+  slider.addEventListener('input', handler);
+}
+
+// Helper: Reset a slider to default value
+function resetSlider(sliderId, valueId, value, setter, formatter = v => `${v}%`) {
+  document.getElementById(sliderId).value = value;
+  document.getElementById(valueId).textContent = formatter(value);
+  setter(appData, value);
+}
+
 function setupTabNavigation() {
   const tabs = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
+
+  function getCurrentTabIndex() {
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (!activeTab) return 0;
+    const tabName = activeTab.id.replace('tab-', '');
+    return TAB_ORDER.indexOf(tabName);
+  }
+
+  function updateBottomNav() {
+    const currentIndex = getCurrentTabIndex();
+    const prevBtn = document.getElementById('nav-prev-btn');
+    const nextBtn = document.getElementById('nav-next-btn');
+    const prevLabel = document.getElementById('nav-prev-label');
+    const nextLabel = document.getElementById('nav-next-label');
+    const stepIndicator = document.getElementById('nav-step-indicator');
+
+    // Update step indicator
+    stepIndicator.textContent = `Step ${currentIndex + 1} of ${TAB_ORDER.length}`;
+
+    // Update previous button
+    if (currentIndex === 0) {
+      prevBtn.disabled = true;
+      prevBtn.classList.add('opacity-0', 'pointer-events-none');
+      prevLabel.textContent = 'Previous';
+    } else {
+      prevBtn.disabled = false;
+      prevBtn.classList.remove('opacity-0', 'pointer-events-none');
+      prevLabel.textContent = TAB_LABELS[TAB_ORDER[currentIndex - 1]];
+    }
+
+    // Update next button
+    if (currentIndex === TAB_ORDER.length - 1) {
+      nextBtn.disabled = true;
+      nextBtn.classList.add('opacity-0', 'pointer-events-none');
+      nextLabel.textContent = 'Next';
+    } else {
+      nextBtn.disabled = false;
+      nextBtn.classList.remove('opacity-0', 'pointer-events-none');
+      nextLabel.textContent = TAB_LABELS[TAB_ORDER[currentIndex + 1]];
+    }
+  }
 
   function switchToTab(tabName) {
     const tab = document.getElementById(`tab-${tabName}`);
@@ -113,6 +194,9 @@ function setupTabNavigation() {
         panel.classList.add('hidden');
       }
     });
+
+    // Update bottom navigation
+    updateBottomNav();
   }
 
   tabs.forEach(tab => {
@@ -126,10 +210,32 @@ function setupTabNavigation() {
     });
   });
 
+  // Bottom navigation event listeners
+  document.getElementById('nav-prev-btn').addEventListener('click', () => {
+    const currentIndex = getCurrentTabIndex();
+    if (currentIndex > 0) {
+      const prevTab = TAB_ORDER[currentIndex - 1];
+      history.replaceState(null, '', `#${prevTab}`);
+      switchToTab(prevTab);
+    }
+  });
+
+  document.getElementById('nav-next-btn').addEventListener('click', () => {
+    const currentIndex = getCurrentTabIndex();
+    if (currentIndex < TAB_ORDER.length - 1) {
+      const nextTab = TAB_ORDER[currentIndex + 1];
+      history.replaceState(null, '', `#${nextTab}`);
+      switchToTab(nextTab);
+    }
+  });
+
   // On page load, check for hash in URL
   const hash = window.location.hash.slice(1);
   if (hash && document.getElementById(`tab-${hash}`)) {
     switchToTab(hash);
+  } else {
+    // Initialize bottom nav for default tab
+    updateBottomNav();
   }
 
   // Handle browser back/forward
@@ -171,6 +277,8 @@ function init() {
   const arbitrageReturn = getArbitrageReturn(appData);
   const epfReturn = getEpfReturn(appData);
   const npsReturn = getNpsReturn(appData);
+  const epfNpsStepUp = getEpfNpsStepUp(appData);
+  const investmentStepUp = getInvestmentStepUp(appData);
 
   // Set up tab navigation
   setupTabNavigation();
@@ -180,87 +288,60 @@ function init() {
   currencySelect.value = currency;
   currencySelect.addEventListener('change', handleCurrencyChange);
 
-  // Set up equity allocation slider
-  const equityAllocationSlider = document.getElementById('equity-allocation-setting');
-  const equityAllocationValue = document.getElementById('equity-allocation-value');
-  const debtAllocationValue = document.getElementById('debt-allocation-value');
-  equityAllocationSlider.value = equityAllocation;
-  equityAllocationValue.textContent = `${equityAllocation}%`;
-  debtAllocationValue.textContent = `${100 - equityAllocation}%`;
+  // Set up equity allocation slider (special case: updates debt display too)
+  initSlider('equity-allocation-setting', 'equity-allocation-value', equityAllocation, handleEquityAllocationChange);
+  document.getElementById('debt-allocation-value').textContent = `${100 - equityAllocation}%`;
   updateRiskProfileLabel(equityAllocation);
-  equityAllocationSlider.addEventListener('input', handleEquityAllocationChange);
+  updateTaperingDisplay(equityAllocation);
 
   // Set up return rate sliders
-  const equityReturnSlider = document.getElementById('equity-return-setting');
-  const equityReturnValue = document.getElementById('equity-return-value');
-  equityReturnSlider.value = equityReturn;
-  equityReturnValue.textContent = `${equityReturn}%`;
-  equityReturnSlider.addEventListener('input', handleEquityReturnChange);
+  initSlider('equity-return-setting', 'equity-return-value', equityReturn, handleEquityReturnChange);
+  initSlider('debt-return-setting', 'debt-return-value', debtReturn, handleDebtReturnChange);
+  initSlider('arbitrage-return-setting', 'arbitrage-return-value', arbitrageReturn, handleArbitrageReturnChange);
+  initSlider('epf-return-setting', 'epf-return-value', epfReturn, handleEpfReturnChange);
+  initSlider('nps-return-setting', 'nps-return-value', npsReturn, handleNpsReturnChange);
 
-  const debtReturnSlider = document.getElementById('debt-return-setting');
-  const debtReturnValue = document.getElementById('debt-return-value');
-  debtReturnSlider.value = debtReturn;
-  debtReturnValue.textContent = `${debtReturn}%`;
-  debtReturnSlider.addEventListener('input', handleDebtReturnChange);
-
-  const arbitrageReturnSlider = document.getElementById('arbitrage-return-setting');
-  const arbitrageReturnValue = document.getElementById('arbitrage-return-value');
-  arbitrageReturnSlider.value = arbitrageReturn;
-  arbitrageReturnValue.textContent = `${arbitrageReturn}%`;
-  arbitrageReturnSlider.addEventListener('input', handleArbitrageReturnChange);
-
-  // Set up EPF/NPS return rate sliders
-  const epfReturnSlider = document.getElementById('epf-return-setting');
-  const epfReturnValueEl = document.getElementById('epf-return-value');
-  epfReturnSlider.value = epfReturn;
-  epfReturnValueEl.textContent = `${epfReturn}%`;
-  epfReturnSlider.addEventListener('input', handleEpfReturnChange);
-
-  const npsReturnSlider = document.getElementById('nps-return-setting');
-  const npsReturnValueEl = document.getElementById('nps-return-value');
-  npsReturnSlider.value = npsReturn;
-  npsReturnValueEl.textContent = `${npsReturn}%`;
-  npsReturnSlider.addEventListener('input', handleNpsReturnChange);
+  // Set up step-up sliders
+  initSlider('epf-nps-stepup-setting', 'epf-nps-stepup-value', epfNpsStepUp, handleEpfNpsStepUpChange);
+  initSlider('investment-stepup-setting', 'investment-stepup-value', investmentStepUp, handleInvestmentStepUpChange);
 
   // Set up reset button
-  const resetReturnsBtn = document.getElementById('reset-returns-btn');
-  resetReturnsBtn.addEventListener('click', handleResetReturns);
+  document.getElementById('reset-returns-btn').addEventListener('click', handleResetReturns);
 
-  // Set up collapsible Asset Allocation section
-  const toggleAllocationBtn = document.getElementById('toggle-allocation-btn');
-  const allocationContent = document.getElementById('allocation-content');
-  const allocationChevron = document.getElementById('allocation-chevron');
-  const allocationSummary = document.getElementById('allocation-summary');
-  toggleAllocationBtn.addEventListener('click', () => {
-    const isHidden = allocationContent.classList.toggle('hidden');
-    allocationChevron.style.transform = isHidden ? '' : 'rotate(180deg)';
-    allocationSummary.classList.toggle('hidden', !isHidden);
-  });
+  // Set up collapsible sections
+  setupCollapsible('toggle-allocation-btn', 'allocation-content', 'allocation-chevron', 'allocation-summary');
+  setupCollapsible('toggle-returns-btn', 'returns-content', 'returns-chevron', 'returns-summary');
+
+  // Initialize summaries
   updateAllocationSummary(equityAllocation);
-
-  // Set up collapsible Expected Returns section
-  const toggleReturnsBtn = document.getElementById('toggle-returns-btn');
-  const returnsContent = document.getElementById('returns-content');
-  const returnsChevron = document.getElementById('returns-chevron');
-  const returnsSummary = document.getElementById('returns-summary');
-  toggleReturnsBtn.addEventListener('click', () => {
-    const isHidden = returnsContent.classList.toggle('hidden');
-    returnsChevron.style.transform = isHidden ? '' : 'rotate(180deg)';
-    returnsSummary.classList.toggle('hidden', !isHidden);
-  });
-  updateReturnsSummary(equityReturn, debtReturn, arbitrageReturn, epfReturn, npsReturn);
+  updateReturnsSummary(equityReturn, investmentStepUp);
+  updateSettingsProfileLabel();
 
   // Initialize all modules
   const onDataChange = () => {
     refreshAllModules();
     updateEpfNpsVisibility();
-    updateReturnsSummary(getEquityReturn(appData), getDebtReturn(appData), getArbitrageReturn(appData), getEpfReturn(appData), getNpsReturn(appData));
   };
+
+  // Initialize wizard with callback to merge generated data
+  initWizard((generatedData) => {
+    // Merge generated data with existing app data
+    appData.cashflow.income = generatedData.cashflow.income;
+    appData.cashflow.expenses = generatedData.cashflow.expenses;
+    appData.assets.items = generatedData.assets.items;
+    appData.liabilities.items = generatedData.liabilities.items;
+    appData.goals = generatedData.goals;
+
+    // Save and refresh
+    saveData(appData);
+    refreshAllModules();
+    updateEpfNpsVisibility();
+  });
 
   initCashflow(appData, currency, onDataChange);
   initAssets(appData, currency, onDataChange);
   initGoals(appData, currency, fundHouse, equityReturn, debtReturn, arbitrageReturn, onDataChange);
-  initInvestmentPlan(appData, currency, fundHouse, equityAllocation, equityReturn, debtReturn, arbitrageReturn, epfReturn, npsReturn, onDataChange);
+  initInvestmentPlan(appData, currency, fundHouse, equityAllocation, equityReturn, debtReturn, arbitrageReturn, epfReturn, npsReturn, epfNpsStepUp, investmentStepUp, onDataChange);
 
   // Show/hide EPF/NPS returns based on retirement goals
   updateEpfNpsVisibility();
@@ -300,8 +381,29 @@ function handleEquityAllocationChange(e) {
   document.getElementById('debt-allocation-value').textContent = `${100 - newEquityAllocation}%`;
   updateRiskProfileLabel(newEquityAllocation);
   updateAllocationSummary(newEquityAllocation);
+  updateTaperingDisplay(newEquityAllocation);
   setEquityAllocation(appData, newEquityAllocation);
   updateInvestmentPlanAllocation(newEquityAllocation);
+}
+
+function updateTaperingDisplay(equityPercent) {
+  const taperInitial = document.getElementById('tapering-initial');
+  const taperMidHigh = document.getElementById('tapering-mid-high');
+  const taperMidLow = document.getElementById('tapering-mid-low');
+  if (taperInitial) {
+    const debtInitial = 100 - equityPercent;
+    taperInitial.textContent = `${equityPercent}% equity (${debtInitial}% debt)`;
+  }
+  if (taperMidHigh) {
+    const equityMidHigh = Math.floor(Math.min(equityPercent / 2, 40));
+    const debtMidHigh = 100 - equityMidHigh;
+    taperMidHigh.textContent = `${equityMidHigh}% equity (${debtMidHigh}% debt)`;
+  }
+  if (taperMidLow) {
+    const equityMidLow = Math.floor(Math.min(equityPercent / 4, 20));
+    const debtMidLow = 100 - equityMidLow;
+    taperMidLow.textContent = `${equityMidLow}% equity (${debtMidLow}% debt)`;
+  }
 }
 
 function updateRiskProfileLabel(equityPercent) {
@@ -338,47 +440,80 @@ function updateRiskProfileLabel(equityPercent) {
   }
 }
 
-function handleEquityReturnChange(e) {
-  const newEquityReturn = parseFloat(e.target.value);
-  document.getElementById('equity-return-value').textContent = `${newEquityReturn}%`;
-  setEquityReturn(appData, newEquityReturn);
-  updateGoalsReturns(newEquityReturn, getDebtReturn(appData), getArbitrageReturn(appData));
-  updateInvestmentPlanReturns(newEquityReturn, getDebtReturn(appData), getArbitrageReturn(appData), getEpfReturn(appData), getNpsReturn(appData));
-  updateReturnsSummary(newEquityReturn, getDebtReturn(appData), getArbitrageReturn(appData), getEpfReturn(appData), getNpsReturn(appData));
+// Unified handler for return rate changes
+function handleReturnChange(valueId, setter, updateGoals = true) {
+  return (e) => {
+    const newValue = parseFloat(e.target.value);
+    document.getElementById(valueId).textContent = `${newValue}%`;
+    setter(appData, newValue);
+
+    const returns = {
+      equity: getEquityReturn(appData),
+      debt: getDebtReturn(appData),
+      arbitrage: getArbitrageReturn(appData),
+      epf: getEpfReturn(appData),
+      nps: getNpsReturn(appData)
+    };
+
+    if (updateGoals) {
+      updateGoalsReturns(returns.equity, returns.debt, returns.arbitrage);
+    }
+    updateInvestmentPlanReturns(returns.equity, returns.debt, returns.arbitrage, returns.epf, returns.nps);
+    updateReturnsSummary(returns.equity, getInvestmentStepUp(appData));
+    updateSettingsProfileLabel();
+  };
 }
 
-function handleDebtReturnChange(e) {
-  const newDebtReturn = parseFloat(e.target.value);
-  document.getElementById('debt-return-value').textContent = `${newDebtReturn}%`;
-  setDebtReturn(appData, newDebtReturn);
-  updateGoalsReturns(getEquityReturn(appData), newDebtReturn, getArbitrageReturn(appData));
-  updateInvestmentPlanReturns(getEquityReturn(appData), newDebtReturn, getArbitrageReturn(appData), getEpfReturn(appData), getNpsReturn(appData));
-  updateReturnsSummary(getEquityReturn(appData), newDebtReturn, getArbitrageReturn(appData), getEpfReturn(appData), getNpsReturn(appData));
+const handleEquityReturnChange = handleReturnChange('equity-return-value', setEquityReturn);
+const handleDebtReturnChange = handleReturnChange('debt-return-value', setDebtReturn);
+const handleArbitrageReturnChange = handleReturnChange('arbitrage-return-value', setArbitrageReturn);
+const handleEpfReturnChange = handleReturnChange('epf-return-value', setEpfReturn, false);
+const handleNpsReturnChange = handleReturnChange('nps-return-value', setNpsReturn, false);
+
+// Unified handler for step-up changes
+function handleStepUpChange(valueId, setter) {
+  return (e) => {
+    const newValue = parseInt(e.target.value);
+    document.getElementById(valueId).textContent = `${newValue}%`;
+    setter(appData, newValue);
+
+    const epfNps = getEpfNpsStepUp(appData);
+    const investment = getInvestmentStepUp(appData);
+    updateReturnsSummary(getEquityReturn(appData), investment);
+    updateSettingsProfileLabel();
+    updateInvestmentPlanStepUp(epfNps, investment);
+  };
 }
 
-function handleArbitrageReturnChange(e) {
-  const newArbitrageReturn = parseFloat(e.target.value);
-  document.getElementById('arbitrage-return-value').textContent = `${newArbitrageReturn}%`;
-  setArbitrageReturn(appData, newArbitrageReturn);
-  updateGoalsReturns(getEquityReturn(appData), getDebtReturn(appData), newArbitrageReturn);
-  updateInvestmentPlanReturns(getEquityReturn(appData), getDebtReturn(appData), newArbitrageReturn, getEpfReturn(appData), getNpsReturn(appData));
-  updateReturnsSummary(getEquityReturn(appData), getDebtReturn(appData), newArbitrageReturn, getEpfReturn(appData), getNpsReturn(appData));
-}
+const handleEpfNpsStepUpChange = handleStepUpChange('epf-nps-stepup-value', setEpfNpsStepUp);
+const handleInvestmentStepUpChange = handleStepUpChange('investment-stepup-value', setInvestmentStepUp);
 
-function handleEpfReturnChange(e) {
-  const newEpfReturn = parseFloat(e.target.value);
-  document.getElementById('epf-return-value').textContent = `${newEpfReturn}%`;
-  setEpfReturn(appData, newEpfReturn);
-  updateInvestmentPlanReturns(getEquityReturn(appData), getDebtReturn(appData), getArbitrageReturn(appData), newEpfReturn, getNpsReturn(appData));
-  updateReturnsSummary(getEquityReturn(appData), getDebtReturn(appData), getArbitrageReturn(appData), newEpfReturn, getNpsReturn(appData));
-}
 
-function handleNpsReturnChange(e) {
-  const newNpsReturn = parseFloat(e.target.value);
-  document.getElementById('nps-return-value').textContent = `${newNpsReturn}%`;
-  setNpsReturn(appData, newNpsReturn);
-  updateInvestmentPlanReturns(getEquityReturn(appData), getDebtReturn(appData), getArbitrageReturn(appData), getEpfReturn(appData), newNpsReturn);
-  updateReturnsSummary(getEquityReturn(appData), getDebtReturn(appData), getArbitrageReturn(appData), getEpfReturn(appData), newNpsReturn);
+function updateSettingsProfileLabel() {
+  const label = document.getElementById('stepup-profile-label');
+  if (!label) return;
+
+  // Check if any slider is at its top 2 values
+  // EPF and NPS excluded - ranges already conservative (5-8% and 7-10%)
+  const sliderChecks = [
+    { id: 'equity-return-setting', max: 13, getter: getEquityReturn },
+    { id: 'debt-return-setting', max: 7, getter: getDebtReturn },
+    { id: 'arbitrage-return-setting', max: 8, getter: getArbitrageReturn },
+    { id: 'epf-nps-stepup-setting', max: 10, getter: getEpfNpsStepUp },
+    { id: 'investment-stepup-setting', max: 10, getter: getInvestmentStepUp }
+  ];
+
+  const isAggressive = sliderChecks.some(config => {
+    const slider = document.getElementById(config.id);
+    const value = slider ? Number(slider.value) : config.getter(appData);
+    const threshold = config.max - 1; // top 2 values
+    return value >= threshold;
+  });
+
+  label.textContent = isAggressive ? 'Aggressive' : 'Reasonable';
+  label.className = isAggressive
+    ? 'text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700'
+    : 'text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700';
 }
 
 function handleResetReturns() {
@@ -389,7 +524,9 @@ function handleResetReturns() {
     debtReturn: 5,
     arbitrageReturn: 6,
     epfReturn: 8,
-    npsReturn: 9
+    npsReturn: 9,
+    epfNpsStepUp: 5,
+    investmentStepUp: 5
   };
 
   // Reset Fund House
@@ -397,37 +534,25 @@ function handleResetReturns() {
   if (fundHouseSelect) fundHouseSelect.value = defaults.fundHouse;
   setFundHouse(appData, defaults.fundHouse);
 
-  // Reset Equity Return
-  document.getElementById('equity-return-setting').value = defaults.equityReturn;
-  document.getElementById('equity-return-value').textContent = `${defaults.equityReturn}%`;
-  setEquityReturn(appData, defaults.equityReturn);
-
-  // Reset Debt Return
-  document.getElementById('debt-return-setting').value = defaults.debtReturn;
-  document.getElementById('debt-return-value').textContent = `${defaults.debtReturn}%`;
-  setDebtReturn(appData, defaults.debtReturn);
-
-  // Reset Arbitrage Return
-  document.getElementById('arbitrage-return-setting').value = defaults.arbitrageReturn;
-  document.getElementById('arbitrage-return-value').textContent = `${defaults.arbitrageReturn}%`;
-  setArbitrageReturn(appData, defaults.arbitrageReturn);
-
-  // Reset EPF Return
-  document.getElementById('epf-return-setting').value = defaults.epfReturn;
-  document.getElementById('epf-return-value').textContent = `${defaults.epfReturn}%`;
-  setEpfReturn(appData, defaults.epfReturn);
-
-  // Reset NPS Return
-  document.getElementById('nps-return-setting').value = defaults.npsReturn;
-  document.getElementById('nps-return-value').textContent = `${defaults.npsReturn}%`;
-  setNpsReturn(appData, defaults.npsReturn);
+  // Reset all sliders using helper
+  resetSlider('equity-return-setting', 'equity-return-value', defaults.equityReturn, setEquityReturn);
+  resetSlider('debt-return-setting', 'debt-return-value', defaults.debtReturn, setDebtReturn);
+  resetSlider('arbitrage-return-setting', 'arbitrage-return-value', defaults.arbitrageReturn, setArbitrageReturn);
+  resetSlider('epf-return-setting', 'epf-return-value', defaults.epfReturn, setEpfReturn);
+  resetSlider('nps-return-setting', 'nps-return-value', defaults.npsReturn, setNpsReturn);
+  resetSlider('epf-nps-stepup-setting', 'epf-nps-stepup-value', defaults.epfNpsStepUp, setEpfNpsStepUp);
+  resetSlider('investment-stepup-setting', 'investment-stepup-value', defaults.investmentStepUp, setInvestmentStepUp);
 
   // Update modules
   updateGoalsFundHouse(defaults.fundHouse);
   updateGoalsReturns(defaults.equityReturn, defaults.debtReturn, defaults.arbitrageReturn);
   updateInvestmentPlanFundHouse(defaults.fundHouse);
   updateInvestmentPlanReturns(defaults.equityReturn, defaults.debtReturn, defaults.arbitrageReturn, defaults.epfReturn, defaults.npsReturn);
-  updateReturnsSummary(defaults.equityReturn, defaults.debtReturn, defaults.arbitrageReturn, defaults.epfReturn, defaults.npsReturn);
+  updateInvestmentPlanStepUp(defaults.epfNpsStepUp, defaults.investmentStepUp);
+
+  // Update summaries
+  updateReturnsSummary(defaults.equityReturn, defaults.investmentStepUp);
+  updateSettingsProfileLabel();
 }
 
 function updateEpfNpsVisibility() {
@@ -440,15 +565,10 @@ function updateEpfNpsVisibility() {
   }
 }
 
-function updateReturnsSummary(equity, debt, arbitrage, epf, nps) {
+function updateReturnsSummary(equityReturn, investmentStepUp) {
   const summary = document.getElementById('returns-summary');
   if (summary) {
-    const hasRetirement = appData.goals.some(g => g.goalType === 'retirement');
-    let text = `Equity ${equity}% | Debt ${debt}% | Arbitrage ${arbitrage}%`;
-    if (hasRetirement && epf !== undefined && nps !== undefined) {
-      text += ` | EPF ${epf}% | NPS ${nps}%`;
-    }
-    summary.textContent = text;
+    summary.textContent = `Equity ${equityReturn}% | Step-up ${investmentStepUp}%`;
   }
 }
 

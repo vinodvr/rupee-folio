@@ -6,10 +6,27 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 
 ## Features
 
+### Quick Setup Wizard
+New users can use the **Quick Setup** wizard to populate financial data in minutes:
+- Answer simple questions about age, family, housing, income, and existing savings
+- Automatically generates realistic income, expenses, assets, liabilities, and goals
+- Creates Emergency Fund, Retirement (FIRE at 50), and other relevant goals based on your situation
+
 ### Cash Flow Calculator
 - **Income Tracking**: Add multiple income sources (salary, freelance, rental income, etc.)
 - **EPF/NPS Tracking**: Track monthly EPF and NPS contributions
-- **Expense Management**: Track expenses with categories (housing, utilities, food, transport, etc.)
+- **Expense Management**: Track expenses across 11 categories with helpful hints:
+  - Housing (Rent, Society Maintenance)
+  - Utilities (Electricity, Mobile, Broadband, Cable TV)
+  - Food (Groceries, Vegetables, Dining Out)
+  - Transport (Fuel, Vehicle Maintenance, Parking)
+  - Health & Insurance (Medical, Premiums)
+  - Education (Fees, Tuition, Books)
+  - Children (Clothes, Activities, Pocket Money)
+  - Household Help (Maid, Driver, Cook)
+  - Lifestyle (Entertainment, Shopping, Subscriptions)
+  - EMIs/Loans (Home, Car, Personal Loans)
+  - Other (Miscellaneous)
 - **Net Cash Flow**: Automatic calculation of monthly surplus available for investments
 
 ### Assets & Liabilities
@@ -210,7 +227,9 @@ modules/
 ├── cashflow.js       # Cash Flow tab UI and logic
 ├── assets.js         # Assets & Liabilities tab UI and logic
 ├── goals.js          # Goals tab UI and logic
-└── investmentplan.js # Investment Plan tab (aggregates all goals)
+├── investmentplan.js # Investment Plan tab (aggregates all goals)
+├── wizard.js         # Quick Setup wizard UI and flow
+└── personaData.js    # Generates realistic data from wizard answers
 ```
 
 **Key principles:**
@@ -242,7 +261,9 @@ financial-planner/
 │   ├── cashflow.js       # Cash flow UI & logic
 │   ├── assets.js         # Assets & Liabilities management
 │   ├── goals.js          # Goals management
-│   └── investmentplan.js # Investment Plan tab (unified portfolio view)
+│   ├── investmentplan.js # Investment Plan tab (unified portfolio view)
+│   ├── wizard.js         # Quick Setup wizard UI and flow
+│   └── personaData.js    # Generates realistic data from wizard answers
 └── tests/
     ├── calculator.vitest.js  # SIP calculations, step-up, tapering, EPF/NPS (98 tests)
     ├── storage.vitest.js     # Storage/CRUD tests (64 tests)

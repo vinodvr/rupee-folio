@@ -5,17 +5,17 @@ import { getRetirementAssets } from './assets.js';
 import { isDataEmpty, getQuickSetupButtonHTML, openWizard } from './wizard.js';
 
 const expenseCategories = [
-  'Housing',
-  'Utilities',
-  'Food',
-  'Transport',
-  'Healthcare',
-  'Insurance',
-  'Education',
-  'Entertainment',
-  'Shopping',
-  'EMIs/Loans',
-  'Other'
+  { name: 'Housing', hint: 'Rent, Society Maintenance' },
+  { name: 'Utilities', hint: 'Electricity, Mobile, Broadband, Cable TV' },
+  { name: 'Food', hint: 'Groceries, Vegetables, Dining Out' },
+  { name: 'Transport', hint: 'Fuel, Vehicle Maintenance, Parking' },
+  { name: 'Health & Insurance', hint: 'Medical, Premiums' },
+  { name: 'Education', hint: 'Fees, Tuition, Books' },
+  { name: 'Children', hint: 'Clothes, Activities, Pocket Money' },
+  { name: 'Household Help', hint: 'Maid, Driver, Cook' },
+  { name: 'Lifestyle', hint: 'Entertainment, Shopping, Subscriptions' },
+  { name: 'EMIs/Loans', hint: 'Home, Car, Personal Loans' },
+  { name: 'Other', hint: 'Miscellaneous' }
 ];
 
 let appData = null;
@@ -262,16 +262,16 @@ function showAddExpenseForm() {
   container.innerHTML = `
     <div class="bg-gray-50 p-3 rounded-lg mb-3">
       <select id="new-expense-category" class="w-full px-3 py-2 border rounded mb-2 text-sm">
-        ${expenseCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+        ${expenseCategories.map(cat => `<option value="${cat.name}">${cat.name} (${cat.hint})</option>`).join('')}
       </select>
-      <input type="text" id="new-expense-name" placeholder="Description (e.g., Monthly Rent)"
+      <div class="relative mb-2">
+        <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
+        <input type="number" id="new-expense-amount" placeholder="Amount"
+          class="w-full pl-8 pr-3 py-2 border rounded text-sm">
+      </div>
+      <input type="text" id="new-expense-name" placeholder="Description - optional (e.g., Monthly Rent)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
       <div class="flex gap-2">
-        <div class="relative flex-1">
-          <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-          <input type="number" id="new-expense-amount" placeholder="Amount"
-            class="w-full pl-8 pr-3 py-2 border rounded text-sm">
-        </div>
         <button id="save-expense-btn" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">Save</button>
         <button id="cancel-expense-btn" class="bg-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-400">Cancel</button>
       </div>
@@ -282,16 +282,18 @@ function showAddExpenseForm() {
   document.getElementById('cancel-expense-btn').addEventListener('click', () => {
     container.innerHTML = '';
   });
-  document.getElementById('new-expense-name').focus();
+  document.getElementById('new-expense-amount').focus();
 }
 
 function saveNewExpense() {
   const category = document.getElementById('new-expense-category').value;
-  const name = document.getElementById('new-expense-name').value.trim();
+  const categoryData = expenseCategories.find(c => c.name === category);
+  const defaultName = categoryData ? categoryData.hint : category;
+  const name = document.getElementById('new-expense-name').value.trim() || defaultName;
   const amount = parseFloat(document.getElementById('new-expense-amount').value);
 
-  if (!name || isNaN(amount) || amount <= 0) {
-    alert('Please enter a valid description and amount');
+  if (isNaN(amount) || amount <= 0) {
+    alert('Please enter a valid amount');
     return;
   }
 
@@ -368,7 +370,7 @@ function editExpense(id) {
   row.innerHTML = `
     <div class="flex flex-wrap gap-2 mb-2">
       <select class="edit-expense-category px-2 py-1 border rounded text-sm">
-        ${expenseCategories.map(cat => `<option value="${cat}" ${cat === expense.category ? 'selected' : ''}>${cat}</option>`).join('')}
+        ${expenseCategories.map(cat => `<option value="${cat.name}" ${cat.name === expense.category ? 'selected' : ''}>${cat.name} (${cat.hint})</option>`).join('')}
       </select>
       <input type="text" value="${expense.name}" class="edit-expense-name flex-1 min-w-[120px] px-2 py-1 border rounded text-sm">
       <div class="relative">

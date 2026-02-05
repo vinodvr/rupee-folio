@@ -1,6 +1,7 @@
 // Assets & Liabilities management UI and logic
 import { addAsset, updateAsset, deleteAsset, addLiability, updateLiability, deleteLiability, generateId } from './storage.js';
 import { formatCurrency, getSymbol } from './currency.js';
+import { isDataEmpty, getQuickSetupButtonHTML, openWizard } from './wizard.js';
 
 const assetCategories = [
   'Real Estate',
@@ -121,12 +122,30 @@ function saveNewAsset() {
   if (onDataChange) onDataChange();
 }
 
+function setupQuickSetupButton() {
+  const btn = document.getElementById('quick-setup-btn');
+  if (btn) {
+    btn.addEventListener('click', openWizard);
+  }
+}
+
 function renderAssetsList() {
   const list = document.getElementById('assets-list');
   if (!list) return;
 
   if (appData.assets.items.length === 0) {
-    list.innerHTML = '<p class="text-gray-500 text-sm italic">No assets added</p>';
+    // Show Quick Setup button if all data is empty
+    if (isDataEmpty(appData)) {
+      list.innerHTML = `
+        <div class="text-center py-6">
+          <p class="text-gray-500 text-sm mb-4">No assets added</p>
+          ${getQuickSetupButtonHTML()}
+        </div>
+      `;
+      setupQuickSetupButton();
+    } else {
+      list.innerHTML = '<p class="text-gray-500 text-sm italic">No assets added</p>';
+    }
     return;
   }
 

@@ -10,7 +10,9 @@ const defaultData = {
     debtReturn: 5,
     arbitrageReturn: 6,
     epfReturn: 8,
-    npsReturn: 9
+    npsReturn: 9,
+    epfNpsStepUp: 5,
+    investmentStepUp: 5
   },
   cashflow: {
     income: [],
@@ -203,6 +205,26 @@ export function getNpsReturn(data) {
 
 export function setNpsReturn(data, value) {
   data.settings.npsReturn = value;
+  saveData(data);
+  return data;
+}
+
+export function getEpfNpsStepUp(data) {
+  return data.settings?.epfNpsStepUp ?? 5;
+}
+
+export function setEpfNpsStepUp(data, value) {
+  data.settings.epfNpsStepUp = value;
+  saveData(data);
+  return data;
+}
+
+export function getInvestmentStepUp(data) {
+  return data.settings?.investmentStepUp ?? 5;
+}
+
+export function setInvestmentStepUp(data, value) {
+  data.settings.investmentStepUp = value;
   saveData(data);
   return data;
 }

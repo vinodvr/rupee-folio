@@ -15,6 +15,10 @@ import {
   setDebtReturn,
   getArbitrageReturn,
   setArbitrageReturn,
+  getEpfNpsStepUp,
+  setEpfNpsStepUp,
+  getInvestmentStepUp,
+  setInvestmentStepUp,
   addIncome,
   updateIncome,
   deleteIncome,
@@ -255,6 +259,55 @@ describe('Return Rate Settings', () => {
     expect(data.settings.equityReturn).toBe(10);
     expect(data.settings.debtReturn).toBe(5);
     expect(data.settings.arbitrageReturn).toBe(6);
+  });
+
+  it('getEpfNpsStepUp returns epfNpsStepUp from data', () => {
+    const data = getFreshData();
+    data.settings.epfNpsStepUp = 7;
+    expect(getEpfNpsStepUp(data)).toBe(7);
+  });
+
+  it('getEpfNpsStepUp returns 5 as default', () => {
+    expect(getEpfNpsStepUp({})).toBe(5);
+    expect(getEpfNpsStepUp({ settings: {} })).toBe(5);
+  });
+
+  it('setEpfNpsStepUp updates and saves', () => {
+    const data = getFreshData();
+    data.settings.epfNpsStepUp = 5;
+    setEpfNpsStepUp(data, 8);
+    expect(data.settings.epfNpsStepUp).toBe(8);
+  });
+
+  it('getInvestmentStepUp returns investmentStepUp from data', () => {
+    const data = getFreshData();
+    data.settings.investmentStepUp = 6;
+    expect(getInvestmentStepUp(data)).toBe(6);
+  });
+
+  it('getInvestmentStepUp returns 5 as default', () => {
+    expect(getInvestmentStepUp({})).toBe(5);
+    expect(getInvestmentStepUp({ settings: {} })).toBe(5);
+  });
+
+  it('setInvestmentStepUp updates and saves', () => {
+    const data = getFreshData();
+    data.settings.investmentStepUp = 5;
+    setInvestmentStepUp(data, 10);
+    expect(data.settings.investmentStepUp).toBe(10);
+  });
+
+  it('Round-trip preserves step-up values', () => {
+    const data = getFreshData();
+    data.settings.epfNpsStepUp = 5;
+    data.settings.investmentStepUp = 5;
+    setEpfNpsStepUp(data, 7);
+    setInvestmentStepUp(data, 8);
+    saveData(data);
+
+    const loaded = loadData();
+    expect(loaded.settings.epfNpsStepUp).toBe(7);
+    expect(loaded.settings.investmentStepUp).toBe(8);
   });
 });
 

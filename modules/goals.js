@@ -6,6 +6,7 @@ import {
   getUnifiedCategory,
   getCategoryDisplay
 } from './calculator.js';
+import { isDataEmpty, getQuickSetupButtonHTML, openWizard } from './wizard.js';
 
 let appData = null;
 let currency = 'INR';
@@ -163,11 +164,11 @@ function showAddGoalModal(editGoal = null) {
         <div id="epf-nps-stepup-container" class="${(goal.goalType || 'one-time') === 'retirement' ? '' : 'hidden'}">
           <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
             <label class="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" id="goal-epf-nps-stepup" ${goal.epfNpsStepUp ? 'checked' : ''}
+              <input type="checkbox" id="goal-epf-nps-stepup" ${goal.includeEpfNps ? 'checked' : ''}
                 class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
               <div>
-                <span class="text-sm font-medium text-purple-800">EPF/NPS contributions grow with salary</span>
-                <p class="text-xs text-purple-600">Assume 7% annual growth in EPF/NPS contributions</p>
+                <span class="text-sm font-medium text-purple-800">EPF/NPS deductions from income</span>
+                <p class="text-xs text-purple-600">Include EPF/NPS contributions in retirement calculation</p>
               </div>
             </label>
           </div>
@@ -210,7 +211,7 @@ function showAddGoalModal(editGoal = null) {
     const inflationRate = parseFloat(document.getElementById('goal-inflation').value);
     const targetMonth = parseInt(document.getElementById('goal-month').value);
     const targetYear = parseInt(document.getElementById('goal-year').value);
-    const epfNpsStepUp = goalType === 'retirement' ? document.getElementById('goal-epf-nps-stepup').checked : false;
+    const includeEpfNps = goalType === 'retirement' ? document.getElementById('goal-epf-nps-stepup').checked : false;
 
     if (!name) {
       alert('Please enter a goal name');
@@ -230,7 +231,7 @@ function showAddGoalModal(editGoal = null) {
       targetAmount,
       inflationRate,
       targetDate,
-      epfNpsStepUp
+      includeEpfNps
     };
 
     if (isEdit) {
@@ -253,20 +254,35 @@ function showAddGoalModal(editGoal = null) {
   });
 }
 
+function setupQuickSetupButton() {
+  const btn = document.getElementById('quick-setup-btn');
+  if (btn) {
+    btn.addEventListener('click', openWizard);
+  }
+}
+
 function renderGoalsList() {
   const container = document.getElementById('goals-list');
   if (!container) return;
 
   if (appData.goals.length === 0) {
+    // Show Quick Setup button if all data is empty
+    const showQuickSetup = isDataEmpty(appData);
+
     container.innerHTML = `
       <div class="text-center py-12 text-gray-500">
         <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
         </svg>
         <p class="text-lg mb-2">No financial goals yet</p>
-        <p class="text-sm">Click "Add Goal" to start planning your financial future</p>
+        <p class="text-sm mb-4">${showQuickSetup ? 'Use Quick Setup to get started, or add goals manually' : 'Click "Add Goal" to start planning your financial future'}</p>
+        ${showQuickSetup ? getQuickSetupButtonHTML() : ''}
       </div>
     `;
+
+    if (showQuickSetup) {
+      setupQuickSetupButton();
+    }
     return;
   }
 
@@ -326,7 +342,7 @@ function renderGoalCard(goal) {
             <div>Target: <span class="font-medium text-gray-700">${formatCurrency(goal.targetAmount, currency)}</span> (today's value)</div>
             <div>Timeline: <span class="font-medium text-gray-700">${formatTimeline(years)}</span> (${new Date(goal.targetDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})</div>
             <div>Inflation: <span class="font-medium text-gray-700">${goal.inflationRate}%</span></div>
-            ${isRetirement && goal.epfNpsStepUp ? '<div class="text-purple-600">EPF/NPS contributions assumed to grow with salary</div>' : ''}
+            ${isRetirement && goal.includeEpfNps ? '<div class="text-purple-600">EPF/NPS deductions included</div>' : ''}
           </div>
         </div>
 
