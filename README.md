@@ -42,6 +42,11 @@ The app uses a simplified **Unified Portfolio** approach instead of per-goal all
 - Equity split: 70% Nifty 50 + 30% Nifty Next 50
 - Debt: Money Market Fund
 - Adjustable from 20% to 80% equity
+- **Equity Tapering (Glide Path)**: Automatically reduces equity exposure as goal approaches
+  - 8+ years: Full equity allocation
+  - 5-8 years: Half allocation (max 40%)
+  - 3-5 years: Quarter allocation (max 20%)
+  - < 3 years: 0% equity (100% debt)
 
 This unified approach simplifies portfolio management by consolidating all goals into two buckets rather than managing separate allocations per goal.
 
@@ -165,11 +170,11 @@ npm test
 npm run test:watch
 ```
 
-**208 tests** organized into 6 suites:
+**244 tests** organized into 6 suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
-| Calculator | 62 | SIP calculations, step-up SIP, unified portfolio, EPF/NPS projections |
+| Calculator | 98 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections |
 | Storage | 64 | CRUD operations, settings, schema migrations |
 | Currency | 26 | Formatting, return limits, fund recommendations |
 | Assets | 15 | EPF/NPS corpus, retirement assets |
@@ -180,9 +185,11 @@ npm run test:watch
 
 Tests cover:
 - **Short-term goals** (< 5 years): 100% arbitrage allocation
-- **Long-term goals** (5+ years): Configurable equity/debt split
+- **Long-term goals** (5+ years): Configurable equity/debt split with tapering
+- **Equity tapering (glide path)**: Phase boundaries, golden values, month-by-month verification
 - **Unified portfolio categorization**: Correct bucket assignment
 - **SIP calculations**: Regular SIP and step-up SIP with blended returns
+- **Step-up SIP with tapering**: Combined annual step-up and equity glide path
 - **Step-up SIP validation**: 0% step-up equals regular SIP, monotonic property, round-trip verification
 - **EPF/NPS calculations**: Corpus and SIP future values with step-up
 - **Retirement projections**: With EPF/NPS integration
@@ -237,7 +244,7 @@ financial-planner/
 │   ├── goals.js          # Goals management
 │   └── investmentplan.js # Investment Plan tab (unified portfolio view)
 └── tests/
-    ├── calculator.vitest.js  # SIP calculations, step-up, EPF/NPS (62 tests)
+    ├── calculator.vitest.js  # SIP calculations, step-up, tapering, EPF/NPS (98 tests)
     ├── storage.vitest.js     # Storage/CRUD tests (64 tests)
     ├── currency.vitest.js    # Currency formatting tests (26 tests)
     ├── assets.vitest.js      # Assets module tests (15 tests)
@@ -315,9 +322,21 @@ The app uses a simplified two-bucket approach:
 - **Short-term (< 5 years)**: 100% Arbitrage Fund
   - Return = arbitrage_return (default 6%)
 
-- **Long-term (5+ years)**: Configurable equity/debt split
+- **Long-term (5+ years)**: Configurable equity/debt split with tapering
   - Return = (equity% × equity_return) + (debt% × debt_return)
   - Default: 60% equity (10%) + 40% debt (5%) = 8% blended return
+  - **Equity Tapering**: Allocation reduces as goal approaches (see below)
+
+**Equity Tapering (Glide Path):**
+Long-term goals automatically reduce equity exposure to protect gains:
+| Years Remaining | Equity Allocation |
+|-----------------|-------------------|
+| 8+ years | Initial allocation (e.g., 60%) |
+| 5-8 years | min(initial/2, 40%) |
+| 3-5 years | min(initial/4, 20%) |
+| < 3 years | 0% (100% debt) |
+
+SIP calculations factor in this tapering by simulating month-by-month compounding with varying rates, ensuring accurate projections.
 
 **Monthly SIP Calculation:**
 Uses annuity due formula (payment at beginning of period):
