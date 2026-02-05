@@ -4,7 +4,7 @@ import { initCashflow, updateCurrency as updateCashflowCurrency, refreshData as 
 import { initAssets, updateCurrency as updateAssetsCurrency, refreshData as refreshAssets } from './modules/assets.js';
 import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, updateReturns as updateGoalsReturns, refreshData as refreshGoals } from './modules/goals.js';
 import { initInvestmentPlan, updateCurrency as updateInvestmentPlanCurrency, updateFundHouse as updateInvestmentPlanFundHouse, updateAllocation as updateInvestmentPlanAllocation, updateReturns as updateInvestmentPlanReturns, updateStepUp as updateInvestmentPlanStepUp, refreshData as refreshInvestmentPlan } from './modules/investmentplan.js';
-import { initWizard } from './modules/wizard.js';
+import { initWizard, openWizard, isDataEmpty } from './modules/wizard.js';
 
 let appData = null;
 
@@ -93,8 +93,9 @@ function getSampleData() {
 }
 
 // Tab order for navigation
-const TAB_ORDER = ['cashflow', 'assets', 'goals', 'investmentplan'];
+const TAB_ORDER = ['home', 'cashflow', 'assets', 'goals', 'investmentplan'];
 const TAB_LABELS = {
+  home: 'Home',
   cashflow: 'Cash Flow',
   assets: 'Assets',
   goals: 'Goals',
@@ -131,6 +132,49 @@ function resetSlider(sliderId, valueId, value, setter, formatter = v => `${v}%`)
   setter(appData, value);
 }
 
+// Home tab setup
+let switchToTabFn = null;
+
+function setupHomeTab(switchToTab) {
+  switchToTabFn = switchToTab;
+
+  // Wire Start Planning button
+  document.getElementById('start-planning-btn')?.addEventListener('click', () => {
+    openWizard();
+  });
+
+  // Wire Continue Planning button
+  document.getElementById('continue-planning-btn')?.addEventListener('click', () => {
+    switchToTab('cashflow');
+    history.replaceState(null, '', '#cashflow');
+  });
+
+  // Wire Clear Data button
+  document.getElementById('clear-data-btn')?.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+      clearData();
+      window.location.reload();
+    }
+  });
+}
+
+function updateHomeTabCTA() {
+  const emptyState = document.getElementById('home-empty-state');
+  const hasDataState = document.getElementById('home-has-data-state');
+
+  if (!emptyState || !hasDataState) return;
+
+  if (isDataEmpty(appData)) {
+    // No data - show wizard CTA
+    emptyState.classList.remove('hidden');
+    hasDataState.classList.add('hidden');
+  } else {
+    // User has data - show continue message
+    emptyState.classList.add('hidden');
+    hasDataState.classList.remove('hidden');
+  }
+}
+
 function setupTabNavigation() {
   const tabs = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
@@ -144,17 +188,26 @@ function setupTabNavigation() {
 
   function updateBottomNav() {
     const currentIndex = getCurrentTabIndex();
+    const bottomNav = document.getElementById('bottom-nav');
     const prevBtn = document.getElementById('nav-prev-btn');
     const nextBtn = document.getElementById('nav-next-btn');
     const prevLabel = document.getElementById('nav-prev-label');
     const nextLabel = document.getElementById('nav-next-label');
     const stepIndicator = document.getElementById('nav-step-indicator');
 
-    // Update step indicator
-    stepIndicator.textContent = `Step ${currentIndex + 1} of ${TAB_ORDER.length}`;
+    // Hide bottom nav on Home tab
+    if (currentIndex === 0) {
+      bottomNav.classList.add('hidden');
+      return;
+    }
+    bottomNav.classList.remove('hidden');
+
+    // Update step indicator (exclude Home tab from count)
+    stepIndicator.textContent = `Step ${currentIndex} of ${TAB_ORDER.length - 1}`;
 
     // Update previous button
-    if (currentIndex === 0) {
+    if (currentIndex === 1) {
+      // On Cash Flow (first real step), hide prev button
       prevBtn.disabled = true;
       prevBtn.classList.add('opacity-0', 'pointer-events-none');
       prevLabel.textContent = 'Previous';
@@ -245,6 +298,9 @@ function setupTabNavigation() {
       switchToTab(hash);
     }
   });
+
+  // Return switchToTab for external use
+  return { switchToTab };
 }
 
 function init() {
@@ -281,7 +337,10 @@ function init() {
   const investmentStepUp = getInvestmentStepUp(appData);
 
   // Set up tab navigation
-  setupTabNavigation();
+  const { switchToTab } = setupTabNavigation();
+
+  // Set up Home tab CTA buttons
+  setupHomeTab(switchToTab);
 
   // Set up currency selector
   const currencySelect = document.getElementById('currency-select');
@@ -336,6 +395,13 @@ function init() {
     saveData(appData);
     refreshAllModules();
     updateEpfNpsVisibility();
+    updateHomeTabCTA();
+
+    // Navigate to Cash Flow tab after wizard completes
+    if (switchToTabFn) {
+      switchToTabFn('cashflow');
+      history.replaceState(null, '', '#cashflow');
+    }
   });
 
   initCashflow(appData, currency, onDataChange);
@@ -346,11 +412,15 @@ function init() {
   // Show/hide EPF/NPS returns based on retirement goals
   updateEpfNpsVisibility();
 
+  // Update Home tab CTA based on data state
+  updateHomeTabCTA();
+
   // Listen for storage changes from other tabs
   window.addEventListener('storage', (e) => {
     if (e.key === 'financial-planner-data') {
       appData = loadData();
       refreshAllModules();
+      updateHomeTabCTA();
     }
   });
 

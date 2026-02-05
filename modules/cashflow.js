@@ -2,7 +2,6 @@
 import { addIncome, updateIncome, deleteIncome, addExpense, updateExpense, deleteExpense, generateId } from './storage.js';
 import { formatCurrency, getSymbol } from './currency.js';
 import { getRetirementAssets } from './assets.js';
-import { isDataEmpty, getQuickSetupButtonHTML, openWizard } from './wizard.js';
 
 const expenseCategories = [
   { name: 'Housing', hint: 'Rent, Society Maintenance' },
@@ -128,18 +127,7 @@ function renderIncomeList() {
   if (!list) return;
 
   if (appData.cashflow.income.length === 0) {
-    // Show Quick Setup button if all data is empty
-    if (isDataEmpty(appData)) {
-      list.innerHTML = `
-        <div class="text-center py-6">
-          <p class="text-gray-500 text-sm mb-4">No income sources added</p>
-          ${getQuickSetupButtonHTML()}
-        </div>
-      `;
-      setupQuickSetupButton();
-    } else {
-      list.innerHTML = '<p class="text-gray-500 text-sm italic">No income sources added</p>';
-    }
+    list.innerHTML = '<p class="text-gray-500 text-sm italic">No income sources added</p>';
     return;
   }
 
@@ -302,13 +290,6 @@ function saveNewExpense() {
   renderExpenseList();
   updateSummary();
   if (onDataChange) onDataChange();
-}
-
-function setupQuickSetupButton() {
-  const btn = document.getElementById('quick-setup-btn');
-  if (btn) {
-    btn.addEventListener('click', openWizard);
-  }
 }
 
 function renderExpenseList() {
