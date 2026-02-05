@@ -224,6 +224,14 @@ function showAddGoalModal(editGoal = null) {
     // Construct targetDate as first day of selected month/year
     const targetDate = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-01`;
 
+    // Validate target date is in the future
+    const now = new Date();
+    const targetDateObj = new Date(targetDate);
+    if (targetDateObj <= now) {
+      alert('Target date must be in the future');
+      return;
+    }
+
     const goalData = {
       name,
       goalType,
