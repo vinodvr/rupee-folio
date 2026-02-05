@@ -299,6 +299,7 @@ function renderGoalsList() {
       }
     });
   });
+
 }
 
 function renderGoalCard(goal) {
@@ -349,3 +350,4 @@ function renderGoalCard(goal) {
     </div>
   `;
 }
+

@@ -33,7 +33,10 @@ import {
   deleteAsset,
   addLiability,
   updateLiability,
-  deleteLiability
+  deleteLiability,
+  linkAssetToGoal,
+  unlinkAssetFromGoal,
+  updateLinkedAssetAmount
 } from '../modules/storage.js';
 
 // Helper to get fresh data
@@ -631,5 +634,155 @@ describe('Migration - EPF/NPS Corpus to Assets', () => {
 
     const data = loadData();
     expect(data.assets.items.length).toBe(0);
+  });
+});
+
+describe('Migration - linkedAssets', () => {
+  it('Adds linkedAssets array to goals that lack it', () => {
+    localStorage.setItem('financial-planner-data', JSON.stringify({
+      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      cashflow: { income: [], expenses: [] },
+      assets: { items: [] },
+      goals: [
+        { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000 },
+        { id: 'goal-2', name: 'Goal 2', targetAmount: 500000 }
+      ]
+    }));
+
+    const data = loadData();
+
+    expect(data.goals[0].linkedAssets).toBeDefined();
+    expect(Array.isArray(data.goals[0].linkedAssets)).toBe(true);
+    expect(data.goals[0].linkedAssets.length).toBe(0);
+    expect(data.goals[1].linkedAssets).toBeDefined();
+  });
+
+  it('Preserves existing linkedAssets', () => {
+    localStorage.setItem('financial-planner-data', JSON.stringify({
+      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      cashflow: { income: [], expenses: [] },
+      assets: { items: [{ id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 }] },
+      goals: [
+        { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000, linkedAssets: [{ assetId: 'asset-1', amount: 200000 }] }
+      ]
+    }));
+
+    const data = loadData();
+
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].assetId).toBe('asset-1');
+    expect(data.goals[0].linkedAssets[0].amount).toBe(200000);
+  });
+
+  it('Cleans up orphaned linkedAssets references', () => {
+    localStorage.setItem('financial-planner-data', JSON.stringify({
+      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      cashflow: { income: [], expenses: [] },
+      assets: { items: [{ id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 }] },
+      goals: [
+        { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000, linkedAssets: [
+          { assetId: 'asset-1', amount: 200000 },
+          { assetId: 'deleted-asset', amount: 100000 } // This asset doesn't exist
+        ]}
+      ]
+    }));
+
+    const data = loadData();
+
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].assetId).toBe('asset-1');
+  });
+});
+
+describe('Linked Assets CRUD', () => {
+  it('linkAssetToGoal adds new link', () => {
+    const data = getFreshData();
+    addGoal(data, { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000 });
+    addAsset(data, { id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 });
+
+    linkAssetToGoal(data, 'goal-1', 'asset-1', 200000);
+
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].assetId).toBe('asset-1');
+    expect(data.goals[0].linkedAssets[0].amount).toBe(200000);
+  });
+
+  it('linkAssetToGoal updates existing link amount', () => {
+    const data = getFreshData();
+    addGoal(data, { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000, linkedAssets: [{ assetId: 'asset-1', amount: 100000 }] });
+    addAsset(data, { id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 });
+
+    linkAssetToGoal(data, 'goal-1', 'asset-1', 300000);
+
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].amount).toBe(300000);
+  });
+
+  it('linkAssetToGoal initializes linkedAssets array if needed', () => {
+    const data = getFreshData();
+    addGoal(data, { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000 });
+    // Manually remove linkedAssets to simulate old data
+    delete data.goals[0].linkedAssets;
+    addAsset(data, { id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 });
+
+    linkAssetToGoal(data, 'goal-1', 'asset-1', 200000);
+
+    expect(data.goals[0].linkedAssets).toBeDefined();
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+  });
+
+  it('linkAssetToGoal does nothing for non-existent goal', () => {
+    const data = getFreshData();
+    addAsset(data, { id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 });
+
+    const result = linkAssetToGoal(data, 'non-existent', 'asset-1', 200000);
+
+    expect(result).toBe(data);
+    expect(data.goals.length).toBe(0);
+  });
+
+  it('unlinkAssetFromGoal removes link', () => {
+    const data = getFreshData();
+    addGoal(data, { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000, linkedAssets: [
+      { assetId: 'asset-1', amount: 200000 },
+      { assetId: 'asset-2', amount: 100000 }
+    ]});
+
+    unlinkAssetFromGoal(data, 'goal-1', 'asset-1');
+
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].assetId).toBe('asset-2');
+  });
+
+  it('unlinkAssetFromGoal does nothing for non-existent goal', () => {
+    const data = getFreshData();
+    const result = unlinkAssetFromGoal(data, 'non-existent', 'asset-1');
+    expect(result).toBe(data);
+  });
+
+  it('updateLinkedAssetAmount updates amount', () => {
+    const data = getFreshData();
+    addGoal(data, { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000, linkedAssets: [{ assetId: 'asset-1', amount: 200000 }] });
+
+    updateLinkedAssetAmount(data, 'goal-1', 'asset-1', 350000);
+
+    expect(data.goals[0].linkedAssets[0].amount).toBe(350000);
+  });
+
+  it('deleteAsset cleans up linkedAssets references', () => {
+    const data = getFreshData();
+    addAsset(data, { id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 });
+    addAsset(data, { id: 'asset-2', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 300000 });
+    addGoal(data, { id: 'goal-1', name: 'Goal 1', targetAmount: 1000000, linkedAssets: [
+      { assetId: 'asset-1', amount: 200000 },
+      { assetId: 'asset-2', amount: 100000 }
+    ]});
+    addGoal(data, { id: 'goal-2', name: 'Goal 2', targetAmount: 500000, linkedAssets: [{ assetId: 'asset-1', amount: 150000 }] });
+
+    deleteAsset(data, 'asset-1');
+
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].assetId).toBe('asset-2');
+    expect(data.goals[1].linkedAssets.length).toBe(0);
   });
 });

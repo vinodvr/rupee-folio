@@ -44,6 +44,27 @@ const assetCategories = assetCategoryGroups.flatMap(g => g.categories);
 // Retirement-related categories
 const retirementCategories = ['EPF Corpus', 'PPF Corpus', 'NPS Corpus'];
 
+// Asset categories that can be linked to goals by timeline
+// Short-term only (< 5 years): low volatility, fixed-tenure assets
+const SHORT_TERM_ONLY = ['FDs & RDs', 'Savings Bank'];
+
+// Long-term only (5+ years): volatile assets that need time to smooth out
+const LONG_TERM_ONLY = ['Equity Mutual Funds', 'Stocks', 'Gold ETFs/SGBs'];
+
+// Both short and long term: liquid and versatile
+const BOTH_TERMS = ['Debt/Arbitrage Mutual Funds'];
+
+// NOT linkable: retirement instruments, illiquid assets, insurance
+const NOT_LINKABLE = [
+  'EPF Corpus', 'PPF Corpus', 'NPS Corpus',  // Retirement
+  'House', 'Land',                            // Real Estate (illiquid)
+  'Physical Gold',                            // Illiquid
+  'LIC/Insurance Policy',                     // Insurance
+  'ESOPs', 'Gratuity',                        // Employment benefits
+  'ULIPs', 'Bonds', 'Crypto',                 // Complex/volatile
+  'Other'                                     // Unknown
+];
+
 // Helper to render category dropdown with optgroups
 function renderAssetCategoryOptions(selectedCategory = '') {
   return assetCategoryGroups.map(group => `
@@ -447,3 +468,169 @@ export function getTotalLiabilities() {
 export function getNetWorth() {
   return getTotalAssets() - getTotalLiabilities();
 }
+
+/**
+ * Get assets that can be linked to goals based on goal timeline category
+ * @param {object} data - App data containing assets
+ * @param {string} goalCategory - 'short' for < 5 years, 'long' for 5+ years
+ * @returns {Array} Filtered array of linkable assets
+ */
+export function getLinkableAssets(data, goalCategory) {
+  if (!data || !data.assets || !data.assets.items) {
+    return [];
+  }
+
+  const allowedCategories = goalCategory === 'short'
+    ? [...SHORT_TERM_ONLY, ...BOTH_TERMS]
+    : [...LONG_TERM_ONLY, ...BOTH_TERMS];
+
+  return data.assets.items.filter(asset =>
+    allowedCategories.includes(asset.category)
+  );
+}
+
+/**
+ * Get allocation status for all linkable assets
+ * Shows how much of each asset is allocated across all goals
+ * @param {object} data - App data containing assets and goals
+ * @returns {object} Map of assetId to { total, allocated, available }
+ */
+export function getAssetAllocations(data) {
+  if (!data || !data.assets || !data.assets.items) {
+    return {};
+  }
+
+  const allocations = {};
+
+  // Initialize with total values
+  data.assets.items.forEach(asset => {
+    // Only track linkable assets
+    if (!NOT_LINKABLE.includes(asset.category)) {
+      allocations[asset.id] = {
+        total: asset.value || 0,
+        allocated: 0,
+        available: asset.value || 0
+      };
+    }
+  });
+
+  // Sum up allocations from all goals
+  if (data.goals) {
+    data.goals.forEach(goal => {
+      if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+        goal.linkedAssets.forEach(linked => {
+          if (allocations[linked.assetId]) {
+            allocations[linked.assetId].allocated += linked.amount || 0;
+            allocations[linked.assetId].available = Math.max(0,
+              allocations[linked.assetId].total - allocations[linked.assetId].allocated
+            );
+          }
+        });
+      }
+    });
+  }
+
+  return allocations;
+}
+
+/**
+ * Get total linked amount for a specific goal
+ * @param {object} goal - Goal with linkedAssets array
+ * @returns {number} Total amount linked to this goal
+ */
+export function getGoalLinkedTotal(goal) {
+  if (!goal || !goal.linkedAssets || goal.linkedAssets.length === 0) {
+    return 0;
+  }
+  return goal.linkedAssets.reduce((sum, la) => sum + (la.amount || 0), 0);
+}
+
+/**
+ * Validate if a proposed link amount is valid (doesn't exceed available)
+ * @param {object} data - App data containing assets and goals
+ * @param {string} assetId - Asset to link
+ * @param {number} proposedAmount - Amount to link
+ * @param {string} goalId - Goal being linked to (excluded from current allocations)
+ * @returns {object} { valid: boolean, available: number, error?: string }
+ */
+export function validateLinkAmount(data, assetId, proposedAmount, goalId) {
+  if (!data || !data.assets || !data.assets.items) {
+    return { valid: false, available: 0, error: 'Invalid data' };
+  }
+
+  const asset = data.assets.items.find(a => a.id === assetId);
+  if (!asset) {
+    return { valid: false, available: 0, error: 'Asset not found' };
+  }
+
+  if (proposedAmount <= 0) {
+    return { valid: false, available: asset.value, error: 'Amount must be positive' };
+  }
+
+  // Calculate how much is allocated to OTHER goals (not the current one)
+  let allocatedToOthers = 0;
+  if (data.goals) {
+    data.goals.forEach(goal => {
+      if (goal.id === goalId) return; // Skip the goal we're linking to
+      if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+        const link = goal.linkedAssets.find(la => la.assetId === assetId);
+        if (link) {
+          allocatedToOthers += link.amount || 0;
+        }
+      }
+    });
+  }
+
+  const available = Math.max(0, asset.value - allocatedToOthers);
+
+  if (proposedAmount > available) {
+    return {
+      valid: false,
+      available,
+      error: `Amount exceeds available (${available}). Asset value: ${asset.value}, allocated to other goals: ${allocatedToOthers}`
+    };
+  }
+
+  return { valid: true, available };
+}
+
+/**
+ * Check if total allocations for an asset exceed its value
+ * @param {object} data - App data
+ * @param {string} assetId - Asset to check
+ * @returns {object} { overAllocated: boolean, total: number, allocated: number, excess: number }
+ */
+export function checkAssetOverAllocation(data, assetId) {
+  if (!data || !data.assets || !data.assets.items) {
+    return { overAllocated: false, total: 0, allocated: 0, excess: 0 };
+  }
+
+  const asset = data.assets.items.find(a => a.id === assetId);
+  if (!asset) {
+    return { overAllocated: false, total: 0, allocated: 0, excess: 0 };
+  }
+
+  let totalAllocated = 0;
+  if (data.goals) {
+    data.goals.forEach(goal => {
+      if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+        const link = goal.linkedAssets.find(la => la.assetId === assetId);
+        if (link) {
+          totalAllocated += link.amount || 0;
+        }
+      }
+    });
+  }
+
+  const excess = Math.max(0, totalAllocated - asset.value);
+
+  return {
+    overAllocated: totalAllocated > asset.value,
+    total: asset.value,
+    allocated: totalAllocated,
+    excess
+  };
+}
+
+// Export constants for use in other modules
+export { SHORT_TERM_ONLY, LONG_TERM_ONLY, BOTH_TERMS, NOT_LINKABLE };

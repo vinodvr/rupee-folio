@@ -100,6 +100,26 @@ export function loadData() {
         });
       });
 
+      // Migration: Add linkedAssets array to goals that don't have it
+      result.goals.forEach(goal => {
+        if (!goal.linkedAssets) {
+          goal.linkedAssets = [];
+          migrated = true;
+        }
+      });
+
+      // Migration: Clean up orphaned linkedAssets references (assets that no longer exist)
+      const assetIds = new Set(result.assets.items.map(a => a.id));
+      result.goals.forEach(goal => {
+        if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+          const originalLength = goal.linkedAssets.length;
+          goal.linkedAssets = goal.linkedAssets.filter(la => assetIds.has(la.assetId));
+          if (goal.linkedAssets.length !== originalLength) {
+            migrated = true;
+          }
+        }
+      });
+
       // Save if migration occurred
       if (migrated) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
@@ -318,6 +338,12 @@ export function updateAsset(data, id, updates) {
 
 export function deleteAsset(data, id) {
   data.assets.items = data.assets.items.filter(a => a.id !== id);
+  // Clean up any linked asset references in goals
+  data.goals.forEach(goal => {
+    if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+      goal.linkedAssets = goal.linkedAssets.filter(la => la.assetId !== id);
+    }
+  });
   saveData(data);
   return data;
 }
@@ -342,5 +368,66 @@ export function updateLiability(data, id, updates) {
 export function deleteLiability(data, id) {
   data.liabilities.items = data.liabilities.items.filter(l => l.id !== id);
   saveData(data);
+  return data;
+}
+
+// Linked Assets helpers
+export function linkAssetToGoal(data, goalId, assetId, amount) {
+  const goal = data.goals.find(g => g.id === goalId);
+  if (!goal) return data;
+
+  // Initialize linkedAssets if needed
+  if (!goal.linkedAssets) {
+    goal.linkedAssets = [];
+  }
+
+  // Check if already linked, update amount if so
+  const existing = goal.linkedAssets.find(la => la.assetId === assetId);
+  if (existing) {
+    existing.amount = amount;
+  } else {
+    goal.linkedAssets.push({ assetId, amount });
+  }
+
+  saveData(data);
+  return data;
+}
+
+export function unlinkAssetFromGoal(data, goalId, assetId) {
+  const goal = data.goals.find(g => g.id === goalId);
+  if (!goal || !goal.linkedAssets) return data;
+
+  goal.linkedAssets = goal.linkedAssets.filter(la => la.assetId !== assetId);
+  saveData(data);
+  return data;
+}
+
+export function updateLinkedAssetAmount(data, goalId, assetId, newAmount) {
+  const goal = data.goals.find(g => g.id === goalId);
+  if (!goal || !goal.linkedAssets) return data;
+
+  const linked = goal.linkedAssets.find(la => la.assetId === assetId);
+  if (linked) {
+    linked.amount = newAmount;
+    saveData(data);
+  }
+  return data;
+}
+
+// Clean up linked asset references when an asset is deleted
+export function cleanupLinkedAssetsOnAssetDelete(data, assetId) {
+  let modified = false;
+  data.goals.forEach(goal => {
+    if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+      const originalLength = goal.linkedAssets.length;
+      goal.linkedAssets = goal.linkedAssets.filter(la => la.assetId !== assetId);
+      if (goal.linkedAssets.length !== originalLength) {
+        modified = true;
+      }
+    }
+  });
+  if (modified) {
+    saveData(data);
+  }
   return data;
 }

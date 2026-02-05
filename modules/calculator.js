@@ -188,8 +188,16 @@ export function calculateStepUpSIPWithTapering(futureValue, totalMonths, annualS
 /**
  * Calculate unified goal projections with equity tapering for long-term goals
  * Optionally supports annual step-up for SIP calculations
+ * Optionally accounts for linked assets that reduce required SIP
+ * @param {object} goal - Goal object with targetAmount, targetDate, inflationRate, linkedAssets
+ * @param {number} equityReturn - Expected equity return
+ * @param {number} debtReturn - Expected debt return
+ * @param {number} arbitrageReturn - Expected arbitrage return
+ * @param {number} equityAllocation - Equity allocation percentage
+ * @param {number} annualStepUp - Annual step-up percentage
+ * @param {object} assetsData - Assets data for linked asset calculations (optional)
  */
-export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, annualStepUp = 0) {
+export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, annualStepUp = 0, assetsData = null) {
   const years = getYearsRemaining(goal.targetDate);
   const months = getMonthsRemaining(goal.targetDate);
   const category = getUnifiedCategory(goal.targetDate);
@@ -204,18 +212,30 @@ export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, 
   // Blended return based on category
   const blendedReturn = getUnifiedBlendedReturn(category, equityReturn, debtReturn, arbitrageReturn, equityAllocation);
 
-  // Calculate required SIP with tapering for long-term goals
+  // Calculate future value of linked assets (if any)
+  const linkedAssets = goal.linkedAssets || [];
+  const linkedAssetsFV = assetsData
+    ? calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, equityReturn, debtReturn)
+    : 0;
+
+  // Gap amount = what SIP needs to cover after linked assets
+  const gapAmount = Math.max(0, inflationAdjustedTarget - linkedAssetsFV);
+
+  // Calculate required SIP for gap amount with tapering for long-term goals
   let monthlySIP;
-  if (category === 'short') {
+  if (gapAmount <= 0) {
+    // Linked assets cover entire goal
+    monthlySIP = 0;
+  } else if (category === 'short') {
     // Short-term: use arbitrage, no tapering needed
     monthlySIP = annualStepUp > 0
-      ? calculateStepUpSIP(inflationAdjustedTarget, blendedReturn, months, annualStepUp)
-      : calculateRegularSIP(inflationAdjustedTarget, blendedReturn, months);
+      ? calculateStepUpSIP(gapAmount, blendedReturn, months, annualStepUp)
+      : calculateRegularSIP(gapAmount, blendedReturn, months);
   } else {
     // Long-term: use tapering with optional step-up
     monthlySIP = annualStepUp > 0
-      ? calculateStepUpSIPWithTapering(inflationAdjustedTarget, months, annualStepUp, equityAllocation, equityReturn, debtReturn)
-      : calculateRegularSIPWithTapering(inflationAdjustedTarget, months, equityAllocation, equityReturn, debtReturn);
+      ? calculateStepUpSIPWithTapering(gapAmount, months, annualStepUp, equityAllocation, equityReturn, debtReturn)
+      : calculateRegularSIPWithTapering(gapAmount, months, equityAllocation, equityReturn, debtReturn);
   }
 
   return {
@@ -224,6 +244,9 @@ export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, 
     category,
     inflationAdjustedTarget,
     blendedReturn,
+    linkedAssetsFV,         // Future value of linked assets
+    linkedAssetsCount: linkedAssets.length,
+    gapAmount,              // What SIP needs to cover
     monthlySIP,
     annualStepUp,
     tapering: {
@@ -471,6 +494,67 @@ export const EPF_RETURN = 8;
 export const NPS_RETURN = 9;
 
 /**
+ * Get expected return rate for an asset category
+ * @param {string} category - Asset category name
+ * @param {number} equityReturn - Expected equity return from settings
+ * @param {number} debtReturn - Expected debt return from settings
+ * @returns {number} Expected annual return rate percentage
+ */
+export function getReturnForCategory(category, equityReturn, debtReturn) {
+  switch (category) {
+    // Equity-like returns
+    case 'Equity Mutual Funds':
+    case 'Stocks':
+    case 'Gold ETFs/SGBs':
+      return equityReturn;
+
+    // Debt-like returns
+    case 'Debt/Arbitrage Mutual Funds':
+    case 'FDs & RDs':
+      return debtReturn;
+
+    // No growth assumed (very conservative)
+    case 'Savings Bank':
+      return 0;
+
+    // Default to debt return for unknown categories
+    default:
+      return debtReturn;
+  }
+}
+
+/**
+ * Calculate future value of linked assets at goal target date
+ * Each asset compounds at its category-specific return rate
+ * @param {Array} linkedAssets - Array of { assetId, amount }
+ * @param {object} assetsData - Assets data containing items array
+ * @param {string} targetDate - Goal target date
+ * @param {number} equityReturn - Expected equity return
+ * @param {number} debtReturn - Expected debt return
+ * @returns {number} Total future value of all linked assets
+ */
+export function calculateLinkedAssetsFV(linkedAssets, assetsData, targetDate, equityReturn, debtReturn) {
+  if (!linkedAssets || linkedAssets.length === 0 || !assetsData || !assetsData.items) {
+    return 0;
+  }
+
+  const years = getYearsRemaining(targetDate);
+  if (years <= 0) {
+    // Goal is in the past or now, just return current sum
+    return linkedAssets.reduce((total, { amount }) => total + (amount || 0), 0);
+  }
+
+  return linkedAssets.reduce((total, { assetId, amount }) => {
+    const asset = assetsData.items.find(a => a.id === assetId);
+    if (!asset || !amount) return total;
+
+    const returnRate = getReturnForCategory(asset.category, equityReturn, debtReturn);
+    const fv = calculateLumpsumFV(amount, returnRate, years);
+    return total + fv;
+  }, 0);
+}
+
+/**
  * Calculate future value of EPF/NPS corpus at target date
  */
 export function calculateEpfNpsCorpusFV(epfCorpus, npsCorpus, targetDate, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN) {
@@ -519,11 +603,14 @@ export function calculateEpfNpsSipFVWithStepUp(monthlyEpf, monthlyNps, targetDat
 /**
  * Calculate retirement goal projections with EPF/NPS contributions (unified portfolio)
  * Returns projections with EPF/NPS breakdown for retirement goals
+ * Also accounts for linked assets if assetsData is provided
  * @param epfNpsStepUp - Annual step-up percentage for EPF/NPS contributions (from settings)
  * @param investmentStepUp - Annual step-up percentage for other investments (from settings)
+ * @param assetsData - Assets data for linked asset calculations (optional)
  */
-export function calculateRetirementProjectionsWithEpfNps(goal, retirementContributions, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN, epfNpsStepUp = 0, investmentStepUp = 0) {
-  const baseProjections = calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation, investmentStepUp);
+export function calculateRetirementProjectionsWithEpfNps(goal, retirementContributions, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN, epfNpsStepUp = 0, investmentStepUp = 0, assetsData = null) {
+  // Get base projections including linked assets FV
+  const baseProjections = calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation, investmentStepUp, assetsData);
 
   // Skip EPF/NPS if not a retirement goal, no contributions data, or flag is unchecked
   if (goal.goalType !== 'retirement' || !retirementContributions || !goal.includeEpfNps) {
@@ -554,8 +641,9 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
   // Total contribution from EPF/NPS at goal date
   const totalEpfNpsFV = epfNpsCorpusFV + epfNpsSipFV;
 
-  // Recalculate gap amount after accounting for EPF/NPS
-  const adjustedGapAmount = Math.max(0, baseProjections.inflationAdjustedTarget - totalEpfNpsFV);
+  // Recalculate gap amount after accounting for EPF/NPS AND linked assets
+  // baseProjections.linkedAssetsFV already includes linked assets
+  const adjustedGapAmount = Math.max(0, baseProjections.inflationAdjustedTarget - totalEpfNpsFV - baseProjections.linkedAssetsFV);
 
   // Recalculate required SIP for remaining gap (with investment step-up)
   const adjustedMonthlySIP = adjustedGapAmount > 0

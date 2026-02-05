@@ -22,7 +22,9 @@ import {
   calculateSipFVWithTapering,
   calculateRegularSIPWithTapering,
   calculateSipFVWithTaperingAndStepUp,
-  calculateStepUpSIPWithTapering
+  calculateStepUpSIPWithTapering,
+  getReturnForCategory,
+  calculateLinkedAssetsFV
 } from '../modules/calculator.js';
 
 // Helper to create a goal object
@@ -1120,6 +1122,561 @@ describe('Equity Tapering (Glide Path)', () => {
 
       const calculatedFV = calculateSipFVWithTapering(sipAmount, months, 60, 10, 5);
       expect(calculatedFV).toBeCloseTo(expectedFV, 2);
+    });
+  });
+});
+
+describe('Linked Assets', () => {
+  describe('getReturnForCategory', () => {
+    it('Returns equity return for equity-like assets', () => {
+      expect(getReturnForCategory('Equity Mutual Funds', 10, 5)).toBe(10);
+      expect(getReturnForCategory('Stocks', 12, 6)).toBe(12);
+      expect(getReturnForCategory('Gold ETFs/SGBs', 11, 5)).toBe(11);
+    });
+
+    it('Returns debt return for debt-like assets', () => {
+      expect(getReturnForCategory('Debt/Arbitrage Mutual Funds', 10, 5)).toBe(5);
+      expect(getReturnForCategory('FDs & RDs', 10, 6)).toBe(6);
+    });
+
+    it('Returns 0 for savings bank', () => {
+      expect(getReturnForCategory('Savings Bank', 10, 5)).toBe(0);
+    });
+
+    it('Returns debt return for unknown categories', () => {
+      expect(getReturnForCategory('Unknown', 10, 5)).toBe(5);
+      expect(getReturnForCategory('Other', 10, 6)).toBe(6);
+    });
+
+    it('Returns debt return for null/undefined category', () => {
+      expect(getReturnForCategory(null, 10, 5)).toBe(5);
+      expect(getReturnForCategory(undefined, 10, 5)).toBe(5);
+    });
+
+    it('Returns debt return for empty string category', () => {
+      expect(getReturnForCategory('', 10, 5)).toBe(5);
+    });
+
+    it('Is case-sensitive', () => {
+      // Lowercase should not match
+      expect(getReturnForCategory('equity mutual funds', 10, 5)).toBe(5); // Falls to default
+      expect(getReturnForCategory('EQUITY MUTUAL FUNDS', 10, 5)).toBe(5); // Falls to default
+    });
+  });
+
+  describe('calculateLinkedAssetsFV', () => {
+    it('Returns 0 for empty/null inputs', () => {
+      expect(calculateLinkedAssetsFV(null, {}, '2035-01-01', 10, 5)).toBe(0);
+      expect(calculateLinkedAssetsFV([], {}, '2035-01-01', 10, 5)).toBe(0);
+      expect(calculateLinkedAssetsFV([{ assetId: '1', amount: 100000 }], null, '2035-01-01', 10, 5)).toBe(0);
+    });
+
+    it('Returns current sum for past target date', () => {
+      const linkedAssets = [
+        { assetId: '1', amount: 100000 },
+        { assetId: '2', amount: 50000 }
+      ];
+      const assetsData = {
+        items: [
+          { id: '1', category: 'Equity Mutual Funds', value: 500000 },
+          { id: '2', category: 'Debt/Arbitrage Mutual Funds', value: 200000 }
+        ]
+      };
+
+      const pastDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, pastDate, 10, 5);
+
+      expect(result).toBe(150000);
+    });
+
+    it('Compounds equity assets at equity return', () => {
+      const linkedAssets = [{ assetId: '1', amount: 100000 }];
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      // Should compound at ~10% for 10 years
+      expect(result).toBeGreaterThan(250000);
+      expect(result).toBeLessThan(280000);
+    });
+
+    it('Compounds debt assets at debt return', () => {
+      const linkedAssets = [{ assetId: '1', amount: 100000 }];
+      const assetsData = {
+        items: [{ id: '1', category: 'Debt/Arbitrage Mutual Funds', value: 300000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      // Should compound at ~5% for 10 years
+      expect(result).toBeGreaterThan(160000);
+      expect(result).toBeLessThan(170000);
+    });
+
+    it('Handles multiple linked assets with different categories', () => {
+      const linkedAssets = [
+        { assetId: '1', amount: 100000 },
+        { assetId: '2', amount: 100000 }
+      ];
+      const assetsData = {
+        items: [
+          { id: '1', category: 'Equity Mutual Funds', value: 500000 },
+          { id: '2', category: 'FDs & RDs', value: 200000 }
+        ]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      // Equity ~260k + Debt ~165k = ~425k
+      expect(result).toBeGreaterThan(400000);
+      expect(result).toBeLessThan(450000);
+    });
+
+    it('Skips missing assets', () => {
+      const linkedAssets = [
+        { assetId: '1', amount: 100000 },
+        { assetId: 'missing', amount: 50000 }
+      ];
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      // Only the equity asset should be counted
+      expect(result).toBeGreaterThan(250000);
+      expect(result).toBeLessThan(280000);
+    });
+  });
+
+  describe('Goal Projections with Linked Assets', () => {
+    it('Linked assets reduce required SIP', () => {
+      const goal = createGoal({
+        yearsFromNow: 10,
+        targetAmount: 1000000,
+        inflationRate: 0
+      });
+
+      // Add linked assets
+      goal.linkedAssets = [{ assetId: '1', amount: 300000 }];
+
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const withLinked = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0, assetsData);
+
+      // Goal without linked assets
+      const goalNoLinked = { ...goal, linkedAssets: [] };
+      const withoutLinked = calculateUnifiedGoalProjections(goalNoLinked, 10, 5, 6, 60, 0, null);
+
+      // Linked assets should reduce gap and SIP
+      expect(withLinked.linkedAssetsFV).toBeGreaterThan(0);
+      expect(withLinked.gapAmount).toBeLessThan(withoutLinked.inflationAdjustedTarget);
+      expect(withLinked.monthlySIP).toBeLessThan(withoutLinked.monthlySIP);
+    });
+
+    it('Returns zero SIP when linked assets cover entire goal', () => {
+      const goal = createGoal({
+        yearsFromNow: 10,
+        targetAmount: 100000, // Small target
+        inflationRate: 0
+      });
+
+      // Link more than needed
+      goal.linkedAssets = [{ assetId: '1', amount: 100000 }];
+
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const projections = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0, assetsData);
+
+      // ₹1L at 10% for 10 years = ~₹2.6L which exceeds ₹1L target
+      expect(projections.linkedAssetsFV).toBeGreaterThan(100000);
+      expect(projections.gapAmount).toBe(0);
+      expect(projections.monthlySIP).toBe(0);
+    });
+
+    it('Includes linked assets count in projections', () => {
+      const goal = createGoal({ yearsFromNow: 10 });
+      goal.linkedAssets = [
+        { assetId: '1', amount: 100000 },
+        { assetId: '2', amount: 50000 }
+      ];
+
+      const assetsData = {
+        items: [
+          { id: '1', category: 'Equity Mutual Funds', value: 500000 },
+          { id: '2', category: 'Debt/Arbitrage Mutual Funds', value: 200000 }
+        ]
+      };
+
+      const projections = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0, assetsData);
+
+      expect(projections.linkedAssetsCount).toBe(2);
+    });
+
+    it('Works without assetsData (backwards compatible)', () => {
+      const goal = createGoal({ yearsFromNow: 10 });
+      goal.linkedAssets = [{ assetId: '1', amount: 100000 }];
+
+      // No assetsData provided
+      const projections = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0);
+
+      expect(projections.linkedAssetsFV).toBe(0);
+      expect(projections.gapAmount).toBe(projections.inflationAdjustedTarget);
+    });
+
+    it('Goal with no linkedAssets has full SIP requirement', () => {
+      const goal = createGoal({
+        yearsFromNow: 10,
+        targetAmount: 1000000,
+        inflationRate: 0
+      });
+      // No linkedAssets at all
+      const projections = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0, null);
+
+      expect(projections.linkedAssetsFV).toBe(0);
+      expect(projections.linkedAssetsCount).toBe(0);
+      expect(projections.gapAmount).toBe(projections.inflationAdjustedTarget);
+      expect(projections.monthlySIP).toBeGreaterThan(0);
+    });
+
+    it('Goal with empty linkedAssets array has full SIP requirement', () => {
+      const goal = createGoal({
+        yearsFromNow: 10,
+        targetAmount: 1000000,
+        inflationRate: 0
+      });
+      goal.linkedAssets = [];
+
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const projections = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0, assetsData);
+
+      expect(projections.linkedAssetsFV).toBe(0);
+      expect(projections.linkedAssetsCount).toBe(0);
+      expect(projections.gapAmount).toBe(projections.inflationAdjustedTarget);
+    });
+
+    it('Compares SIP: goal with linked assets vs goal without linked assets', () => {
+      // Same goal parameters
+      const targetAmount = 1000000;
+      const yearsFromNow = 10;
+      const linkedAmount = 200000; // Link ₹2L of equity MF
+
+      // Goal WITHOUT linked assets
+      const goalWithout = createGoal({
+        yearsFromNow,
+        targetAmount,
+        inflationRate: 0
+      });
+      goalWithout.linkedAssets = [];
+
+      // Goal WITH linked assets
+      const goalWith = createGoal({
+        yearsFromNow,
+        targetAmount,
+        inflationRate: 0
+      });
+      goalWith.linkedAssets = [{ assetId: 'equity-1', amount: linkedAmount }];
+
+      const assetsData = {
+        items: [{ id: 'equity-1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const projWithout = calculateUnifiedGoalProjections(goalWithout, 10, 5, 6, 60, 0, assetsData);
+      const projWith = calculateUnifiedGoalProjections(goalWith, 10, 5, 6, 60, 0, assetsData);
+
+      // Without linked assets: full target needs to be covered by SIP
+      expect(projWithout.linkedAssetsFV).toBe(0);
+      expect(projWithout.gapAmount).toBe(targetAmount);
+      expect(projWithout.monthlySIP).toBeGreaterThan(0);
+
+      // With linked assets: reduced gap and lower SIP
+      expect(projWith.linkedAssetsFV).toBeGreaterThan(0);
+      expect(projWith.gapAmount).toBeLessThan(targetAmount);
+      expect(projWith.monthlySIP).toBeLessThan(projWithout.monthlySIP);
+
+      // Verify the reduction is significant (linked ₹2L at 10% for 10 years ≈ ₹5.2L)
+      // So gap should be reduced by roughly ₹5.2L
+      const expectedFV = linkedAmount * Math.pow(1 + 0.10 / 12, 120); // Approx compound
+      expect(projWith.linkedAssetsFV).toBeCloseTo(expectedFV, -4); // Within ₹10k
+      expect(projWith.gapAmount).toBeCloseTo(targetAmount - expectedFV, -4);
+
+      // SIP reduction should be proportional
+      const sipReductionPercent = (projWithout.monthlySIP - projWith.monthlySIP) / projWithout.monthlySIP * 100;
+      expect(sipReductionPercent).toBeGreaterThan(30); // At least 30% reduction
+    });
+
+    it('Multiple goals: one with linked assets, one without', () => {
+      const assetsData = {
+        items: [
+          { id: 'equity-1', category: 'Equity Mutual Funds', value: 500000 },
+          { id: 'debt-1', category: 'Debt/Arbitrage Mutual Funds', value: 300000 }
+        ]
+      };
+
+      // Goal 1: No linked assets
+      const goal1 = createGoal({
+        yearsFromNow: 10,
+        targetAmount: 1000000,
+        inflationRate: 0
+      });
+      goal1.linkedAssets = [];
+
+      // Goal 2: Has linked assets
+      const goal2 = createGoal({
+        yearsFromNow: 10,
+        targetAmount: 1000000,
+        inflationRate: 0
+      });
+      goal2.linkedAssets = [
+        { assetId: 'equity-1', amount: 150000 },
+        { assetId: 'debt-1', amount: 100000 }
+      ];
+
+      const proj1 = calculateUnifiedGoalProjections(goal1, 10, 5, 6, 60, 0, assetsData);
+      const proj2 = calculateUnifiedGoalProjections(goal2, 10, 5, 6, 60, 0, assetsData);
+
+      // Goal 1: Full SIP needed
+      expect(proj1.linkedAssetsCount).toBe(0);
+      expect(proj1.linkedAssetsFV).toBe(0);
+
+      // Goal 2: Reduced SIP due to linked assets
+      expect(proj2.linkedAssetsCount).toBe(2);
+      expect(proj2.linkedAssetsFV).toBeGreaterThan(0);
+      expect(proj2.monthlySIP).toBeLessThan(proj1.monthlySIP);
+    });
+  });
+
+  describe('Retirement Goals with EPF/NPS AND Linked Assets', () => {
+    it('Retirement goal with both EPF/NPS and linked assets has reduced SIP', () => {
+      const goal = createGoal({
+        yearsFromNow: 20,
+        targetAmount: 50000000, // 5 Cr
+        inflationRate: 6,
+        goalType: 'retirement',
+        includeEpfNps: true
+      });
+      goal.linkedAssets = [{ assetId: 'equity-1', amount: 500000 }];
+
+      const assetsData = {
+        items: [{ id: 'equity-1', category: 'Equity Mutual Funds', value: 1000000 }]
+      };
+
+      const contributions = {
+        monthlyEpf: 20000,
+        monthlyNps: 10000,
+        epfCorpus: 1000000,
+        npsCorpus: 500000,
+        totalMonthly: 30000,
+        totalCorpus: 1500000
+      };
+
+      // With EPF/NPS only
+      const goalNoLinked = { ...goal, linkedAssets: [] };
+      const projEpfOnly = calculateRetirementProjectionsWithEpfNps(
+        goalNoLinked, contributions, 10, 5, 6, 60, 8, 9, 5, 5, null
+      );
+
+      // With EPF/NPS AND linked assets
+      const projBoth = calculateRetirementProjectionsWithEpfNps(
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+      );
+
+      // Both should reduce SIP compared to base
+      expect(projEpfOnly.epfNps).not.toBeNull();
+      expect(projBoth.epfNps).not.toBeNull();
+
+      // Linked assets should further reduce SIP beyond EPF/NPS
+      expect(projBoth.linkedAssetsFV).toBeGreaterThan(0);
+      expect(projBoth.gapAmount).toBeLessThan(projEpfOnly.gapAmount);
+      expect(projBoth.monthlySIP).toBeLessThan(projEpfOnly.monthlySIP);
+    });
+
+    it('EPF/NPS + linked assets can fully cover retirement goal', () => {
+      const goal = createGoal({
+        yearsFromNow: 25,
+        targetAmount: 10000000, // 1 Cr - achievable target
+        inflationRate: 5,
+        goalType: 'retirement',
+        includeEpfNps: true
+      });
+      goal.linkedAssets = [
+        { assetId: 'equity-1', amount: 2000000 }, // 20L
+        { assetId: 'debt-1', amount: 500000 }     // 5L
+      ];
+
+      const assetsData = {
+        items: [
+          { id: 'equity-1', category: 'Equity Mutual Funds', value: 3000000 },
+          { id: 'debt-1', category: 'Debt/Arbitrage Mutual Funds', value: 1000000 }
+        ]
+      };
+
+      const contributions = {
+        monthlyEpf: 30000,
+        monthlyNps: 20000,
+        epfCorpus: 2000000,
+        npsCorpus: 1000000,
+        totalMonthly: 50000,
+        totalCorpus: 3000000
+      };
+
+      const proj = calculateRetirementProjectionsWithEpfNps(
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+      );
+
+      // With high contributions and linked assets, gap could be 0
+      expect(proj.epfNps.totalEpfNpsFV).toBeGreaterThan(0);
+      expect(proj.linkedAssetsFV).toBeGreaterThan(0);
+      // SIP should be very low or zero
+      expect(proj.monthlySIP).toBeLessThan(proj.inflationAdjustedTarget * 0.01);
+    });
+
+    it('Non-retirement goal ignores EPF/NPS but uses linked assets', () => {
+      const goal = createGoal({
+        yearsFromNow: 10,
+        targetAmount: 2000000,
+        inflationRate: 6,
+        goalType: 'one-time' // Not retirement
+      });
+      goal.linkedAssets = [{ assetId: 'equity-1', amount: 300000 }];
+
+      const assetsData = {
+        items: [{ id: 'equity-1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const contributions = {
+        monthlyEpf: 20000,
+        monthlyNps: 10000,
+        epfCorpus: 1000000,
+        npsCorpus: 500000,
+        totalMonthly: 30000,
+        totalCorpus: 1500000
+      };
+
+      const proj = calculateRetirementProjectionsWithEpfNps(
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+      );
+
+      // EPF/NPS should be ignored (not retirement)
+      expect(proj.epfNps).toBeNull();
+      // But linked assets should still be used
+      expect(proj.linkedAssetsFV).toBeGreaterThan(0);
+    });
+
+    it('Retirement goal with includeEpfNps=false uses only linked assets', () => {
+      const goal = createGoal({
+        yearsFromNow: 20,
+        targetAmount: 20000000,
+        inflationRate: 6,
+        goalType: 'retirement',
+        includeEpfNps: false // Explicitly disabled
+      });
+      goal.linkedAssets = [{ assetId: 'equity-1', amount: 500000 }];
+
+      const assetsData = {
+        items: [{ id: 'equity-1', category: 'Equity Mutual Funds', value: 1000000 }]
+      };
+
+      const contributions = {
+        monthlyEpf: 20000,
+        monthlyNps: 10000,
+        epfCorpus: 1000000,
+        npsCorpus: 500000,
+        totalMonthly: 30000,
+        totalCorpus: 1500000
+      };
+
+      const proj = calculateRetirementProjectionsWithEpfNps(
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+      );
+
+      // EPF/NPS should be ignored
+      expect(proj.epfNps).toBeNull();
+      // Linked assets should still work
+      expect(proj.linkedAssetsFV).toBeGreaterThan(0);
+    });
+  });
+
+  describe('calculateLinkedAssetsFV Edge Cases', () => {
+    it('Asset with zero amount returns 0 contribution', () => {
+      const linkedAssets = [{ assetId: '1', amount: 0 }];
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      expect(result).toBe(0);
+    });
+
+    it('Savings Bank uses 0% return', () => {
+      const linkedAssets = [{ assetId: '1', amount: 100000 }];
+      const assetsData = {
+        items: [{ id: '1', category: 'Savings Bank', value: 200000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      // 0% return means no growth - should be exactly 100000
+      expect(result).toBe(100000);
+    });
+
+    it('FDs use debt return rate', () => {
+      const linkedAssets = [{ assetId: '1', amount: 100000 }];
+      const assetsData = {
+        items: [{ id: '1', category: 'FDs & RDs', value: 200000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const resultDebt5 = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+      const resultDebt7 = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 7);
+
+      // Higher debt return should produce higher FV
+      expect(resultDebt7).toBeGreaterThan(resultDebt5);
+    });
+
+    it('Handles very distant future target date', () => {
+      const linkedAssets = [{ assetId: '1', amount: 100000 }];
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 50 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      // Should compound significantly - ~117x at 10% for 50 years
+      expect(result).toBeGreaterThan(10000000);
+      expect(Number.isFinite(result)).toBe(true);
+    });
+
+    it('Handles linked amount greater than asset value (theoretical)', () => {
+      // This shouldn't happen in practice but test defensive behavior
+      const linkedAssets = [{ assetId: '1', amount: 1000000 }]; // More than asset value
+      const assetsData = {
+        items: [{ id: '1', category: 'Equity Mutual Funds', value: 500000 }]
+      };
+
+      const goal = createGoal({ yearsFromNow: 10 });
+      const result = calculateLinkedAssetsFV(linkedAssets, assetsData, goal.targetDate, 10, 5);
+
+      // Should still calculate FV based on linked amount
+      expect(result).toBeGreaterThan(0);
+      expect(Number.isFinite(result)).toBe(true);
     });
   });
 });
