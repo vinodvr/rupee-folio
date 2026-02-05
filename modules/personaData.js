@@ -191,8 +191,8 @@ function calculateAssets(answers) {
   if (answers.epfCorpus > 0) {
     assets.push({
       id: generateId(),
-      name: 'EPF Corpus',
-      category: 'EPF',
+      name: 'EPF Balance',
+      category: 'EPF Corpus',
       value: answers.epfCorpus
     });
   }
@@ -201,8 +201,8 @@ function calculateAssets(answers) {
   if (answers.npsCorpus > 0) {
     assets.push({
       id: generateId(),
-      name: 'NPS Corpus',
-      category: 'NPS',
+      name: 'NPS Balance',
+      category: 'NPS Corpus',
       value: answers.npsCorpus
     });
   }
@@ -212,7 +212,7 @@ function calculateAssets(answers) {
     assets.push({
       id: generateId(),
       name: 'Mutual Funds & Stocks',
-      category: 'Mutual Funds',
+      category: 'Equity Mutual Funds',
       value: answers.mfStocks
     });
   }

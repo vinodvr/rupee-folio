@@ -2,17 +2,56 @@
 import { addAsset, updateAsset, deleteAsset, addLiability, updateLiability, deleteLiability, generateId } from './storage.js';
 import { formatCurrency, getSymbol } from './currency.js';
 
-const assetCategories = [
-  'Real Estate',
-  'Vehicles',
-  'Bank/FDs',
-  'Stocks',
-  'Mutual Funds',
-  'Gold',
-  'EPF',
-  'NPS',
-  'Other'
+// Grouped asset categories for organized dropdown
+const assetCategoryGroups = [
+  {
+    group: 'Retirement',
+    categories: ['EPF Corpus', 'PPF Corpus', 'NPS Corpus']
+  },
+  {
+    group: 'Mutual Funds & Securities',
+    categories: ['Equity Mutual Funds', 'Debt/Arbitrage Mutual Funds', 'Stocks', 'Bonds', 'ULIPs', 'Crypto']
+  },
+  {
+    group: 'Gold',
+    categories: ['Gold ETFs/SGBs', 'Physical Gold']
+  },
+  {
+    group: 'Real Estate',
+    categories: ['House', 'Land']
+  },
+  {
+    group: 'Savings Instruments',
+    categories: ['Savings Bank', 'FDs & RDs']
+  },
+  {
+    group: 'Insurance',
+    categories: ['LIC/Insurance Policy']
+  },
+  {
+    group: 'Employment Benefits',
+    categories: ['ESOPs', 'Gratuity']
+  },
+  {
+    group: 'Other',
+    categories: ['Other']
+  }
 ];
+
+// Flat list of all categories (for validation and ordering)
+const assetCategories = assetCategoryGroups.flatMap(g => g.categories);
+
+// Retirement-related categories
+const retirementCategories = ['EPF Corpus', 'PPF Corpus', 'NPS Corpus'];
+
+// Helper to render category dropdown with optgroups
+function renderAssetCategoryOptions(selectedCategory = '') {
+  return assetCategoryGroups.map(group => `
+    <optgroup label="${group.group}">
+      ${group.categories.map(cat => `<option value="${cat}" ${cat === selectedCategory ? 'selected' : ''}>${cat}</option>`).join('')}
+    </optgroup>
+  `).join('');
+}
 
 const liabilityCategories = [
   'Home Loan',
@@ -62,8 +101,9 @@ export function getRetirementAssets(data = null) {
     return { epfCorpus: 0, npsCorpus: 0, totalCorpus: 0 };
   }
 
-  const epfAssets = sourceData.assets.items.filter(a => a.category === 'EPF');
-  const npsAssets = sourceData.assets.items.filter(a => a.category === 'NPS');
+  // Support both old ('EPF', 'NPS') and new ('EPF Corpus', 'NPS Corpus') category names
+  const epfAssets = sourceData.assets.items.filter(a => a.category === 'EPF Corpus' || a.category === 'EPF');
+  const npsAssets = sourceData.assets.items.filter(a => a.category === 'NPS Corpus' || a.category === 'NPS');
 
   const epfCorpus = epfAssets.reduce((sum, a) => sum + (a.value || 0), 0);
   const npsCorpus = npsAssets.reduce((sum, a) => sum + (a.value || 0), 0);
@@ -81,7 +121,7 @@ function showAddAssetForm() {
   container.innerHTML = `
     <div class="bg-gray-50 p-3 rounded-lg mb-3">
       <select id="new-asset-category" class="w-full px-3 py-2 border rounded mb-2 text-sm">
-        ${assetCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+        ${renderAssetCategoryOptions()}
       </select>
       <input type="text" id="new-asset-name" placeholder="Description (e.g., Primary Residence)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
@@ -137,14 +177,19 @@ function renderAssetsList() {
     grouped[asset.category].push(asset);
   });
 
-  // Define category order (EPF/NPS first for visibility)
-  const categoryOrder = ['EPF', 'NPS', ...assetCategories.filter(c => c !== 'EPF' && c !== 'NPS')];
+  // Get all unique categories from data, ordered by our defined order
+  // Also support legacy category names
+  const allCategories = [...new Set(appData.assets.items.map(a => a.category))];
+  const categoryOrder = [...assetCategories, 'EPF', 'NPS', 'Real Estate', 'Vehicles', 'Bank/FDs', 'Stocks', 'Mutual Funds', 'Gold'];
+  const orderedCategories = categoryOrder.filter(c => allCategories.includes(c));
+  // Add any categories not in our predefined order
+  const remainingCategories = allCategories.filter(c => !orderedCategories.includes(c));
 
-  list.innerHTML = categoryOrder
+  list.innerHTML = [...orderedCategories, ...remainingCategories]
     .filter(category => grouped[category])
     .map(category => {
       const assets = grouped[category];
-      const isRetirement = category === 'EPF' || category === 'NPS';
+      const isRetirement = retirementCategories.includes(category) || category === 'EPF' || category === 'NPS';
       const badgeClass = isRetirement ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600';
 
       return `
@@ -192,7 +237,7 @@ function editAsset(id) {
   row.innerHTML = `
     <div class="flex flex-wrap gap-2 mb-2">
       <select class="edit-asset-category px-2 py-1 border rounded text-sm">
-        ${assetCategories.map(cat => `<option value="${cat}" ${cat === asset.category ? 'selected' : ''}>${cat}</option>`).join('')}
+        ${renderAssetCategoryOptions(asset.category)}
       </select>
       <input type="text" value="${asset.name}" class="edit-asset-name flex-1 min-w-[120px] px-2 py-1 border rounded text-sm">
       <div class="relative">

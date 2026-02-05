@@ -203,7 +203,7 @@ describe('Persona Data Generation', () => {
         mfStocks: 0
       });
 
-      const epf = data.assets.items.find(a => a.category === 'EPF');
+      const epf = data.assets.items.find(a => a.category === 'EPF Corpus');
       expect(epf).toBeDefined();
       expect(epf.value).toBe(500000);
     });
@@ -221,7 +221,7 @@ describe('Persona Data Generation', () => {
         mfStocks: 0
       });
 
-      const nps = data.assets.items.find(a => a.category === 'NPS');
+      const nps = data.assets.items.find(a => a.category === 'NPS Corpus');
       expect(nps).toBeDefined();
       expect(nps.value).toBe(300000);
     });
@@ -239,7 +239,7 @@ describe('Persona Data Generation', () => {
         mfStocks: 1000000
       });
 
-      const mf = data.assets.items.find(a => a.category === 'Mutual Funds');
+      const mf = data.assets.items.find(a => a.category === 'Equity Mutual Funds');
       expect(mf).toBeDefined();
       expect(mf.value).toBe(1000000);
     });

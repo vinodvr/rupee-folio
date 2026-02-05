@@ -37,12 +37,12 @@ function getSampleData() {
     },
     assets: {
       items: [
-        { id: 'asset-epf-1', name: 'EPF Corpus - Self', category: 'EPF', value: 1500000 },
-        { id: 'asset-epf-2', name: 'EPF Corpus - Spouse', category: 'EPF', value: 800000 },
-        { id: 'asset-nps-1', name: 'NPS - Corpus', category: 'NPS', value: 500000 },
-        { id: 'asset-gold-1', name: 'Physical Gold', category: 'Gold', value: 500000 },
-        { id: 'asset-mf-1', name: 'Equity MF', category: 'Mutual Funds', value: 1500000 },
-        { id: 'asset-mf-2', name: 'Debt MFs', category: 'Mutual Funds', value: 500000 }
+        { id: 'asset-epf-1', name: 'EPF - Self', category: 'EPF Corpus', value: 1500000 },
+        { id: 'asset-epf-2', name: 'EPF - Spouse', category: 'EPF Corpus', value: 800000 },
+        { id: 'asset-nps-1', name: 'NPS - Self', category: 'NPS Corpus', value: 500000 },
+        { id: 'asset-gold-1', name: 'Jewellery', category: 'Physical Gold', value: 500000 },
+        { id: 'asset-mf-1', name: 'Equity MFs', category: 'Equity Mutual Funds', value: 1500000 },
+        { id: 'asset-mf-2', name: 'Debt MFs', category: 'Debt/Arbitrage Mutual Funds', value: 500000 }
       ]
     },
     liabilities: {
