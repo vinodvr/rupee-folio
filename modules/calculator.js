@@ -40,7 +40,153 @@ export function getUnifiedBlendedReturn(category, equityReturn, debtReturn, arbi
 }
 
 /**
- * Calculate unified goal projections (simplified - no glide path)
+ * Get tapered equity allocation based on years remaining
+ * Implements glide path: full equity -> reduced -> 0% near goal
+ * @param yearsRemaining - Years until goal deadline
+ * @param initialEquity - Initial equity allocation percentage
+ * @returns Equity allocation percentage for this phase
+ */
+export function getTaperedEquityAllocation(yearsRemaining, initialEquity) {
+  if (yearsRemaining >= 8) return initialEquity;
+  if (yearsRemaining >= 5) return Math.floor(Math.min(initialEquity / 2, 40));
+  if (yearsRemaining >= 3) return Math.floor(Math.min(initialEquity / 4, 20));
+  return 0;
+}
+
+/**
+ * Calculate future value of SIP with equity tapering (glide path)
+ * Simulates month-by-month compounding with varying equity allocation
+ * @param monthlyPayment - Monthly SIP amount
+ * @param totalMonths - Total investment period in months
+ * @param initialEquity - Initial equity allocation percentage
+ * @param equityReturn - Annual equity return percentage
+ * @param debtReturn - Annual debt return percentage
+ * @returns Future value of all SIP payments
+ */
+export function calculateSipFVWithTapering(monthlyPayment, totalMonths, initialEquity, equityReturn, debtReturn) {
+  if (monthlyPayment <= 0 || totalMonths <= 0) return 0;
+
+  let fv = 0;
+
+  for (let month = 0; month < totalMonths; month++) {
+    // Compound this payment forward month-by-month
+    let paymentFV = monthlyPayment;
+    for (let m = totalMonths - month; m > 0; m--) {
+      const yrsRem = m / 12;
+      const eq = getTaperedEquityAllocation(yrsRem, initialEquity);
+      const rate = ((eq / 100 * equityReturn) + ((100 - eq) / 100 * debtReturn)) / 100 / 12;
+      paymentFV *= (1 + rate);
+    }
+    fv += paymentFV;
+  }
+
+  return fv;
+}
+
+/**
+ * Calculate required SIP to reach target with equity tapering (glide path)
+ * Uses binary search to find the SIP that produces the target future value
+ * @param futureValue - Target amount to accumulate
+ * @param totalMonths - Total investment period in months
+ * @param initialEquity - Initial equity allocation percentage
+ * @param equityReturn - Annual equity return percentage
+ * @param debtReturn - Annual debt return percentage
+ * @returns Required monthly SIP amount
+ */
+export function calculateRegularSIPWithTapering(futureValue, totalMonths, initialEquity, equityReturn, debtReturn) {
+  if (futureValue <= 0 || totalMonths <= 0) return 0;
+
+  let low = 0;
+  let high = futureValue / totalMonths * 2;
+  const tolerance = 0.01;
+
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2;
+    const fv = calculateSipFVWithTapering(mid, totalMonths, initialEquity, equityReturn, debtReturn);
+
+    if (Math.abs(fv - futureValue) < tolerance) return mid;
+    if (fv < futureValue) low = mid;
+    else high = mid;
+  }
+
+  return high;
+}
+
+/**
+ * Calculate future value of SIP with both annual step-up and equity tapering
+ * Combines step-up (SIP increases annually) with glide path (equity decreases over time)
+ * @param startingSIP - Initial monthly SIP amount
+ * @param totalMonths - Total investment period in months
+ * @param annualStepUp - Annual step-up percentage (e.g., 10 for 10%)
+ * @param initialEquity - Initial equity allocation percentage
+ * @param equityReturn - Annual equity return percentage
+ * @param debtReturn - Annual debt return percentage
+ * @returns Future value of all SIP payments
+ */
+export function calculateSipFVWithTaperingAndStepUp(startingSIP, totalMonths, annualStepUp, initialEquity, equityReturn, debtReturn) {
+  if (startingSIP <= 0 || totalMonths <= 0) return 0;
+
+  const stepUpRate = annualStepUp / 100;
+  let fv = 0;
+  let currentSIP = startingSIP;
+  let monthInYear = 0;
+
+  for (let month = 0; month < totalMonths; month++) {
+    // Compound this payment forward month-by-month with tapered rates
+    let paymentFV = currentSIP;
+    for (let m = totalMonths - month; m > 0; m--) {
+      const yrsRem = m / 12;
+      const eq = getTaperedEquityAllocation(yrsRem, initialEquity);
+      const rate = ((eq / 100 * equityReturn) + ((100 - eq) / 100 * debtReturn)) / 100 / 12;
+      paymentFV *= (1 + rate);
+    }
+    fv += paymentFV;
+
+    monthInYear++;
+
+    // Annual step-up
+    if (monthInYear >= 12) {
+      currentSIP *= (1 + stepUpRate);
+      monthInYear = 0;
+    }
+  }
+
+  return fv;
+}
+
+/**
+ * Calculate required starting SIP with both annual step-up and equity tapering
+ * Uses binary search to find the starting SIP that produces the target future value
+ * @param futureValue - Target amount to accumulate
+ * @param totalMonths - Total investment period in months
+ * @param annualStepUp - Annual step-up percentage (e.g., 10 for 10%)
+ * @param initialEquity - Initial equity allocation percentage
+ * @param equityReturn - Annual equity return percentage
+ * @param debtReturn - Annual debt return percentage
+ * @returns Required starting monthly SIP amount
+ */
+export function calculateStepUpSIPWithTapering(futureValue, totalMonths, annualStepUp, initialEquity, equityReturn, debtReturn) {
+  if (futureValue <= 0 || totalMonths <= 0) return 0;
+  if (annualStepUp === 0) return calculateRegularSIPWithTapering(futureValue, totalMonths, initialEquity, equityReturn, debtReturn);
+
+  let low = 0;
+  let high = futureValue / totalMonths * 2;
+  const tolerance = 0.01;
+
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2;
+    const fv = calculateSipFVWithTaperingAndStepUp(mid, totalMonths, annualStepUp, initialEquity, equityReturn, debtReturn);
+
+    if (Math.abs(fv - futureValue) < tolerance) return mid;
+    if (fv < futureValue) low = mid;
+    else high = mid;
+  }
+
+  return high;
+}
+
+/**
+ * Calculate unified goal projections with equity tapering for long-term goals
  * Optionally supports annual step-up for SIP calculations
  */
 export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, annualStepUp = 0) {
@@ -58,10 +204,19 @@ export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, 
   // Blended return based on category
   const blendedReturn = getUnifiedBlendedReturn(category, equityReturn, debtReturn, arbitrageReturn, equityAllocation);
 
-  // Calculate required SIP with optional step-up
-  const monthlySIP = annualStepUp > 0
-    ? calculateStepUpSIP(inflationAdjustedTarget, blendedReturn, months, annualStepUp)
-    : calculateRegularSIP(inflationAdjustedTarget, blendedReturn, months);
+  // Calculate required SIP with tapering for long-term goals
+  let monthlySIP;
+  if (category === 'short') {
+    // Short-term: use arbitrage, no tapering needed
+    monthlySIP = annualStepUp > 0
+      ? calculateStepUpSIP(inflationAdjustedTarget, blendedReturn, months, annualStepUp)
+      : calculateRegularSIP(inflationAdjustedTarget, blendedReturn, months);
+  } else {
+    // Long-term: use tapering with optional step-up
+    monthlySIP = annualStepUp > 0
+      ? calculateStepUpSIPWithTapering(inflationAdjustedTarget, months, annualStepUp, equityAllocation, equityReturn, debtReturn)
+      : calculateRegularSIPWithTapering(inflationAdjustedTarget, months, equityAllocation, equityReturn, debtReturn);
+  }
 
   return {
     years,
@@ -70,7 +225,16 @@ export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, 
     inflationAdjustedTarget,
     blendedReturn,
     monthlySIP,
-    annualStepUp
+    annualStepUp,
+    tapering: {
+      initialEquity: equityAllocation,
+      phases: [
+        { yearsThreshold: 8, equity: equityAllocation },
+        { yearsThreshold: 5, equity: Math.floor(Math.min(equityAllocation / 2, 40)) },
+        { yearsThreshold: 3, equity: Math.floor(Math.min(equityAllocation / 4, 20)) },
+        { yearsThreshold: 0, equity: 0 }
+      ]
+    }
   };
 }
 
