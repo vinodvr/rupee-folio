@@ -41,8 +41,9 @@ export function getUnifiedBlendedReturn(category, equityReturn, debtReturn, arbi
 
 /**
  * Calculate unified goal projections (simplified - no glide path)
+ * Optionally supports annual step-up for SIP calculations
  */
-export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60) {
+export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, annualStepUp = 0) {
   const years = getYearsRemaining(goal.targetDate);
   const months = getMonthsRemaining(goal.targetDate);
   const category = getUnifiedCategory(goal.targetDate);
@@ -57,8 +58,10 @@ export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, 
   // Blended return based on category
   const blendedReturn = getUnifiedBlendedReturn(category, equityReturn, debtReturn, arbitrageReturn, equityAllocation);
 
-  // Calculate required SIP (no step-up in unified model)
-  const monthlySIP = calculateRegularSIP(inflationAdjustedTarget, blendedReturn, months);
+  // Calculate required SIP with optional step-up
+  const monthlySIP = annualStepUp > 0
+    ? calculateStepUpSIP(inflationAdjustedTarget, blendedReturn, months, annualStepUp)
+    : calculateRegularSIP(inflationAdjustedTarget, blendedReturn, months);
 
   return {
     years,
@@ -66,7 +69,8 @@ export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, 
     category,
     inflationAdjustedTarget,
     blendedReturn,
-    monthlySIP
+    monthlySIP,
+    annualStepUp
   };
 }
 
@@ -85,7 +89,7 @@ export function getYearsRemaining(targetDate) {
  * Calculate months remaining until target date
  */
 export function getMonthsRemaining(targetDate) {
-  return Math.max(0, Math.floor(getYearsRemaining(targetDate) * 12));
+  return Math.max(0, Math.round(getYearsRemaining(targetDate) * 12));
 }
 
 /**
@@ -166,6 +170,23 @@ export function calculateCorpusFV(currentCorpus, annualRate, targetDate) {
 }
 
 /**
+ * Calculate future value of regular SIP payments (annuity)
+ * FV = PMT × ((1 + r)^n - 1) / r × (1 + r)
+ */
+export function calculateSipFV(monthlyPayment, annualRate, months) {
+  if (monthlyPayment <= 0 || months <= 0) return 0;
+
+  const monthlyRate = annualRate / 100 / 12;
+
+  if (monthlyRate === 0) {
+    return monthlyPayment * months;
+  }
+
+  const factor = Math.pow(1 + monthlyRate, months);
+  return monthlyPayment * ((factor - 1) / monthlyRate) * (1 + monthlyRate);
+}
+
+/**
  * Calculate regular SIP (no step-up) using Future Value of Annuity formula
  * PMT = FV × r / ((1 + r)^n - 1)
  */
@@ -178,8 +199,7 @@ export function calculateRegularSIP(futureValue, annualRate, months) {
     return futureValue / months;
   }
 
-  // FV of annuity: FV = PMT × ((1 + r)^n - 1) / r × (1 + r)
-  // Solving for PMT: PMT = FV × r / (((1 + r)^n - 1) × (1 + r))
+  // Inverse of calculateSipFV
   const factor = Math.pow(1 + monthlyRate, months);
   return futureValue * monthlyRate / ((factor - 1) * (1 + monthlyRate));
 }
@@ -225,32 +245,42 @@ export function calculateStepUpSIP(futureValue, annualRate, months, annualStepUp
 
 /**
  * Calculate future value of step-up SIP payments
+ * Generic helper that can be used for any contribution with annual step-up
+ * Uses annuity due formula (payment at beginning of period) for consistency
+ * with calculateSipFV
  */
 function calculateStepUpSIPFutureValue(startingSIP, monthlyRate, totalMonths, stepUpRate) {
+  if (startingSIP <= 0 || totalMonths <= 0) return 0;
+
   let fv = 0;
   let currentSIP = startingSIP;
-  let monthsProcessed = 0;
+  let monthInYear = 0;
 
-  while (monthsProcessed < totalMonths) {
-    // Process 12 months (or remaining months) at current SIP
-    const monthsThisYear = Math.min(12, totalMonths - monthsProcessed);
+  for (let month = 0; month < totalMonths; month++) {
+    const remainingMonths = totalMonths - month;
 
-    for (let m = 0; m < monthsThisYear; m++) {
-      const remainingMonths = totalMonths - monthsProcessed - m;
-      // Each payment compounds for remaining months
-      if (monthlyRate === 0) {
-        fv += currentSIP;
-      } else {
-        fv += currentSIP * Math.pow(1 + monthlyRate, remainingMonths);
-      }
+    // Each payment compounds for remaining months
+    if (monthlyRate === 0) {
+      fv += currentSIP;
+    } else {
+      fv += currentSIP * Math.pow(1 + monthlyRate, remainingMonths);
     }
 
-    monthsProcessed += monthsThisYear;
-    // Step up for next year
-    currentSIP *= (1 + stepUpRate);
+    monthInYear++;
+
+    // Annual step-up
+    if (monthInYear >= 12) {
+      currentSIP *= (1 + stepUpRate);
+      monthInYear = 0;
+    }
   }
 
-  return fv;
+  // Multiply by (1 + monthlyRate) for annuity due (payment at start of period)
+  // This matches the formula used in calculateSipFV
+  if (monthlyRate === 0) {
+    return fv;
+  }
+  return fv * (1 + monthlyRate);
 }
 
 /**
@@ -265,8 +295,8 @@ export function getGoalCategory(targetDate) {
  */
 export function getCategoryDisplay(category) {
   const displays = {
-    long: 'Long Term (5+ yrs)',
-    short: 'Short Term (< 5 yrs)'
+    long: 'Long Term',
+    short: 'Short Term'
   };
   return displays[category] || 'Unknown';
 }
@@ -291,80 +321,33 @@ export function calculateEpfNpsCorpusFV(epfCorpus, npsCorpus, targetDate, epfRet
 
 /**
  * Calculate future value of monthly EPF/NPS SIP contributions
- * FV = PMT * ((1 + r)^n - 1) / r * (1 + r)
+ * Uses calculateSipFV for each contribution type
  */
 export function calculateEpfNpsSipFV(monthlyEpf, monthlyNps, targetDate, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN) {
   const months = getMonthsRemaining(targetDate);
   if (months <= 0) return 0;
 
-  const epfMonthlyRate = epfReturn / 100 / 12;
-  const npsMonthlyRate = npsReturn / 100 / 12;
-
-  let epfSipFV = 0;
-  let npsSipFV = 0;
-
-  if (monthlyEpf > 0) {
-    if (epfMonthlyRate === 0) {
-      epfSipFV = monthlyEpf * months;
-    } else {
-      const factor = Math.pow(1 + epfMonthlyRate, months);
-      epfSipFV = monthlyEpf * ((factor - 1) / epfMonthlyRate) * (1 + epfMonthlyRate);
-    }
-  }
-
-  if (monthlyNps > 0) {
-    if (npsMonthlyRate === 0) {
-      npsSipFV = monthlyNps * months;
-    } else {
-      const factor = Math.pow(1 + npsMonthlyRate, months);
-      npsSipFV = monthlyNps * ((factor - 1) / npsMonthlyRate) * (1 + npsMonthlyRate);
-    }
-  }
+  const epfSipFV = calculateSipFV(monthlyEpf, epfReturn, months);
+  const npsSipFV = calculateSipFV(monthlyNps, npsReturn, months);
 
   return epfSipFV + npsSipFV;
 }
 
 /**
  * Calculate future value of monthly EPF/NPS SIP contributions with annual step-up
- * Contributions increase annually by stepUpRate (reflecting salary growth)
+ * Uses calculateStepUpSIPFutureValue for each contribution type
  */
 export function calculateEpfNpsSipFVWithStepUp(monthlyEpf, monthlyNps, targetDate, annualStepUp, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN) {
   const totalMonths = getMonthsRemaining(targetDate);
   if (totalMonths <= 0) return 0;
   if (annualStepUp === 0) return calculateEpfNpsSipFV(monthlyEpf, monthlyNps, targetDate, epfReturn, npsReturn);
 
+  const stepUpRate = annualStepUp / 100;
   const epfMonthlyRate = epfReturn / 100 / 12;
   const npsMonthlyRate = npsReturn / 100 / 12;
-  const stepUpRate = annualStepUp / 100;
 
-  let epfSipFV = 0;
-  let npsSipFV = 0;
-  let currentEpf = monthlyEpf;
-  let currentNps = monthlyNps;
-  let monthInYear = 0;
-
-  for (let month = 0; month < totalMonths; month++) {
-    const remainingMonths = totalMonths - month;
-
-    // EPF contribution compounded to end
-    if (currentEpf > 0) {
-      epfSipFV += currentEpf * Math.pow(1 + epfMonthlyRate, remainingMonths);
-    }
-
-    // NPS contribution compounded to end
-    if (currentNps > 0) {
-      npsSipFV += currentNps * Math.pow(1 + npsMonthlyRate, remainingMonths);
-    }
-
-    monthInYear++;
-
-    // Annual step-up
-    if (monthInYear >= 12) {
-      currentEpf *= (1 + stepUpRate);
-      currentNps *= (1 + stepUpRate);
-      monthInYear = 0;
-    }
-  }
+  const epfSipFV = calculateStepUpSIPFutureValue(monthlyEpf, epfMonthlyRate, totalMonths, stepUpRate);
+  const npsSipFV = calculateStepUpSIPFutureValue(monthlyNps, npsMonthlyRate, totalMonths, stepUpRate);
 
   return epfSipFV + npsSipFV;
 }
@@ -372,11 +355,14 @@ export function calculateEpfNpsSipFVWithStepUp(monthlyEpf, monthlyNps, targetDat
 /**
  * Calculate retirement goal projections with EPF/NPS contributions (unified portfolio)
  * Returns projections with EPF/NPS breakdown for retirement goals
+ * @param epfNpsStepUp - Annual step-up percentage for EPF/NPS contributions (from settings)
+ * @param investmentStepUp - Annual step-up percentage for other investments (from settings)
  */
-export function calculateRetirementProjectionsWithEpfNps(goal, retirementContributions, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN) {
-  const baseProjections = calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation);
+export function calculateRetirementProjectionsWithEpfNps(goal, retirementContributions, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN, epfNpsStepUp = 0, investmentStepUp = 0) {
+  const baseProjections = calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation, investmentStepUp);
 
-  if (goal.goalType !== 'retirement' || !retirementContributions) {
+  // Skip EPF/NPS if not a retirement goal, no contributions data, or flag is unchecked
+  if (goal.goalType !== 'retirement' || !retirementContributions || !goal.includeEpfNps) {
     return {
       ...baseProjections,
       epfNps: null
@@ -385,7 +371,7 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
 
   const { monthlyEpf, monthlyNps, epfCorpus, npsCorpus, totalMonthly, totalCorpus } = retirementContributions;
 
-  // If no EPF/NPS, return base projections
+  // If no EPF/NPS contributions exist, return base projections
   if (totalMonthly === 0 && totalCorpus === 0) {
     return {
       ...baseProjections,
@@ -396,11 +382,9 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
   // Calculate FV of EPF/NPS corpus
   const epfNpsCorpusFV = calculateEpfNpsCorpusFV(epfCorpus, npsCorpus, goal.targetDate, epfReturn, npsReturn);
 
-  // Calculate FV of EPF/NPS SIP contributions (with step-up based on epfNpsStepUp flag)
-  // Use 7% as default step-up rate for salary growth
-  const stepUpRate = goal.epfNpsStepUp ? 7 : 0;
-  const epfNpsSipFV = stepUpRate > 0
-    ? calculateEpfNpsSipFVWithStepUp(monthlyEpf, monthlyNps, goal.targetDate, stepUpRate, epfReturn, npsReturn)
+  // Calculate FV of EPF/NPS SIP contributions (with step-up from settings)
+  const epfNpsSipFV = epfNpsStepUp > 0
+    ? calculateEpfNpsSipFVWithStepUp(monthlyEpf, monthlyNps, goal.targetDate, epfNpsStepUp, epfReturn, npsReturn)
     : calculateEpfNpsSipFV(monthlyEpf, monthlyNps, goal.targetDate, epfReturn, npsReturn);
 
   // Total contribution from EPF/NPS at goal date
@@ -409,9 +393,11 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
   // Recalculate gap amount after accounting for EPF/NPS
   const adjustedGapAmount = Math.max(0, baseProjections.inflationAdjustedTarget - totalEpfNpsFV);
 
-  // Recalculate required SIP for remaining gap
+  // Recalculate required SIP for remaining gap (with investment step-up)
   const adjustedMonthlySIP = adjustedGapAmount > 0
-    ? calculateRegularSIP(adjustedGapAmount, baseProjections.blendedReturn, baseProjections.months)
+    ? (investmentStepUp > 0
+        ? calculateStepUpSIP(adjustedGapAmount, baseProjections.blendedReturn, baseProjections.months, investmentStepUp)
+        : calculateRegularSIP(adjustedGapAmount, baseProjections.blendedReturn, baseProjections.months))
     : 0;
 
   return {
@@ -432,8 +418,7 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
       totalEpfNpsFV,
       epfReturn,
       npsReturn,
-      stepUpEnabled: goal.epfNpsStepUp || false,
-      stepUpRate: stepUpRate
+      stepUpRate: epfNpsStepUp
     }
   };
 }
