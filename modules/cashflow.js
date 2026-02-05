@@ -115,6 +115,12 @@ function saveNewIncome() {
     return;
   }
 
+  const maxEpfNps = amount * 0.3;
+  if (epf + nps > maxEpfNps) {
+    alert(`EPF + NPS contributions cannot exceed 30% of income (max ${formatCurrency(maxEpfNps, settings.currency)})`);
+    return;
+  }
+
   addIncome(appData, { name, amount, epf, nps });
   document.getElementById('income-form-container').innerHTML = '';
   renderIncomeList();
@@ -217,17 +223,25 @@ function editIncome(id) {
     const newEpf = parseFloat(row.querySelector('.edit-income-epf').value) || 0;
     const newNps = parseFloat(row.querySelector('.edit-income-nps').value) || 0;
 
-    if (newName && !isNaN(newAmount) && newAmount > 0) {
-      updateIncome(appData, id, {
-        name: newName,
-        amount: newAmount,
-        epf: newEpf,
-        nps: newNps
-      });
-      renderIncomeList();
-      updateSummary();
-      if (onDataChange) onDataChange();
+    if (!newName || isNaN(newAmount) || newAmount <= 0) {
+      return;
     }
+
+    const maxEpfNps = newAmount * 0.3;
+    if (newEpf + newNps > maxEpfNps) {
+      alert(`EPF + NPS contributions cannot exceed 30% of income (max ${formatCurrency(maxEpfNps, settings.currency)})`);
+      return;
+    }
+
+    updateIncome(appData, id, {
+      name: newName,
+      amount: newAmount,
+      epf: newEpf,
+      nps: newNps
+    });
+    renderIncomeList();
+    updateSummary();
+    if (onDataChange) onDataChange();
   });
 
   row.querySelector('.cancel-edit-income').addEventListener('click', () => {
