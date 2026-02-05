@@ -314,7 +314,7 @@ function calculateGoals(answers, expenses) {
     startDate: todayStr
   });
 
-  // 2. Retirement (always) - FIRE at 50
+  // 2. Retirement (always) - target age 50
   const retirementAge = 50;
   const currentAge = answers.age;
   const yearsToRetirement = retirementAge - currentAge;
@@ -331,7 +331,7 @@ function calculateGoals(answers, expenses) {
 
     goals.push({
       id: generateId(),
-      name: 'Retirement (FIRE at 50)',
+      name: 'Retirement at 50',
       goalType: 'retirement',
       targetAmount: Math.max(roundedCorpus, 10000000), // Minimum 1 Cr
       inflationRate: 6,

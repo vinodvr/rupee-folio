@@ -1,14 +1,17 @@
 // Investment Plan module - Unified Portfolio View
-import { formatCurrency, getFunds } from './currency.js';
+import { formatCurrency, getFunds, getSymbol } from './currency.js';
 import {
   UNIFIED_PORTFOLIO,
   getUnifiedCategory,
   getUnifiedBlendedReturn,
   calculateUnifiedGoalProjections,
   calculateRetirementProjectionsWithEpfNps,
+  calculateInflationAdjustedAmount,
   getYearsRemaining
 } from './calculator.js';
 import { getRetirementContributions } from './cashflow.js';
+import { getLinkableAssets, getAssetAllocations, SHORT_TERM_ONLY, LONG_TERM_ONLY, BOTH_TERMS } from './assets.js';
+import { saveData } from './storage.js';
 
 let appData = null;
 let currency = 'INR';
@@ -84,8 +87,8 @@ function categorizeGoals() {
   appData.goals.forEach(goal => {
     const category = getUnifiedCategory(goal.targetDate);
     const projections = goal.goalType === 'retirement'
-      ? calculateRetirementProjectionsWithEpfNps(goal, getRetirementContributions(), equityReturn, debtReturn, arbitrageReturn, equityAllocation, epfReturn, npsReturn, epfNpsStepUp, investmentStepUp)
-      : calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation, investmentStepUp);
+      ? calculateRetirementProjectionsWithEpfNps(goal, getRetirementContributions(), equityReturn, debtReturn, arbitrageReturn, equityAllocation, epfReturn, npsReturn, epfNpsStepUp, investmentStepUp, appData.assets)
+      : calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation, investmentStepUp, appData.assets);
 
     const goalData = {
       ...goal,
@@ -169,34 +172,104 @@ function formatTargetDate(targetDate) {
 function renderGoalRow(goal) {
   const isRetirement = goal.goalType === 'retirement';
   const hasEpfNps = isRetirement && goal.projections.epfNps;
+  const hasLinkedAssets = goal.projections.linkedAssetsFV > 0;
+
+  // Calculate various deduction amounts
+  const epfNpsFV = hasEpfNps ? goal.projections.epfNps.totalEpfNpsFV : 0;
+  const linkedFV = goal.projections.linkedAssetsFV || 0;
+  const totalDeductions = epfNpsFV + linkedFV;
+
+  // Unique ID for toggle functionality
+  const detailsId = `goal-details-${goal.id}`;
+
+  // Get linked asset details
+  const linkedAssetsList = (goal.linkedAssets || []).map(la => {
+    const asset = appData.assets.items.find(a => a.id === la.assetId);
+    return asset ? { name: asset.name, amount: la.amount } : null;
+  }).filter(Boolean);
 
   return `
     <div class="py-3 border-b border-gray-100 last:border-0">
-      <div class="flex items-center justify-between mb-2">
+      <!-- Header: Goal name and SIP -->
+      <div class="flex items-center justify-between mb-1">
         <div class="font-medium text-gray-800">
           <a href="#goals" class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">${goal.name}</a>
           ${isRetirement ? '<span class="ml-2 px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">Retirement</span>' : ''}
         </div>
-      </div>
-
-      <!-- Goal Details (same as Goals tab) -->
-      <div class="text-sm text-gray-500 space-y-0.5 mb-2">
-        <div>Target: <span class="font-medium text-gray-700">${formatCurrency(goal.targetAmount, currency)}</span> (today's value)</div>
-        <div>Timeline: <span class="font-medium text-gray-700">${formatTimeline(goal.projections.years)}</span> (${formatTargetDate(goal.targetDate)})</div>
-        <div>Inflation: <span class="font-medium text-gray-700">${goal.inflationRate}%</span></div>
-        ${hasEpfNps ? '<div class="text-purple-600">EPF/NPS deductions included</div>' : ''}
-      </div>
-
-      <!-- Calculated Values -->
-      <div class="bg-gray-50 rounded p-2 flex items-center justify-between">
-        <div class="text-xs text-gray-600">
-          <div>Future Value: <span class="font-medium text-gray-700">${formatCurrency(Math.round(goal.projections.inflationAdjustedTarget), currency)}</span></div>
-          ${hasEpfNps ? `<div>After EPF/NPS: <span class="font-medium text-gray-700">${formatCurrency(Math.round(goal.projections.gapAmount), currency)}</span></div>` : ''}
-        </div>
         <div class="text-right">
-          <div class="font-semibold text-blue-600">${formatCurrency(Math.round(goal.projections.monthlySIP), currency)}</div>
-          <div class="text-xs text-gray-500">per month</div>
-          ${goal.projections.annualStepUp > 0 ? `<div class="text-xs text-gray-400">${goal.projections.annualStepUp}% annual step-up</div>` : ''}
+          <span class="font-semibold text-blue-600">${formatCurrency(Math.round(goal.projections.monthlySIP), currency)}</span>
+          <span class="text-xs text-gray-500">/month</span>
+        </div>
+      </div>
+
+      <!-- Compact info line -->
+      <div class="flex items-center justify-between text-sm text-gray-500">
+        <div>
+          <span class="font-medium text-gray-700">${formatCurrency(goal.targetAmount, currency)}</span>
+          <span class="mx-1">·</span>
+          <span>${formatTimeline(goal.projections.years)}</span>
+        </div>
+        <button class="toggle-details-btn text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1" data-target="${detailsId}">
+          <span class="toggle-text">Details</span>
+          <svg class="w-3 h-3 toggle-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Expandable Details Section -->
+      <div id="${detailsId}" class="goal-details-expanded hidden mt-3 bg-gray-50 rounded p-3">
+        <div class="text-xs text-gray-600 space-y-1.5">
+          <!-- Goal parameters -->
+          <div class="flex justify-between">
+            <span>Target Date:</span>
+            <span class="font-medium text-gray-700">${formatTargetDate(goal.targetDate)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Inflation Rate:</span>
+            <span class="font-medium text-gray-700">${goal.inflationRate}%</span>
+          </div>
+          ${goal.projections.annualStepUp > 0 ? `
+            <div class="flex justify-between">
+              <span>Annual Step-up:</span>
+              <span class="font-medium text-gray-700">${goal.projections.annualStepUp}%</span>
+            </div>
+          ` : ''}
+
+          <!-- FV Calculations -->
+          <div class="border-t border-gray-200 pt-2 mt-2">
+            <div class="flex justify-between">
+              <span>Future Value:</span>
+              <span class="font-medium text-gray-700">${formatCurrency(Math.round(goal.projections.inflationAdjustedTarget), currency)}</span>
+            </div>
+          </div>
+          ${linkedAssetsList.length > 0 ? `
+            <div class="mt-2">
+              <span class="font-medium text-gray-700">Linked Investments:</span>
+            </div>
+            ${linkedAssetsList.map(la => `
+              <div class="flex justify-between pl-2">
+                <span class="text-gray-500">${la.name}</span>
+                <span class="text-blue-600">${formatCurrency(la.amount, currency)}</span>
+              </div>
+            `).join('')}
+            <div class="flex justify-between">
+              <span>Linked Investments FV:</span>
+              <span class="font-medium text-blue-600">-${formatCurrency(Math.round(linkedFV), currency)}</span>
+            </div>
+          ` : ''}
+          ${hasEpfNps ? `
+            <div class="flex justify-between">
+              <span>EPF/NPS FV:</span>
+              <span class="font-medium text-purple-600">-${formatCurrency(Math.round(epfNpsFV), currency)}</span>
+            </div>
+          ` : ''}
+          ${totalDeductions > 0 ? `
+            <div class="flex justify-between border-t border-gray-200 pt-1 mt-1">
+              <span class="font-medium">Gap to fill:</span>
+              <span class="font-medium text-gray-800">${formatCurrency(Math.round(goal.projections.gapAmount), currency)}</span>
+            </div>
+          ` : ''}
         </div>
       </div>
     </div>
@@ -231,7 +304,23 @@ function renderInvestmentPlan() {
   const longTermSummary = calculateCategorySummary(longTerm, 'long');
   const totalSIP = shortTermSummary.totalSIP + longTermSummary.totalSIP;
 
+  // Check if there are linkable assets available
+  const allocations = getAssetAllocations(appData);
+  const hasAvailableAssets = Object.values(allocations).some(a => a.available > 0);
+
   container.innerHTML = `
+    <!-- Assign Existing Investments Button -->
+    ${hasAvailableAssets ? `
+      <div class="mb-4 flex justify-end">
+        <button id="auto-assign-assets-btn" class="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+          </svg>
+          <span>Assign Existing Investments to Goals</span>
+        </button>
+      </div>
+    ` : ''}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Short Term Goals -->
       <div class="bg-white rounded-lg shadow-sm p-5">
@@ -386,6 +475,36 @@ function renderInvestmentPlan() {
       document.dispatchEvent(event);
     });
   }
+
+  // Add event listener for auto-assign button
+  const autoAssignBtn = document.getElementById('auto-assign-assets-btn');
+  if (autoAssignBtn) {
+    autoAssignBtn.addEventListener('click', showAutoAssignModal);
+  }
+
+  // Add event listeners for toggle details buttons
+  const toggleBtns = document.querySelectorAll('.toggle-details-btn');
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const detailsSection = document.getElementById(targetId);
+      const toggleText = btn.querySelector('.toggle-text');
+      const toggleIcon = btn.querySelector('.toggle-icon');
+
+      if (detailsSection) {
+        const isHidden = detailsSection.classList.contains('hidden');
+        detailsSection.classList.toggle('hidden');
+
+        // Update button text and icon
+        if (toggleText) {
+          toggleText.textContent = isHidden ? 'Hide Details' : 'View Details';
+        }
+        if (toggleIcon) {
+          toggleIcon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+      }
+    });
+  });
 }
 
 /**
@@ -430,4 +549,221 @@ export function getTotalMonthlySIP() {
   const shortTermSummary = calculateCategorySummary(shortTerm, 'short');
   const longTermSummary = calculateCategorySummary(longTerm, 'long');
   return shortTermSummary.totalSIP + longTermSummary.totalSIP;
+}
+
+/**
+ * Auto-assign algorithm: Match assets to goals based on timeline
+ * - Sort goals by target date (nearest first)
+ * - Short-term goals get debt-type assets (FDs, Savings, Debt MFs)
+ * - Long-term goals get equity-type assets (Equity MFs, Stocks, Gold ETFs)
+ */
+function calculateAutoAssignments() {
+  const allocations = getAssetAllocations(appData);
+  const availableAssets = {};
+
+  // Track available amounts for each asset
+  Object.entries(allocations).forEach(([assetId, alloc]) => {
+    if (alloc.available > 0) {
+      const asset = appData.assets.items.find(a => a.id === assetId);
+      if (asset) {
+        availableAssets[assetId] = {
+          ...asset,
+          available: alloc.available
+        };
+      }
+    }
+  });
+
+  // Sort goals by target date (nearest first)
+  const sortedGoals = [...appData.goals].sort((a, b) =>
+    new Date(a.targetDate) - new Date(b.targetDate)
+  );
+
+  const assignments = []; // { goalId, goalName, assetId, assetName, amount }
+
+  sortedGoals.forEach(goal => {
+    const category = getUnifiedCategory(goal.targetDate);
+    const years = getYearsRemaining(goal.targetDate);
+
+    // Calculate inflation-adjusted target
+    const inflationAdjustedTarget = calculateInflationAdjustedAmount(
+      goal.targetAmount,
+      goal.inflationRate,
+      years
+    );
+
+    // Already linked amount
+    const alreadyLinked = (goal.linkedAssets || [])
+      .reduce((sum, la) => sum + (la.amount || 0), 0);
+
+    // Remaining need (simplified - doesn't account for FV growth perfectly)
+    let remainingNeed = Math.max(0, inflationAdjustedTarget - alreadyLinked);
+
+    // Get eligible asset categories for this goal type
+    const eligibleCategories = category === 'short'
+      ? [...SHORT_TERM_ONLY, ...BOTH_TERMS]
+      : [...LONG_TERM_ONLY, ...BOTH_TERMS];
+
+    // Find available assets that match
+    Object.entries(availableAssets).forEach(([assetId, asset]) => {
+      if (remainingNeed <= 0) return;
+      if (!eligibleCategories.includes(asset.category)) return;
+      if (asset.available <= 0) return;
+
+      // Skip if already linked to this goal
+      const existingLink = (goal.linkedAssets || []).find(la => la.assetId === assetId);
+      if (existingLink) return;
+
+      // Assign up to the remaining need or available amount
+      const assignAmount = Math.min(remainingNeed, asset.available);
+
+      assignments.push({
+        goalId: goal.id,
+        goalName: goal.name,
+        goalCategory: category,
+        assetId: assetId,
+        assetName: asset.name,
+        assetCategory: asset.category,
+        amount: assignAmount
+      });
+
+      // Update tracking
+      availableAssets[assetId].available -= assignAmount;
+      remainingNeed -= assignAmount;
+    });
+  });
+
+  return assignments;
+}
+
+/**
+ * Show auto-assign preview modal
+ */
+function showAutoAssignModal() {
+  const modal = document.getElementById('goal-modal');
+  const content = document.getElementById('goal-modal-content');
+
+  const assignments = calculateAutoAssignments();
+
+  if (assignments.length === 0) {
+    content.innerHTML = `
+      <div class="bg-white rounded-lg p-6 w-full max-w-lg">
+        <h3 class="text-xl font-semibold mb-4">Assign Existing Investments</h3>
+        <div class="text-center py-8 text-gray-500">
+          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p class="text-sm">No additional investments to assign.</p>
+          <p class="text-xs text-gray-400 mt-1">All available investments are already linked to goals, or no matching types found.</p>
+        </div>
+        <div class="flex justify-end pt-4 border-t">
+          <button id="close-auto-assign-btn" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Close</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove('hidden');
+    document.getElementById('close-auto-assign-btn').addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+    return;
+  }
+
+  // Group assignments by goal
+  const groupedByGoal = {};
+  assignments.forEach(a => {
+    if (!groupedByGoal[a.goalId]) {
+      groupedByGoal[a.goalId] = {
+        goalName: a.goalName,
+        goalCategory: a.goalCategory,
+        assignments: []
+      };
+    }
+    groupedByGoal[a.goalId].assignments.push(a);
+  });
+
+  const totalAssigned = assignments.reduce((sum, a) => sum + a.amount, 0);
+
+  content.innerHTML = `
+    <div class="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <h3 class="text-xl font-semibold mb-2">Assign Existing Investments</h3>
+      <p class="text-sm text-gray-500 mb-4">Review the proposed assignments below. This will link your existing investments to goals to reduce required SIP.</p>
+
+      <div class="space-y-4 mb-6">
+        ${Object.entries(groupedByGoal).map(([goalId, data]) => `
+          <div class="border rounded-lg p-3">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="font-medium text-gray-800">${data.goalName}</span>
+              <span class="px-2 py-0.5 text-xs rounded ${data.goalCategory === 'short' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}">
+                ${data.goalCategory === 'short' ? 'Short Term' : 'Long Term'}
+              </span>
+            </div>
+            <div class="space-y-1">
+              ${data.assignments.map(a => `
+                <div class="flex items-center justify-between text-sm">
+                  <div>
+                    <span class="text-gray-700">${a.assetName}</span>
+                    <span class="text-xs text-gray-400 ml-1">(${a.assetCategory})</span>
+                  </div>
+                  <span class="font-medium text-blue-600">${formatCurrency(a.amount, currency)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="bg-blue-50 rounded-lg p-3 mb-4">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-blue-700">Total to be linked:</span>
+          <span class="font-semibold text-blue-700">${formatCurrency(totalAssigned, currency)}</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t">
+        <button id="cancel-auto-assign-btn" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
+        <button id="apply-auto-assign-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          Apply Assignments
+        </button>
+      </div>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+
+  document.getElementById('cancel-auto-assign-btn').addEventListener('click', () => {
+    modal.classList.add('hidden');
+  });
+
+  document.getElementById('apply-auto-assign-btn').addEventListener('click', () => {
+    // Apply all assignments
+    assignments.forEach(a => {
+      const goal = appData.goals.find(g => g.id === a.goalId);
+      if (goal) {
+        if (!goal.linkedAssets) {
+          goal.linkedAssets = [];
+        }
+        // Check if already linked (shouldn't happen but be safe)
+        const existing = goal.linkedAssets.find(la => la.assetId === a.assetId);
+        if (existing) {
+          existing.amount += a.amount;
+        } else {
+          goal.linkedAssets.push({ assetId: a.assetId, amount: a.amount });
+        }
+      }
+    });
+
+    // Save and refresh
+    saveData(appData);
+    modal.classList.add('hidden');
+    renderInvestmentPlan();
+    if (onDataChange) onDataChange();
+  });
+
+  // Close on backdrop click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+    }
+  });
 }

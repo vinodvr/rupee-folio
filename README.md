@@ -10,7 +10,7 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 New users can use the **Quick Setup** wizard to populate financial data in minutes:
 - Answer simple questions about age, family, housing, income, and existing savings
 - Automatically generates realistic income, expenses, assets, liabilities, and goals
-- Creates Emergency Fund, Retirement (FIRE at 50), and other relevant goals based on your situation
+- Creates Emergency Fund, Retirement at 50, and other relevant goals based on your situation
 
 ### Cash Flow Calculator
 - **Income Tracking**: Add multiple income sources (salary, freelance, rental income, etc.)
@@ -69,8 +69,11 @@ This unified approach simplifies portfolio management by consolidating all goals
 
 ### Investment Plan Tab
 A dedicated tab for viewing your consolidated investment plan:
+- **Compact Goal Cards**: Each goal shows name, target amount, timeline, and monthly SIP at a glance
+- **Expandable Details**: Click "Details" to see FV breakdown, linked assets, EPF/NPS deductions, and gap to fill
 - **Goal Categorization**: Goals automatically sorted into short-term and long-term buckets
 - **Combined SIP Calculation**: Total monthly SIP needed per bucket
+- **Link Existing Investments**: Assign existing assets to goals to reduce required SIP
 - **Fund Recommendations**: Specific fund allocations from ICICI Prudential or HDFC
 - **Cashflow Comparison**: Shows total SIP needed vs available cash flow with surplus/shortfall
 - **Asset Allocation Controls**: Adjust equity/debt split for long-term goals
@@ -187,16 +190,17 @@ npm test
 npm run test:watch
 ```
 
-**244 tests** organized into 6 suites:
+**357 tests** organized into 7 suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
-| Calculator | 98 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections |
-| Storage | 64 | CRUD operations, settings, schema migrations |
+| Calculator | 128 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
+| Storage | 75 | CRUD operations, settings, schema migrations |
+| Assets | 47 | EPF/NPS corpus, retirement assets, asset linking, allocations |
+| Investment Plan | 35 | Goal categorization, SIP calculations, fund recommendations |
+| Persona Data | 30 | Sample data generation, persona profiles |
 | Currency | 26 | Formatting, return limits, fund recommendations |
-| Assets | 15 | EPF/NPS corpus, retirement assets |
 | Cash Flow | 16 | Income/expense tracking, EPF/NPS contributions |
-| Persona Data | 25 | Sample data generation, persona profiles |
 
 ### Test Coverage
 
@@ -265,12 +269,13 @@ financial-planner/
 │   ├── wizard.js         # Quick Setup wizard UI and flow
 │   └── personaData.js    # Generates realistic data from wizard answers
 └── tests/
-    ├── calculator.vitest.js  # SIP calculations, step-up, tapering, EPF/NPS (98 tests)
-    ├── storage.vitest.js     # Storage/CRUD tests (64 tests)
-    ├── currency.vitest.js    # Currency formatting tests (26 tests)
-    ├── assets.vitest.js      # Assets module tests (15 tests)
-    ├── cashflow.vitest.js    # Cash flow tests (16 tests)
-    └── personaData.vitest.js # Sample data tests (25 tests)
+    ├── calculator.vitest.js      # SIP calculations, step-up, tapering, EPF/NPS (128 tests)
+    ├── storage.vitest.js         # Storage/CRUD tests (75 tests)
+    ├── assets.vitest.js          # Assets module tests (47 tests)
+    ├── investmentplan.vitest.js  # Investment plan tests (35 tests)
+    ├── personaData.vitest.js     # Sample data tests (30 tests)
+    ├── currency.vitest.js        # Currency formatting tests (26 tests)
+    └── cashflow.vitest.js        # Cash flow tests (16 tests)
 ```
 
 ## Usage Guide
