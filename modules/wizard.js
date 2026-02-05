@@ -16,9 +16,9 @@ const WIZARD_STEPS = [
     subtitle: 'This helps us calculate your retirement timeline',
     type: 'dropdown',
     field: 'age',
-    options: Array.from({ length: 41 }, (_, i) => ({
-      value: 20 + i,
-      label: `${20 + i} years`
+    options: Array.from({ length: 43 }, (_, i) => ({
+      value: 18 + i,
+      label: `${18 + i} years`
     })),
     defaultValue: 30
   },
@@ -81,17 +81,29 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'otherEmi',
     min: 0,
-    max: 100000,
-    step: 1000,
+    max: 500000,
+    step: 5000,
     defaultValue: 0,
     format: 'currency'
   },
   {
     id: 'epf',
     title: 'What\'s your EPF corpus?',
-    subtitle: 'Current balance in your Employee Provident Fund',
+    subtitle: 'Current balance in Employee Provident Fund',
     type: 'slider',
     field: 'epfCorpus',
+    min: 0,
+    max: 5000000,
+    step: 100000,
+    defaultValue: 0,
+    format: 'currency'
+  },
+  {
+    id: 'ppf',
+    title: 'What\'s your PPF corpus?',
+    subtitle: 'Current balance in Public Provident Fund',
+    type: 'slider',
+    field: 'ppfCorpus',
     min: 0,
     max: 5000000,
     step: 100000,
@@ -111,13 +123,49 @@ const WIZARD_STEPS = [
     format: 'currency'
   },
   {
-    id: 'mf',
-    title: 'What\'s your MF/Stocks value?',
-    subtitle: 'Current value of Mutual Funds and Direct Stocks',
+    id: 'fds',
+    title: 'What\'s your FDs & RDs balance?',
+    subtitle: 'Total value of Fixed Deposits and Recurring Deposits',
     type: 'slider',
-    field: 'mfStocks',
+    field: 'fdsRds',
+    min: 0,
+    max: 5000000,
+    step: 100000,
+    defaultValue: 0,
+    format: 'currency'
+  },
+  {
+    id: 'equityMf',
+    title: 'What\'s your Equity Mutual Funds value?',
+    subtitle: 'Current value of equity/hybrid mutual fund investments',
+    type: 'slider',
+    field: 'equityMf',
     min: 0,
     max: 10000000,
+    step: 100000,
+    defaultValue: 0,
+    format: 'currency'
+  },
+  {
+    id: 'stocks',
+    title: 'What\'s your Direct Stocks value?',
+    subtitle: 'Current value of directly held stocks',
+    type: 'slider',
+    field: 'directStocks',
+    min: 0,
+    max: 10000000,
+    step: 100000,
+    defaultValue: 0,
+    format: 'currency'
+  },
+  {
+    id: 'gold',
+    title: 'What\'s your Physical Gold value?',
+    subtitle: 'Current value of gold jewellery and coins',
+    type: 'slider',
+    field: 'physicalGold',
+    min: 0,
+    max: 5000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -202,13 +250,6 @@ function createWizardModal() {
   document.getElementById('wizard-close-btn').addEventListener('click', closeWizard);
   document.getElementById('wizard-back-btn').addEventListener('click', goBack);
   document.getElementById('wizard-next-btn').addEventListener('click', goNext);
-
-  // Close on backdrop click
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      closeWizard();
-    }
-  });
 }
 
 /**

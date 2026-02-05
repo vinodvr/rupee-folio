@@ -63,7 +63,7 @@ function showAddIncomeForm() {
       <div class="flex gap-2 mb-2">
         <div class="relative flex-1">
           <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-          <input type="number" id="new-income-amount" placeholder="In-hand amount after tax/deductions"
+          <input type="number" id="new-income-amount" placeholder="Monthly take-home pay"
             class="w-full pl-8 pr-3 py-2 border rounded text-sm">
         </div>
       </div>
@@ -127,7 +127,7 @@ function renderIncomeList() {
   if (!list) return;
 
   if (appData.cashflow.income.length === 0) {
-    list.innerHTML = '<p class="text-gray-500 text-sm italic">No income sources added</p>';
+    list.innerHTML = '<p class="text-gray-500 text-sm italic">Add your income to get started</p>';
     return;
   }
 
@@ -297,7 +297,7 @@ function renderExpenseList() {
   if (!list) return;
 
   if (appData.cashflow.expenses.length === 0) {
-    list.innerHTML = '<p class="text-gray-500 text-sm italic">No expenses added</p>';
+    list.innerHTML = '<p class="text-gray-500 text-sm italic">Add your expenses to track savings</p>';
     return;
   }
 

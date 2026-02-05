@@ -146,37 +146,21 @@ function calculateIncome(answers) {
     ? Math.round(monthlyIncome * NPS_PERCENTAGE / 1000) * 1000
     : 0;
 
+  // Determine income name based on family situation
+  let incomeName = 'Salary';
   if (answers.family === 'marriedDual') {
-    // Dual income - split 60/40
-    const selfIncome = Math.round(monthlyIncome * 0.6 / 1000) * 1000;
-    const spouseIncome = monthlyIncome - selfIncome;
-
-    income.push({
-      id: generateId(),
-      name: 'Salary - Self',
-      amount: selfIncome,
-      epf: Math.round(epfMonthly * 0.6 / 1000) * 1000,
-      nps: Math.round(npsMonthly * 0.6 / 1000) * 1000
-    });
-
-    income.push({
-      id: generateId(),
-      name: 'Salary - Spouse',
-      amount: spouseIncome,
-      epf: Math.round(epfMonthly * 0.4 / 1000) * 1000,
-      nps: Math.round(npsMonthly * 0.4 / 1000) * 1000
-    });
-  } else {
-    // Single income
-    const incomeName = answers.family === 'single' ? 'Salary' : 'Salary - Self';
-    income.push({
-      id: generateId(),
-      name: incomeName,
-      amount: monthlyIncome,
-      epf: epfMonthly,
-      nps: npsMonthly
-    });
+    incomeName = 'Salary - Self & Spouse';
+  } else if (answers.family === 'married') {
+    incomeName = 'Salary - Self';
   }
+
+  income.push({
+    id: generateId(),
+    name: incomeName,
+    amount: monthlyIncome,
+    epf: epfMonthly,
+    nps: npsMonthly
+  });
 
   return income;
 }
@@ -197,6 +181,16 @@ function calculateAssets(answers) {
     });
   }
 
+  // PPF Corpus
+  if (answers.ppfCorpus > 0) {
+    assets.push({
+      id: generateId(),
+      name: 'PPF Balance',
+      category: 'PPF Corpus',
+      value: answers.ppfCorpus
+    });
+  }
+
   // NPS Corpus
   if (answers.npsCorpus > 0) {
     assets.push({
@@ -207,8 +201,48 @@ function calculateAssets(answers) {
     });
   }
 
-  // MF/Stocks
-  if (answers.mfStocks > 0) {
+  // FDs & RDs
+  if (answers.fdsRds > 0) {
+    assets.push({
+      id: generateId(),
+      name: 'Fixed & Recurring Deposits',
+      category: 'FDs & RDs',
+      value: answers.fdsRds
+    });
+  }
+
+  // Equity Mutual Funds
+  if (answers.equityMf > 0) {
+    assets.push({
+      id: generateId(),
+      name: 'Equity Mutual Funds',
+      category: 'Equity Mutual Funds',
+      value: answers.equityMf
+    });
+  }
+
+  // Direct Stocks
+  if (answers.directStocks > 0) {
+    assets.push({
+      id: generateId(),
+      name: 'Direct Stocks',
+      category: 'Stocks',
+      value: answers.directStocks
+    });
+  }
+
+  // Physical Gold
+  if (answers.physicalGold > 0) {
+    assets.push({
+      id: generateId(),
+      name: 'Gold Jewellery & Coins',
+      category: 'Physical Gold',
+      value: answers.physicalGold
+    });
+  }
+
+  // Legacy support: mfStocks field (for old wizard data)
+  if (answers.mfStocks > 0 && !answers.equityMf) {
     assets.push({
       id: generateId(),
       name: 'Mutual Funds & Stocks',

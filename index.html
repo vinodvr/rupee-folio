@@ -116,7 +116,7 @@
 
         <!-- Has data state: Show continue message -->
         <div id="home-has-data-state" class="hidden">
-          <p class="text-gray-600 mb-4">You have a plan in progress.</p>
+          <p class="text-gray-600 mb-4">Welcome back! Your financial plan is ready to continue.</p>
           <button id="continue-planning-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium">
             Continue to Cash Flow
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,6 +130,19 @@
           </p>
         </div>
       </div>
+    </div>
+
+    <!-- Review Banner (shared across tabs) -->
+    <div id="review-banner" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm text-amber-800">We've estimated these values for you. Please review and adjust to match your actual numbers.</p>
+      </div>
+      <button id="dismiss-review-banner" class="text-sm text-amber-700 hover:text-amber-900 underline">
+        Dismiss
+      </button>
     </div>
 
     <!-- Cash Flow Panel -->
@@ -185,7 +198,7 @@
             </div>
           </div>
           <div id="savings-rate-suggestion" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            <span class="font-medium">Tip:</span> Consider reducing expenses to achieve at least a 40% savings rate for long-term financial health.
+            <span class="font-medium">Tip:</span> Aim for 40%+ savings to build long-term wealth. Review expenses for savings opportunities.
           </div>
         </div>
       </div>
@@ -440,7 +453,7 @@
 
     <!-- Footer -->
     <footer class="text-center text-gray-500 text-sm mt-8 pb-4">
-      <p>Data is stored locally in your browser. No data is sent to any server.</p>
+      <p>Your data stays private on this device. Nothing is sent to any server.</p>
     </footer>
   </div>
 

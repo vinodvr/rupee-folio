@@ -22,7 +22,7 @@ describe('Persona Data Generation', () => {
       expect(data.cashflow.income[0].amount).toBe(100000);
     });
 
-    it('generates two income entries for dual income household', () => {
+    it('generates single combined income entry for dual income household', () => {
       const data = generatePersonaData({
         age: 35,
         family: 'marriedDual',
@@ -35,12 +35,9 @@ describe('Persona Data Generation', () => {
         mfStocks: 0
       });
 
-      expect(data.cashflow.income).toHaveLength(2);
-      expect(data.cashflow.income[0].name).toBe('Salary - Self');
-      expect(data.cashflow.income[1].name).toBe('Salary - Spouse');
-      // Total should equal monthly income
-      const total = data.cashflow.income.reduce((sum, i) => sum + i.amount, 0);
-      expect(total).toBe(200000);
+      expect(data.cashflow.income).toHaveLength(1);
+      expect(data.cashflow.income[0].name).toBe('Salary - Self & Spouse');
+      expect(data.cashflow.income[0].amount).toBe(200000);
     });
 
     it('includes EPF contribution when income exists', () => {
@@ -190,74 +187,81 @@ describe('Persona Data Generation', () => {
   });
 
   describe('Asset Generation', () => {
-    it('creates EPF asset when corpus provided', () => {
-      const data = generatePersonaData({
-        age: 30,
-        family: 'single',
-        kids: 'none',
-        housing: 'renting',
-        monthlyIncome: 100000,
-        otherEmi: 0,
-        epfCorpus: 500000,
-        npsCorpus: 0,
-        mfStocks: 0
-      });
+    const baseAnswers = {
+      age: 30,
+      family: 'single',
+      kids: 'none',
+      housing: 'renting',
+      monthlyIncome: 100000,
+      otherEmi: 0,
+      epfCorpus: 0,
+      ppfCorpus: 0,
+      npsCorpus: 0,
+      fdsRds: 0,
+      equityMf: 0,
+      directStocks: 0,
+      physicalGold: 0
+    };
 
+    it('creates EPF asset when corpus provided', () => {
+      const data = generatePersonaData({ ...baseAnswers, epfCorpus: 500000 });
       const epf = data.assets.items.find(a => a.category === 'EPF Corpus');
       expect(epf).toBeDefined();
       expect(epf.value).toBe(500000);
     });
 
-    it('creates NPS asset when corpus provided', () => {
-      const data = generatePersonaData({
-        age: 30,
-        family: 'single',
-        kids: 'none',
-        housing: 'renting',
-        monthlyIncome: 100000,
-        otherEmi: 0,
-        epfCorpus: 0,
-        npsCorpus: 300000,
-        mfStocks: 0
-      });
+    it('creates PPF asset when corpus provided', () => {
+      const data = generatePersonaData({ ...baseAnswers, ppfCorpus: 400000 });
+      const ppf = data.assets.items.find(a => a.category === 'PPF Corpus');
+      expect(ppf).toBeDefined();
+      expect(ppf.value).toBe(400000);
+    });
 
+    it('creates NPS asset when corpus provided', () => {
+      const data = generatePersonaData({ ...baseAnswers, npsCorpus: 300000 });
       const nps = data.assets.items.find(a => a.category === 'NPS Corpus');
       expect(nps).toBeDefined();
       expect(nps.value).toBe(300000);
     });
 
-    it('creates MF asset when MF/stocks provided', () => {
-      const data = generatePersonaData({
-        age: 30,
-        family: 'single',
-        kids: 'none',
-        housing: 'renting',
-        monthlyIncome: 100000,
-        otherEmi: 0,
-        epfCorpus: 0,
-        npsCorpus: 0,
-        mfStocks: 1000000
-      });
+    it('creates FDs & RDs asset when provided', () => {
+      const data = generatePersonaData({ ...baseAnswers, fdsRds: 200000 });
+      const fds = data.assets.items.find(a => a.category === 'FDs & RDs');
+      expect(fds).toBeDefined();
+      expect(fds.value).toBe(200000);
+    });
 
+    it('creates Equity MF asset when provided', () => {
+      const data = generatePersonaData({ ...baseAnswers, equityMf: 1000000 });
       const mf = data.assets.items.find(a => a.category === 'Equity Mutual Funds');
       expect(mf).toBeDefined();
       expect(mf.value).toBe(1000000);
     });
 
-    it('creates no assets when all corpus values are zero', () => {
-      const data = generatePersonaData({
-        age: 30,
-        family: 'single',
-        kids: 'none',
-        housing: 'renting',
-        monthlyIncome: 100000,
-        otherEmi: 0,
-        epfCorpus: 0,
-        npsCorpus: 0,
-        mfStocks: 0
-      });
+    it('creates Direct Stocks asset when provided', () => {
+      const data = generatePersonaData({ ...baseAnswers, directStocks: 500000 });
+      const stocks = data.assets.items.find(a => a.category === 'Stocks');
+      expect(stocks).toBeDefined();
+      expect(stocks.value).toBe(500000);
+    });
 
+    it('creates Physical Gold asset when provided', () => {
+      const data = generatePersonaData({ ...baseAnswers, physicalGold: 300000 });
+      const gold = data.assets.items.find(a => a.category === 'Physical Gold');
+      expect(gold).toBeDefined();
+      expect(gold.value).toBe(300000);
+    });
+
+    it('creates no assets when all corpus values are zero', () => {
+      const data = generatePersonaData(baseAnswers);
       expect(data.assets.items).toHaveLength(0);
+    });
+
+    it('supports legacy mfStocks field', () => {
+      const data = generatePersonaData({ ...baseAnswers, mfStocks: 800000 });
+      const mf = data.assets.items.find(a => a.category === 'Equity Mutual Funds');
+      expect(mf).toBeDefined();
+      expect(mf.value).toBe(800000);
     });
   });
 

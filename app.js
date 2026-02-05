@@ -153,6 +153,7 @@ function setupHomeTab(switchToTab) {
   document.getElementById('clear-data-btn')?.addEventListener('click', () => {
     if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
       clearData();
+      localStorage.removeItem(REVIEW_BANNER_KEY);
       window.location.reload();
     }
   });
@@ -175,6 +176,23 @@ function updateHomeTabCTA() {
   }
 }
 
+// Review banner for wizard-generated data
+const REVIEW_BANNER_KEY = 'rupeefolio-review-banner-dismissed';
+
+function showReviewBanner() {
+  if (localStorage.getItem(REVIEW_BANNER_KEY) === 'true') return;
+  document.getElementById('review-banner')?.classList.remove('hidden');
+}
+
+function hideReviewBanner() {
+  document.getElementById('review-banner')?.classList.add('hidden');
+  localStorage.setItem(REVIEW_BANNER_KEY, 'true');
+}
+
+function setupReviewBanner() {
+  document.getElementById('dismiss-review-banner')?.addEventListener('click', hideReviewBanner);
+}
+
 function setupTabNavigation() {
   const tabs = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
@@ -195,12 +213,22 @@ function setupTabNavigation() {
     const nextLabel = document.getElementById('nav-next-label');
     const stepIndicator = document.getElementById('nav-step-indicator');
 
-    // Hide bottom nav on Home tab
+    // Hide bottom nav and review banner on Home tab
+    const reviewBanner = document.getElementById('review-banner');
     if (currentIndex === 0) {
       bottomNav.classList.add('hidden');
+      if (reviewBanner) reviewBanner.classList.add('hidden');
       return;
     }
     bottomNav.classList.remove('hidden');
+
+    // Show review banner on data tabs (if not dismissed)
+    const isDataTab = currentIndex >= 1 && currentIndex <= 4; // Cash Flow, Assets, Goals, Investment Plan
+    if (reviewBanner && isDataTab && localStorage.getItem(REVIEW_BANNER_KEY) !== 'true') {
+      reviewBanner.classList.remove('hidden');
+    } else if (reviewBanner) {
+      reviewBanner.classList.add('hidden');
+    }
 
     // Update step indicator (exclude Home tab from count)
     stepIndicator.textContent = `Step ${currentIndex} of ${TAB_ORDER.length - 1}`;
@@ -342,6 +370,9 @@ function init() {
   // Set up Home tab CTA buttons
   setupHomeTab(switchToTab);
 
+  // Set up review banner
+  setupReviewBanner();
+
   // Set up currency selector
   const currencySelect = document.getElementById('currency-select');
   currencySelect.value = currency;
@@ -396,6 +427,10 @@ function init() {
     refreshAllModules();
     updateEpfNpsVisibility();
     updateHomeTabCTA();
+
+    // Show review banner (reset dismissed state for new wizard run)
+    localStorage.removeItem(REVIEW_BANNER_KEY);
+    showReviewBanner();
 
     // Navigate to Cash Flow tab after wizard completes
     if (switchToTabFn) {

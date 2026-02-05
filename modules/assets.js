@@ -166,7 +166,7 @@ function renderAssetsList() {
   if (!list) return;
 
   if (appData.assets.items.length === 0) {
-    list.innerHTML = '<p class="text-gray-500 text-sm italic">No assets added</p>';
+    list.innerHTML = '<p class="text-gray-500 text-sm italic">Add your assets to track net worth</p>';
     return;
   }
 
@@ -328,7 +328,7 @@ function renderLiabilitiesList() {
   if (!list) return;
 
   if (appData.liabilities.items.length === 0) {
-    list.innerHTML = '<p class="text-gray-500 text-sm italic">No liabilities added</p>';
+    list.innerHTML = '<p class="text-gray-500 text-sm italic">No loans or liabilities yet</p>';
     return;
   }
 
