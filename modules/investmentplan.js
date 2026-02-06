@@ -1081,13 +1081,6 @@ function setupGoalStepListeners(goal) {
       renderWizardStep();
     });
   }
-
-  // Close on backdrop click
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      modal.classList.add('hidden');
-    }
-  };
 }
 
 /**
@@ -1306,13 +1299,6 @@ function renderReviewStep(content, totalSteps) {
   if (applyBtn && hasChanges) {
     applyBtn.addEventListener('click', applyWizardChanges);
   }
-
-  // Close on backdrop click
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      modal.classList.add('hidden');
-    }
-  };
 }
 
 /**
