@@ -461,7 +461,7 @@ describe('Asset CRUD', () => {
     expect(data.assets.items[0].value).toBe(1000000);
   });
 
-  it('updateAsset caps linked amounts when value decreases', () => {
+  it('updateAsset reduces linked amounts proportionally when value decreases', () => {
     const data = getFreshData();
     addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
     addGoal(data, {
@@ -469,17 +469,25 @@ describe('Asset CRUD', () => {
       name: 'Emergency Fund',
       targetAmount: 500000,
       targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 800000 }]
+      linkedAssets: [{ assetId: 'asset-1', amount: 600000 }]
+    });
+    addGoal(data, {
+      id: 'goal-2',
+      name: 'Vacation',
+      targetAmount: 200000,
+      targetDate: '2028-01-01',
+      linkedAssets: [{ assetId: 'asset-1', amount: 400000 }]
     });
 
-    // Reduce asset value below linked amount
+    // Reduce asset value to 50% - linked amounts should reduce proportionally
     updateAsset(data, 'asset-1', { value: 500000 });
 
-    // Linked amount should be capped to new asset value
-    expect(data.goals[0].linkedAssets[0].amount).toBe(500000);
+    // 600000 * 0.5 = 300000, 400000 * 0.5 = 200000
+    expect(data.goals[0].linkedAssets[0].amount).toBe(300000);
+    expect(data.goals[1].linkedAssets[0].amount).toBe(200000);
   });
 
-  it('updateAsset does not change linked amount when value increases', () => {
+  it('updateAsset does not change linked amounts when value increases', () => {
     const data = getFreshData();
     addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
     addGoal(data, {
@@ -490,11 +498,25 @@ describe('Asset CRUD', () => {
       linkedAssets: [{ assetId: 'asset-1', amount: 800000 }]
     });
 
-    // Increase asset value
+    // Increase asset value - linked amount should stay the same
     updateAsset(data, 'asset-1', { value: 1500000 });
-
-    // Linked amount should remain unchanged
     expect(data.goals[0].linkedAssets[0].amount).toBe(800000);
+  });
+
+  it('updateAsset does not change linked amounts when decrease does not cause over-allocation', () => {
+    const data = getFreshData();
+    addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
+    addGoal(data, {
+      id: 'goal-1',
+      name: 'Emergency Fund',
+      targetAmount: 500000,
+      targetDate: '2030-01-01',
+      linkedAssets: [{ assetId: 'asset-1', amount: 300000 }]
+    });
+
+    // Decrease but still above allocated - no change needed
+    updateAsset(data, 'asset-1', { value: 500000 });
+    expect(data.goals[0].linkedAssets[0].amount).toBe(300000);
   });
 
   it('deleteAsset removes asset by ID', () => {

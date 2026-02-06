@@ -330,20 +330,38 @@ export function addAsset(data, asset) {
 export function updateAsset(data, id, updates) {
   const index = data.assets.items.findIndex(a => a.id === id);
   if (index !== -1) {
+    const oldValue = data.assets.items[index].value || 0;
     data.assets.items[index] = { ...data.assets.items[index], ...updates };
 
-    // If asset value changed, cap linked amounts in goals to the new value
-    if (updates.value !== undefined) {
+    // If asset value decreased, adjust linked amounts proportionally
+    if (updates.value !== undefined && updates.value < oldValue) {
       const newValue = updates.value;
+
+      // Calculate total allocated to this asset across all goals
+      let totalAllocated = 0;
       data.goals.forEach(goal => {
-        if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+        if (goal.linkedAssets) {
           goal.linkedAssets.forEach(la => {
-            if (la.assetId === id && la.amount > newValue) {
-              la.amount = newValue;
+            if (la.assetId === id) {
+              totalAllocated += la.amount || 0;
             }
           });
         }
       });
+
+      // If over-allocated, reduce proportionally
+      if (totalAllocated > newValue) {
+        const ratio = newValue / totalAllocated;
+        data.goals.forEach(goal => {
+          if (goal.linkedAssets) {
+            goal.linkedAssets.forEach(la => {
+              if (la.assetId === id) {
+                la.amount = Math.round(la.amount * ratio);
+              }
+            });
+          }
+        });
+      }
     }
 
     saveData(data);
