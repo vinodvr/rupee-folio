@@ -58,7 +58,7 @@ function showAddIncomeForm() {
   const container = document.getElementById('income-form-container');
   container.innerHTML = `
     <div class="bg-gray-50 p-3 rounded-lg mb-3">
-      <input type="text" id="new-income-name" placeholder="Income source (e.g., Salary)"
+      <input type="text" id="new-income-name" placeholder="Income source - optional (e.g., Freelance)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
       <div class="flex gap-2 mb-2">
         <div class="relative flex-1">
@@ -105,13 +105,13 @@ function showAddIncomeForm() {
 }
 
 function saveNewIncome() {
-  const name = document.getElementById('new-income-name').value.trim();
+  const name = document.getElementById('new-income-name').value.trim() || 'Salary';
   const amount = parseFloat(document.getElementById('new-income-amount').value);
   const epf = parseFloat(document.getElementById('new-income-epf').value) || 0;
   const nps = parseFloat(document.getElementById('new-income-nps').value) || 0;
 
-  if (!name || isNaN(amount) || amount <= 0) {
-    alert('Please enter a valid name and amount');
+  if (isNaN(amount) || amount <= 0) {
+    alert('Please enter a valid amount');
     return;
   }
 
@@ -155,12 +155,12 @@ function renderIncomeList() {
         </div>
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-green-600">${formatCurrency(income.amount, currency)}</span>
-          <button class="edit-income-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity" data-id="${income.id}">
+          <button class="edit-income-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" data-id="${income.id}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
             </svg>
           </button>
-          <button class="delete-income-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity" data-id="${income.id}">
+          <button class="delete-income-btn text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" data-id="${income.id}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
@@ -330,12 +330,12 @@ function renderExpenseList() {
           <span class="text-sm">${exp.name}</span>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-red-600">${formatCurrency(exp.amount, currency)}</span>
-            <button class="edit-expense-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity" data-id="${exp.id}">
+            <button class="edit-expense-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" data-id="${exp.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
               </svg>
             </button>
-            <button class="delete-expense-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity" data-id="${exp.id}">
+            <button class="delete-expense-btn text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" data-id="${exp.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>

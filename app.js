@@ -106,7 +106,7 @@ const REVIEW_BANNER_MESSAGES = {
   cashflow: 'Edit your income, deductions, and expense amounts to match your actual numbers.',
   assets: 'Add any savings, real estate, or other assets we may have missed.',
   goals: 'Adjust target amounts and dates to match your actual plans.',
-  investmentplan: 'Review your asset allocation and return assumptions.'
+  investmentplan: 'Assign existing investments to goals to reduce the SIP required.'
 };
 
 // Helper: Set up a collapsible section

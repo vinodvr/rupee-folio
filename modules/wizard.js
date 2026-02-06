@@ -462,7 +462,7 @@ function renderReviewStep() {
           </div>
           <div>
             <h4 class="font-medium text-gray-800">Investment Plan</h4>
-            <p class="text-sm text-gray-600 mt-1">Review your allocation and return assumptions</p>
+            <p class="text-sm text-gray-600 mt-1">Assign existing investments to goals to reduce SIP</p>
           </div>
         </div>
       </div>

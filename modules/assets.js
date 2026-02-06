@@ -144,14 +144,14 @@ function showAddAssetForm() {
       <select id="new-asset-category" class="w-full px-3 py-2 border rounded mb-2 text-sm">
         ${renderAssetCategoryOptions()}
       </select>
-      <input type="text" id="new-asset-name" placeholder="Description (e.g., Primary Residence)"
+      <div class="relative mb-2">
+        <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
+        <input type="number" id="new-asset-value" placeholder="Current Value"
+          class="w-full pl-8 pr-3 py-2 border rounded text-sm">
+      </div>
+      <input type="text" id="new-asset-name" placeholder="Description - optional (e.g., HDFC Savings)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
       <div class="flex gap-2">
-        <div class="relative flex-1">
-          <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-          <input type="number" id="new-asset-value" placeholder="Current Value"
-            class="w-full pl-8 pr-3 py-2 border rounded text-sm">
-        </div>
         <button id="save-asset-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm hover:bg-emerald-700">Save</button>
         <button id="cancel-asset-btn" class="bg-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-400">Cancel</button>
       </div>
@@ -162,16 +162,16 @@ function showAddAssetForm() {
   document.getElementById('cancel-asset-btn').addEventListener('click', () => {
     container.innerHTML = '';
   });
-  document.getElementById('new-asset-name').focus();
+  document.getElementById('new-asset-value').focus();
 }
 
 function saveNewAsset() {
   const category = document.getElementById('new-asset-category').value;
-  const name = document.getElementById('new-asset-name').value.trim();
+  const name = document.getElementById('new-asset-name').value.trim() || category;
   const value = parseFloat(document.getElementById('new-asset-value').value);
 
-  if (!name || isNaN(value) || value < 0) {
-    alert('Please enter a valid description and value');
+  if (isNaN(value) || value < 0) {
+    alert('Please enter a valid value');
     return;
   }
 
@@ -223,12 +223,12 @@ function renderAssetsList() {
               <span class="text-sm">${asset.name}</span>
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium text-emerald-600">${formatCurrency(asset.value, currency)}</span>
-                <button class="edit-asset-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity" data-id="${asset.id}">
+                <button class="edit-asset-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" data-id="${asset.id}">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                   </svg>
                 </button>
-                <button class="delete-asset-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity" data-id="${asset.id}">
+                <button class="delete-asset-btn text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" data-id="${asset.id}">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
@@ -385,14 +385,14 @@ function showAddLiabilityForm() {
       <select id="new-liability-category" class="w-full px-3 py-2 border rounded mb-2 text-sm">
         ${liabilityCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
       </select>
-      <input type="text" id="new-liability-name" placeholder="Description (e.g., Home Loan - SBI)"
+      <div class="relative mb-2">
+        <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
+        <input type="number" id="new-liability-amount" placeholder="Outstanding Amount"
+          class="w-full pl-8 pr-3 py-2 border rounded text-sm">
+      </div>
+      <input type="text" id="new-liability-name" placeholder="Description - optional (e.g., SBI Home Loan)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
       <div class="flex gap-2">
-        <div class="relative flex-1">
-          <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-          <input type="number" id="new-liability-amount" placeholder="Outstanding Amount"
-            class="w-full pl-8 pr-3 py-2 border rounded text-sm">
-        </div>
         <button id="save-liability-btn" class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700">Save</button>
         <button id="cancel-liability-btn" class="bg-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-400">Cancel</button>
       </div>
@@ -403,16 +403,16 @@ function showAddLiabilityForm() {
   document.getElementById('cancel-liability-btn').addEventListener('click', () => {
     container.innerHTML = '';
   });
-  document.getElementById('new-liability-name').focus();
+  document.getElementById('new-liability-amount').focus();
 }
 
 function saveNewLiability() {
   const category = document.getElementById('new-liability-category').value;
-  const name = document.getElementById('new-liability-name').value.trim();
+  const name = document.getElementById('new-liability-name').value.trim() || category;
   const amount = parseFloat(document.getElementById('new-liability-amount').value);
 
-  if (!name || isNaN(amount) || amount < 0) {
-    alert('Please enter a valid description and amount');
+  if (isNaN(amount) || amount < 0) {
+    alert('Please enter a valid amount');
     return;
   }
 
@@ -447,12 +447,12 @@ function renderLiabilitiesList() {
           <span class="text-sm">${liability.name}</span>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-orange-600">${formatCurrency(liability.amount, currency)}</span>
-            <button class="edit-liability-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition-opacity" data-id="${liability.id}">
+            <button class="edit-liability-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" data-id="${liability.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
               </svg>
             </button>
-            <button class="delete-liability-btn opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity" data-id="${liability.id}">
+            <button class="delete-liability-btn text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" data-id="${liability.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
