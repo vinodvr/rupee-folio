@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It Works - RupeeFolio</title>
+  <meta name="description" content="Learn about the investment philosophy and methodology behind RupeeFolio's calculations.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-3xl mx-auto p-4 md:p-6">
+    <!-- Header -->
+    <header class="bg-white rounded-lg shadow-sm p-4 mb-6">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <svg class="w-8 h-8" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="30" fill="#10B981" stroke="#059669" stroke-width="2"/>
+            <circle cx="32" cy="32" r="24" fill="none" stroke="#A7F3D0" stroke-width="2"/>
+            <path d="M32 44 L32 28" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+            <path d="M32 32 C32 32 26 28 26 22 C26 18 30 16 32 20 C34 16 38 18 38 22 C38 28 32 32 32 32" fill="#fff"/>
+            <path d="M32 36 C28 34 25 36 25 36 C25 36 28 38 32 36" fill="#A7F3D0"/>
+            <path d="M32 36 C36 34 39 36 39 36 C39 36 36 38 32 36" fill="#A7F3D0"/>
+          </svg>
+          <span class="text-xl font-bold text-gray-800">RupeeFolio</span>
+        </a>
+        <a href="index.html" class="text-sm text-gray-600 hover:text-gray-800">
+          ← Back to App
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <h1 class="text-2xl font-bold text-gray-800 mb-2">How It Works</h1>
+      <p class="text-gray-600 mb-6">Understanding the investment philosophy and calculations behind RupeeFolio.</p>
+
+      <!-- Unified Portfolio Model -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+          Unified Portfolio Model
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 ml-8">
+          <p>Instead of managing separate allocations for each goal, RupeeFolio uses a simplified <strong>two-bucket approach</strong> that consolidates all goals:</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <h3 class="font-semibold text-amber-800 mb-2">Short-Term Bucket</h3>
+              <p class="text-amber-700 text-xs mb-2">Goals less than 5 years away</p>
+              <ul class="text-sm text-gray-600 space-y-1">
+                <li>• 100% Arbitrage Fund</li>
+                <li>• Low risk, stable returns</li>
+                <li>• Equity taxation benefits</li>
+                <li>• Expected return: ~6% post-tax</li>
+              </ul>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 class="font-semibold text-blue-800 mb-2">Long-Term Bucket</h3>
+              <p class="text-blue-700 text-xs mb-2">Goals 5+ years away</p>
+              <ul class="text-sm text-gray-600 space-y-1">
+                <li>• Configurable equity/debt split</li>
+                <li>• Default: 60% Equity / 40% Debt</li>
+                <li>• Adjustable from 20% to 80% equity</li>
+                <li>• Automatic glide path as goals approach</li>
+              </ul>
+            </div>
+          </div>
+
+          <p class="text-gray-500 bg-gray-50 p-3 rounded-lg mt-4">
+            <strong>Why unified?</strong> This approach simplifies portfolio management by consolidating all goals into two buckets rather than managing separate allocations per goal. It's easier to implement and rebalance in practice.
+          </p>
+        </div>
+      </section>
+
+      <!-- Glide Path Strategy -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+          Glide Path Strategy
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 ml-8">
+          <p>Long-term goals automatically reduce equity exposure as they approach to protect accumulated gains from market volatility:</p>
+          <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+              <span class="font-medium">Years Remaining</span>
+              <span class="font-medium">Equity Allocation</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+              <span>8+ years</span>
+              <span class="font-medium text-blue-600">Full allocation (e.g., 60%)</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+              <span>5-8 years</span>
+              <span class="font-medium text-blue-600">Half allocation (max 40%)</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+              <span>3-5 years</span>
+              <span class="font-medium text-blue-600">Quarter allocation (max 20%)</span>
+            </div>
+            <div class="flex justify-between items-center py-2">
+              <span>0-3 years</span>
+              <span class="font-medium text-amber-600">0% equity (100% debt)</span>
+            </div>
+          </div>
+          <p class="text-gray-500">
+            SIP calculations factor in this tapering by simulating month-by-month compounding with varying rates, ensuring accurate projections even as allocations change over time.
+          </p>
+        </div>
+      </section>
+
+      <!-- Return Assumptions -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+          Return Assumptions
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 ml-8">
+          <p>Default post-tax annual returns based on historical market performance:</p>
+          <div class="bg-gray-50 rounded-lg overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-100">
+                <tr>
+                  <th class="text-left py-2 px-4 font-medium">Asset Class</th>
+                  <th class="text-center py-2 px-4 font-medium">Range</th>
+                  <th class="text-right py-2 px-4 font-medium">Default</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-t border-gray-200">
+                  <td class="py-2 px-4">Equity (Index Funds)</td>
+                  <td class="py-2 px-4 text-center text-gray-500">8% - 13%</td>
+                  <td class="py-2 px-4 text-right font-medium">10%</td>
+                </tr>
+                <tr class="border-t border-gray-200">
+                  <td class="py-2 px-4">Debt (Money Market)</td>
+                  <td class="py-2 px-4 text-center text-gray-500">4% - 7%</td>
+                  <td class="py-2 px-4 text-right font-medium">5%</td>
+                </tr>
+                <tr class="border-t border-gray-200">
+                  <td class="py-2 px-4">Arbitrage Fund</td>
+                  <td class="py-2 px-4 text-center text-gray-500">4% - 8%</td>
+                  <td class="py-2 px-4 text-right font-medium">6%</td>
+                </tr>
+                <tr class="border-t border-gray-200">
+                  <td class="py-2 px-4">EPF</td>
+                  <td class="py-2 px-4 text-center text-gray-500">7% - 9%</td>
+                  <td class="py-2 px-4 text-right font-medium">8%</td>
+                </tr>
+                <tr class="border-t border-gray-200">
+                  <td class="py-2 px-4">NPS</td>
+                  <td class="py-2 px-4 text-center text-gray-500">8% - 11%</td>
+                  <td class="py-2 px-4 text-right font-medium">9%</td>
+                </tr>
+                <tr class="border-t border-gray-200 bg-amber-50">
+                  <td class="py-2 px-4">Inflation</td>
+                  <td class="py-2 px-4 text-center text-gray-500">4% - 8%</td>
+                  <td class="py-2 px-4 text-right font-medium">6%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-gray-500">
+            All return assumptions can be customized in the Investment Plan tab under "Expected Returns & SIP Step-up".
+          </p>
+        </div>
+      </section>
+
+      <!-- Fund Recommendations -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">4</span>
+          Fund Recommendations
+        </h2>
+        <div class="text-sm text-gray-600 space-y-4 ml-8">
+          <p>RupeeFolio recommends low-cost index funds from ICICI Prudential or HDFC:</p>
+
+          <div>
+            <h3 class="font-medium text-gray-700 mb-2">Equity Portion (Long-term goals)</h3>
+            <div class="bg-blue-50 rounded-lg p-3 space-y-2">
+              <div class="flex justify-between">
+                <span>Nifty 50 Index Fund Direct Growth</span>
+                <span class="font-medium">70%</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Nifty Next 50 Index Fund Direct Growth</span>
+                <span class="font-medium">30%</span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">This combination provides exposure to India's top 100 companies with low expense ratios.</p>
+          </div>
+
+          <div>
+            <h3 class="font-medium text-gray-700 mb-2">Debt Portion (Long-term goals)</h3>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <div class="flex justify-between">
+                <span>Money Market Fund Direct Growth</span>
+                <span class="font-medium">100%</span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Money market funds offer stability with better returns than savings accounts.</p>
+          </div>
+
+          <div>
+            <h3 class="font-medium text-gray-700 mb-2">Short-term Goals (&lt;5 years)</h3>
+            <div class="bg-amber-50 rounded-lg p-3">
+              <div class="flex justify-between">
+                <span>Equity Arbitrage Fund Direct Growth</span>
+                <span class="font-medium">100%</span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Arbitrage funds provide debt-like stability with equity taxation benefits (lower tax on gains held over 1 year).</p>
+          </div>
+
+          <p class="text-gray-500 bg-gray-50 p-3 rounded-lg">
+            <strong>Why index funds?</strong> Index funds have lower expense ratios (0.1-0.2% vs 1-2% for active funds) and most active funds fail to beat the index over long periods. For wealth-building, consistent low-cost returns matter more than trying to beat the market.
+          </p>
+        </div>
+      </section>
+
+      <!-- Retirement Goals & EPF/NPS -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">5</span>
+          Retirement Goals & EPF/NPS
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 ml-8">
+          <p>For retirement goals, EPF and NPS contributions are factored in separately with their own return assumptions:</p>
+          <ul class="list-disc list-inside space-y-2 ml-2">
+            <li>EPF and NPS corpus (current balance) tracked as assets</li>
+            <li>Monthly EPF/NPS contributions from salary recorded in Cash Flow</li>
+            <li>Future value calculated separately using EPF/NPS return rates</li>
+            <li>Remaining gap filled by additional SIP in mutual funds</li>
+          </ul>
+          <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mt-4">
+            <h3 class="font-medium text-purple-800 mb-2">EPF/NPS Step-up</h3>
+            <p class="text-purple-700 text-sm">
+              If your EPF/NPS contributions increase with salary (e.g., 5% annual hike), enable step-up in the retirement goal settings. This projects higher contributions over time, potentially reducing your additional SIP requirement.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step-up SIP -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">6</span>
+          Step-up SIP
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 ml-8">
+          <p>Step-up SIP increases your monthly investment by a fixed percentage each year (default 5%):</p>
+          <div class="bg-gray-50 rounded-lg p-4">
+            <p class="mb-2"><strong>Example:</strong> ₹10,000/month with 5% step-up</p>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div>Year 1: ₹10,000/month</div>
+              <div>Year 2: ₹10,500/month</div>
+              <div>Year 3: ₹11,025/month</div>
+              <div>Year 4: ₹11,576/month</div>
+            </div>
+          </div>
+          <p class="text-gray-500">
+            <strong>Why step-up?</strong> This aligns with expected salary growth and helps reach goals faster through the power of compounding. Starting with a lower SIP that grows over time is often more practical than committing to a high fixed amount.
+          </p>
+        </div>
+      </section>
+
+      <!-- Asset Linking Rules -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">7</span>
+          Asset Linking Rules
+        </h2>
+        <div class="text-sm text-gray-600 space-y-4 ml-8">
+          <p>You can link existing investments to goals to reduce required SIP. However, not all assets are eligible:</p>
+
+          <div>
+            <h3 class="font-medium text-red-700 mb-2">Excluded from Goal Linking</h3>
+            <ul class="list-disc list-inside space-y-1 ml-2 text-gray-500">
+              <li><strong>Real Estate</strong> — Illiquid; can't sell a portion when needed</li>
+              <li><strong>Vehicles</strong> — Depreciating assets, not investments</li>
+              <li><strong>Insurance Policies</strong> — Separate purpose (protection, not investment)</li>
+              <li><strong>EPF/NPS</strong> — Retirement-specific, handled separately in retirement goals</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-medium text-amber-700 mb-2">Eligible for Short-term Goals (&lt;5 years)</h3>
+            <p class="ml-2">FDs, Savings Accounts, Debt Mutual Funds</p>
+            <p class="text-xs text-gray-500 ml-2 mt-1">Low-volatility assets suitable for near-term needs</p>
+          </div>
+
+          <div>
+            <h3 class="font-medium text-blue-700 mb-2">Eligible for Long-term Goals (5+ years)</h3>
+            <p class="ml-2">Equity MFs, Stocks, Gold ETFs, plus all short-term eligible assets</p>
+            <p class="text-xs text-gray-500 ml-2 mt-1">Higher volatility acceptable for distant goals</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SIP Calculation -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">8</span>
+          How SIP is Calculated
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 ml-8">
+          <p>The monthly SIP needed for each goal is calculated using the <strong>annuity due formula</strong> (payment at beginning of period):</p>
+          <div class="bg-gray-50 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+            <p>1. Future Value = Target Amount × (1 + inflation)^years</p>
+            <p>2. Blended Return = (equity% × equity_return) + (debt% × debt_return)</p>
+            <p>3. Monthly SIP = FV × r / [(1 + r)^n - 1] / (1 + r)</p>
+            <p class="text-gray-500 mt-2">where r = monthly return, n = months remaining</p>
+          </div>
+          <p class="text-gray-500">
+            For goals with linked assets, the future value of linked investments is subtracted from the target before calculating SIP. For step-up SIP, a simulation determines the starting amount that reaches the target when contributions increase annually.
+          </p>
+        </div>
+      </section>
+
+      <!-- FAQ Section -->
+      <section class="mb-4">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold">?</span>
+          Frequently Asked Questions
+        </h2>
+        <div class="space-y-4 ml-8">
+
+          <div class="border-b border-gray-100 pb-4">
+            <h3 class="font-medium text-gray-800 mb-2">Why 60/40 allocation for long-term goals?</h3>
+            <p class="text-sm text-gray-600">
+              This is a balanced approach that captures equity growth (historically ~10-12% returns) while debt provides stability during market downturns. The 60/40 split has been a widely-used benchmark globally. You can adjust this in Settings based on your risk tolerance — more aggressive investors might prefer 70/30 or 80/20.
+            </p>
+          </div>
+
+          <div class="border-b border-gray-100 pb-4">
+            <h3 class="font-medium text-gray-800 mb-2">Why can't I link my house to a goal?</h3>
+            <p class="text-sm text-gray-600">
+              Real estate is illiquid — you can't easily sell a portion to fund your child's education or an emergency. This tool focuses on liquid investments that can be redeemed when needed. Your house contributes to net worth but isn't available to fund goals.
+            </p>
+          </div>
+
+          <div class="border-b border-gray-100 pb-4">
+            <h3 class="font-medium text-gray-800 mb-2">Why does my SIP show "Achieved" or ₹0?</h3>
+            <p class="text-sm text-gray-600">
+              Your linked investments (current value + projected growth) already exceed the inflation-adjusted target. No additional SIP is needed — just let your investments compound until the goal date. If markets drop significantly, you may need to reassess.
+            </p>
+          </div>
+
+          <div class="border-b border-gray-100 pb-4">
+            <h3 class="font-medium text-gray-800 mb-2">Why are EPF/NPS not in my investment plan?</h3>
+            <p class="text-sm text-gray-600">
+              EPF and NPS are retirement-specific instruments with their own rules (withdrawal restrictions, tax treatment). They're automatically included in retirement goal calculations if you've added them to Cash Flow. For non-retirement goals, they're excluded since you can't easily access these funds.
+            </p>
+          </div>
+
+          <div class="border-b border-gray-100 pb-4">
+            <h3 class="font-medium text-gray-800 mb-2">What if I want a different equity allocation?</h3>
+            <p class="text-sm text-gray-600">
+              Go to the Investment Plan tab and expand "Initial Asset Allocation (Long-Term Goals)". Adjust the equity slider from 20% to 80%. All projections will recalculate automatically. Remember: higher equity = higher potential returns but more volatility.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-medium text-gray-800 mb-2">Is my data safe?</h3>
+            <p class="text-sm text-gray-600">
+              Yes. All data is stored locally in your browser's localStorage. Nothing is ever sent to any server — your financial information never leaves your device. However, clearing browser data will erase all saved information, so consider exporting your data periodically.
+            </p>
+          </div>
+
+        </div>
+      </section>
+    </main>
+
+    <!-- Back to App CTA -->
+    <div class="text-center mb-6">
+      <a href="index.html" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+        ← Back to RupeeFolio
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-gray-500 text-sm pb-4">
+      <p>Your data stays private on this device. Nothing is sent to any server.</p>
+      <p class="mt-2">
+        <a href="https://github.com/vinodvr/rupee-folio" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-gray-700">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
