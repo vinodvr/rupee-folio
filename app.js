@@ -102,6 +102,13 @@ const TAB_LABELS = {
   investmentplan: 'Investment Plan'
 };
 
+const REVIEW_BANNER_MESSAGES = {
+  cashflow: 'Edit your income, deductions, and expense amounts to match your actual numbers.',
+  assets: 'Add any savings, real estate, or other assets we may have missed.',
+  goals: 'Adjust target amounts and dates to match your actual plans.',
+  investmentplan: 'Review your asset allocation and return assumptions.'
+};
+
 // Helper: Set up a collapsible section
 function setupCollapsible(toggleId, contentId, chevronId, summaryId) {
   const toggleBtn = document.getElementById(toggleId);
@@ -226,6 +233,11 @@ function setupTabNavigation() {
     const isDataTab = currentIndex >= 1 && currentIndex <= 4; // Cash Flow, Assets, Goals, Investment Plan
     if (reviewBanner && isDataTab && localStorage.getItem(REVIEW_BANNER_KEY) !== 'true') {
       reviewBanner.classList.remove('hidden');
+      const bannerText = document.getElementById('review-banner-text');
+      if (bannerText) {
+        const tabName = TAB_ORDER[currentIndex];
+        bannerText.textContent = REVIEW_BANNER_MESSAGES[tabName] || '';
+      }
     } else if (reviewBanner) {
       reviewBanner.classList.add('hidden');
     }

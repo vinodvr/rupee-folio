@@ -7,6 +7,7 @@ import { generatePersonaData } from './personaData.js';
 let wizardCallback = null;
 let currentStep = 0;
 let answers = {};
+let generatedData = null;
 
 // Wizard step definitions
 const WIZARD_STEPS = [
@@ -169,6 +170,13 @@ const WIZARD_STEPS = [
     step: 100000,
     defaultValue: 0,
     format: 'currency'
+  },
+  {
+    id: 'review',
+    title: 'Your Plan is Almost Ready!',
+    subtitle: 'Review your data in each tab to ensure accurate calculations.',
+    type: 'review',
+    field: null
   }
 ];
 
@@ -185,10 +193,13 @@ export function initWizard(callback) {
 export function openWizard() {
   currentStep = 0;
   answers = {};
+  generatedData = null;
 
   // Set default values
   WIZARD_STEPS.forEach(step => {
-    answers[step.field] = step.defaultValue;
+    if (step.field) {
+      answers[step.field] = step.defaultValue;
+    }
   });
 
   createWizardModal();
@@ -276,8 +287,11 @@ function renderCurrentStep() {
 
   // Update next button text
   const nextBtn = document.getElementById('wizard-next-btn');
-  const hasNextStep = findNextVisibleStep(currentStep) >= 0;
-  nextBtn.textContent = hasNextStep ? 'Next' : 'Generate Plan';
+  if (step.type === 'review') {
+    nextBtn.textContent = 'Continue';
+  } else {
+    nextBtn.textContent = 'Next';
+  }
 
   // Render content based on type
   const content = document.getElementById('wizard-content');
@@ -291,6 +305,9 @@ function renderCurrentStep() {
       break;
     case 'slider':
       content.innerHTML = renderSlider(step);
+      break;
+    case 'review':
+      content.innerHTML = renderReviewStep();
       break;
   }
 
@@ -390,6 +407,70 @@ function renderSlider(step) {
 }
 
 /**
+ * Render review step (final step before finishing wizard)
+ */
+function renderReviewStep() {
+  return `
+    <div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 text-sm text-amber-800">
+        <strong>Your data is pre-filled with estimates.</strong> Edit each tab to match your actual finances — your projections are only as accurate as your inputs.
+      </div>
+
+      <div class="text-left space-y-3">
+        <div class="flex gap-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="font-medium text-gray-800">Cash Flow</h4>
+            <p class="text-sm text-gray-600 mt-1">Edit your income, deductions, and expense amounts</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="font-medium text-gray-800">Assets</h4>
+            <p class="text-sm text-gray-600 mt-1">Add savings, real estate, and other assets we missed</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="font-medium text-gray-800">Goals</h4>
+            <p class="text-sm text-gray-600 mt-1">Adjust target amounts and dates to match your plans</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 p-4 bg-gray-50 rounded-lg">
+          <div class="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="font-medium text-gray-800">Investment Plan</h4>
+            <p class="text-sm text-gray-600 mt-1">Review your allocation and return assumptions</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Setup event listeners for current step
  */
 function setupStepEventListeners(step) {
@@ -478,8 +559,23 @@ function goBack() {
  * Go to next step or finish
  */
 function goNext() {
+  const currentStepDef = WIZARD_STEPS[currentStep];
+
+  // If we're on the review step, finish the wizard
+  if (currentStepDef.type === 'review') {
+    finishWizard();
+    return;
+  }
+
   const nextStep = findNextVisibleStep(currentStep);
   if (nextStep >= 0) {
+    const nextStepDef = WIZARD_STEPS[nextStep];
+
+    // Generate data right before showing review step
+    if (nextStepDef.type === 'review') {
+      generatedData = generatePersonaData(answers);
+    }
+
     currentStep = nextStep;
     renderCurrentStep();
   } else {
@@ -498,13 +594,14 @@ function closeWizard() {
 }
 
 /**
- * Finish the wizard and generate data
+ * Finish the wizard and pass generated data to callback
  */
 function finishWizard() {
-  const generatedData = generatePersonaData(answers);
+  // Use pre-generated data if available (from review step), otherwise generate now
+  const dataToUse = generatedData || generatePersonaData(answers);
 
   if (wizardCallback) {
-    wizardCallback(generatedData);
+    wizardCallback(dataToUse);
   }
 
   closeWizard();
