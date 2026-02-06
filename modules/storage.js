@@ -331,6 +331,21 @@ export function updateAsset(data, id, updates) {
   const index = data.assets.items.findIndex(a => a.id === id);
   if (index !== -1) {
     data.assets.items[index] = { ...data.assets.items[index], ...updates };
+
+    // If asset value changed, cap linked amounts in goals to the new value
+    if (updates.value !== undefined) {
+      const newValue = updates.value;
+      data.goals.forEach(goal => {
+        if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+          goal.linkedAssets.forEach(la => {
+            if (la.assetId === id && la.amount > newValue) {
+              la.amount = newValue;
+            }
+          });
+        }
+      });
+    }
+
     saveData(data);
   }
   return data;

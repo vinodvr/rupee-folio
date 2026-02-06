@@ -461,6 +461,42 @@ describe('Asset CRUD', () => {
     expect(data.assets.items[0].value).toBe(1000000);
   });
 
+  it('updateAsset caps linked amounts when value decreases', () => {
+    const data = getFreshData();
+    addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
+    addGoal(data, {
+      id: 'goal-1',
+      name: 'Emergency Fund',
+      targetAmount: 500000,
+      targetDate: '2030-01-01',
+      linkedAssets: [{ assetId: 'asset-1', amount: 800000 }]
+    });
+
+    // Reduce asset value below linked amount
+    updateAsset(data, 'asset-1', { value: 500000 });
+
+    // Linked amount should be capped to new asset value
+    expect(data.goals[0].linkedAssets[0].amount).toBe(500000);
+  });
+
+  it('updateAsset does not change linked amount when value increases', () => {
+    const data = getFreshData();
+    addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
+    addGoal(data, {
+      id: 'goal-1',
+      name: 'Emergency Fund',
+      targetAmount: 500000,
+      targetDate: '2030-01-01',
+      linkedAssets: [{ assetId: 'asset-1', amount: 800000 }]
+    });
+
+    // Increase asset value
+    updateAsset(data, 'asset-1', { value: 1500000 });
+
+    // Linked amount should remain unchanged
+    expect(data.goals[0].linkedAssets[0].amount).toBe(800000);
+  });
+
   it('deleteAsset removes asset by ID', () => {
     const data = getFreshData();
     addAsset(data, { id: 'asset-1', name: 'EPF', category: 'EPF', value: 1000000 });
