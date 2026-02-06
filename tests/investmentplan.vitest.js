@@ -550,6 +550,68 @@ describe('Auto-assign Algorithm', () => {
   });
 });
 
+describe('Use All Amount Calculation', () => {
+  /**
+   * Helper to calculate "Use All" amount - mirrors logic in investmentplan.js
+   * useAllAmount = min(availableForThisAsset, remainingGoalNeed + currentAssetAssignment)
+   */
+  function calculateUseAllAmount(goalTarget, totalLinkedToGoal, assetAvailable, currentAssetAssignment = 0) {
+    const remainingGoalNeed = Math.max(0, goalTarget - totalLinkedToGoal);
+    const maxForGoal = remainingGoalNeed + currentAssetAssignment;
+    return Math.min(assetAvailable, maxForGoal);
+  }
+
+  it('Caps at goal target when asset has more than needed', () => {
+    // Goal needs 7L, asset has 30L available
+    const useAll = calculateUseAllAmount(700000, 0, 3000000, 0);
+    expect(useAll).toBe(700000);
+  });
+
+  it('Uses full asset amount when goal needs more than asset has', () => {
+    // Goal needs 50L, asset has 10L available
+    const useAll = calculateUseAllAmount(5000000, 0, 1000000, 0);
+    expect(useAll).toBe(1000000);
+  });
+
+  it('Accounts for already linked amounts from other assets', () => {
+    // Goal needs 7L, 3L already linked from other assets, this asset has 30L
+    // Should only use 4L (remaining need)
+    const useAll = calculateUseAllAmount(700000, 300000, 3000000, 0);
+    expect(useAll).toBe(400000);
+  });
+
+  it('Allows current asset to increase its own assignment up to goal need', () => {
+    // Goal needs 7L, this asset already has 2L assigned, other assets have 3L
+    // Total linked = 5L, remaining need = 2L
+    // This asset can go up to 4L (2L current + 2L remaining)
+    const useAll = calculateUseAllAmount(700000, 500000, 3000000, 200000);
+    expect(useAll).toBe(400000);
+  });
+
+  it('Returns 0 when goal is fully covered by other assets', () => {
+    // Goal needs 7L, other assets already cover 7L, this asset has 30L
+    const useAll = calculateUseAllAmount(700000, 700000, 3000000, 0);
+    expect(useAll).toBe(0);
+  });
+
+  it('Allows current asset to maintain its assignment even when goal is covered', () => {
+    // Goal needs 7L, total linked is 8L (this asset has 3L of that)
+    // This asset should be able to keep its 3L
+    const useAll = calculateUseAllAmount(700000, 800000, 3000000, 300000);
+    expect(useAll).toBe(300000);
+  });
+
+  it('Handles zero goal target', () => {
+    const useAll = calculateUseAllAmount(0, 0, 1000000, 0);
+    expect(useAll).toBe(0);
+  });
+
+  it('Handles zero asset available', () => {
+    const useAll = calculateUseAllAmount(700000, 0, 0, 0);
+    expect(useAll).toBe(0);
+  });
+});
+
 describe('Asset Category Eligibility', () => {
   const shortTermEligible = ['FDs & RDs', 'Savings Bank', 'Debt/Arbitrage Mutual Funds'];
   const longTermEligible = ['Equity Mutual Funds', 'Stocks', 'Gold ETFs/SGBs', 'Debt/Arbitrage Mutual Funds'];

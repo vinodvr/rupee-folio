@@ -327,58 +327,59 @@ export function addAsset(data, asset) {
   return data;
 }
 
-export function updateAsset(data, id, updates) {
+export function updateAsset(data, id, updates, options = {}) {
   const index = data.assets.items.findIndex(a => a.id === id);
-  if (index !== -1) {
-    const oldValue = data.assets.items[index].value || 0;
-    data.assets.items[index] = { ...data.assets.items[index], ...updates };
-
-    // If asset value decreased, adjust linked amounts proportionally
-    if (updates.value !== undefined && updates.value < oldValue) {
-      const newValue = updates.value;
-
-      // Calculate total allocated to this asset across all goals
-      let totalAllocated = 0;
-      data.goals.forEach(goal => {
-        if (goal.linkedAssets) {
-          goal.linkedAssets.forEach(la => {
-            if (la.assetId === id) {
-              totalAllocated += la.amount || 0;
-            }
-          });
-        }
-      });
-
-      // If over-allocated, reduce proportionally
-      if (totalAllocated > newValue) {
-        const ratio = newValue / totalAllocated;
-        data.goals.forEach(goal => {
-          if (goal.linkedAssets) {
-            goal.linkedAssets.forEach(la => {
-              if (la.assetId === id) {
-                la.amount = Math.round(la.amount * ratio);
-              }
-            });
-          }
-        });
-      }
-    }
-
-    saveData(data);
+  if (index === -1) {
+    return { success: false, error: 'Asset not found', data };
   }
-  return data;
+
+  const oldValue = data.assets.items[index].value || 0;
+
+  // If value is being reduced, validate against allocations (unless skipValidation is true)
+  if (updates.value !== undefined && updates.value < oldValue && !options.skipValidation) {
+    const validation = validateAssetValueReduction(data, id, updates.value);
+    if (!validation.valid) {
+      return {
+        success: false,
+        error: validation.error,
+        totalAllocated: validation.totalAllocated,
+        allocations: validation.allocations,
+        data
+      };
+    }
+  }
+
+  data.assets.items[index] = { ...data.assets.items[index], ...updates };
+  saveData(data);
+
+  return { success: true, data };
 }
 
-export function deleteAsset(data, id) {
+export function deleteAsset(data, id, options = {}) {
+  // Validate deletion unless skipValidation is true
+  if (!options.skipValidation) {
+    const validation = validateAssetDeletion(data, id);
+    if (!validation.valid) {
+      return {
+        success: false,
+        error: validation.error,
+        totalAllocated: validation.totalAllocated,
+        allocations: validation.allocations,
+        data
+      };
+    }
+  }
+
   data.assets.items = data.assets.items.filter(a => a.id !== id);
-  // Clean up any linked asset references in goals
+  // Clean up any linked asset references in goals (belt and suspenders)
   data.goals.forEach(goal => {
     if (goal.linkedAssets && goal.linkedAssets.length > 0) {
       goal.linkedAssets = goal.linkedAssets.filter(la => la.assetId !== id);
     }
   });
   saveData(data);
-  return data;
+
+  return { success: true, data };
 }
 
 // Liabilities helpers
@@ -463,4 +464,99 @@ export function cleanupLinkedAssetsOnAssetDelete(data, assetId) {
     saveData(data);
   }
   return data;
+}
+
+/**
+ * Validate if an asset's value can be reduced to the new amount
+ * Returns error if the new value is less than total allocated across goals
+ * @param {object} data - App data
+ * @param {string} assetId - Asset to check
+ * @param {number} newValue - Proposed new value
+ * @returns {object} { valid: boolean, error?: string, allocations?: Array<{goalName, amount}> }
+ */
+export function validateAssetValueReduction(data, assetId, newValue) {
+  const asset = data.assets.items.find(a => a.id === assetId);
+  if (!asset) {
+    return { valid: false, error: 'Asset not found' };
+  }
+
+  // If value is increasing or staying the same, always valid
+  if (newValue >= asset.value) {
+    return { valid: true };
+  }
+
+  // Calculate total allocated to this asset across all goals
+  let totalAllocated = 0;
+  const allocations = [];
+
+  data.goals.forEach(goal => {
+    if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+      const link = goal.linkedAssets.find(la => la.assetId === assetId);
+      if (link && link.amount > 0) {
+        totalAllocated += link.amount;
+        allocations.push({ goalName: goal.name, goalId: goal.id, amount: link.amount });
+      }
+    }
+  });
+
+  // Check if new value is below allocated
+  if (newValue < totalAllocated) {
+    return {
+      valid: false,
+      error: `Cannot reduce below allocated amount. This asset has ${formatAmount(totalAllocated)} linked to goals.`,
+      totalAllocated,
+      allocations
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validate if an asset can be deleted
+ * Returns error if the asset is linked to any goals
+ * @param {object} data - App data
+ * @param {string} assetId - Asset to check
+ * @returns {object} { valid: boolean, error?: string, allocations?: Array<{goalName, amount}> }
+ */
+export function validateAssetDeletion(data, assetId) {
+  const asset = data.assets.items.find(a => a.id === assetId);
+  if (!asset) {
+    return { valid: false, error: 'Asset not found' };
+  }
+
+  // Check if asset is linked to any goals
+  const allocations = [];
+
+  data.goals.forEach(goal => {
+    if (goal.linkedAssets && goal.linkedAssets.length > 0) {
+      const link = goal.linkedAssets.find(la => la.assetId === assetId);
+      if (link && link.amount > 0) {
+        allocations.push({ goalName: goal.name, goalId: goal.id, amount: link.amount });
+      }
+    }
+  });
+
+  if (allocations.length > 0) {
+    const totalAllocated = allocations.reduce((sum, a) => sum + a.amount, 0);
+    return {
+      valid: false,
+      error: `Cannot delete this asset. It has ${formatAmount(totalAllocated)} linked to ${allocations.length} goal${allocations.length > 1 ? 's' : ''}.`,
+      totalAllocated,
+      allocations
+    };
+  }
+
+  return { valid: true };
+}
+
+// Helper to format amount for error messages
+function formatAmount(amount) {
+  if (amount >= 10000000) {
+    return `₹${(amount / 10000000).toFixed(2)} Cr`;
+  } else if (amount >= 100000) {
+    return `₹${(amount / 100000).toFixed(2)} L`;
+  } else {
+    return `₹${amount.toLocaleString('en-IN')}`;
+  }
 }

@@ -3,11 +3,13 @@
 /* Tabular figures for aligned numbers in tables and financial displays */
 table,
 .font-medium,
+.font-semibold,
 .font-bold,
 .text-right,
 td,
 th {
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 /* Smooth transitions */
