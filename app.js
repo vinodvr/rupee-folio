@@ -104,7 +104,7 @@ const TAB_LABELS = {
 
 const REVIEW_BANNER_MESSAGES = {
   cashflow: 'Edit your income, deductions, and expense amounts to match your actual numbers.',
-  assets: 'Add any savings, real estate, or other assets we may have missed.',
+  assets: 'Add any savings, real estate, or other assets which are missing here.',
   goals: 'Adjust target amounts and dates to match your actual plans.',
   investmentplan: 'Assign existing investments to goals to reduce the SIP required.'
 };
@@ -145,9 +145,15 @@ let switchToTabFn = null;
 function setupHomeTab(switchToTab) {
   switchToTabFn = switchToTab;
 
-  // Wire Start Planning button
-  document.getElementById('start-planning-btn')?.addEventListener('click', () => {
+  // Wire Quick Setup button - opens wizard
+  document.getElementById('quick-setup-btn')?.addEventListener('click', () => {
     openWizard();
+  });
+
+  // Wire Enter My Data button - go directly to Cash Flow
+  document.getElementById('enter-data-btn')?.addEventListener('click', () => {
+    switchToTab('cashflow');
+    history.replaceState(null, '', '#cashflow');
   });
 
   // Wire Continue Planning button
