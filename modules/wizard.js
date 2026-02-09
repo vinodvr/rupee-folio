@@ -459,7 +459,7 @@ function renderSlider(step) {
             type="text"
             id="wizard-text-input"
             value="${currentValue.toLocaleString('en-IN')}"
-            class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-48"
+            class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-64"
             inputmode="numeric"
           >
         </div>
