@@ -2,6 +2,45 @@
 import { addAsset, updateAsset, deleteAsset, addLiability, updateLiability, deleteLiability, generateId } from './storage.js';
 import { formatCurrency, getSymbol } from './currency.js';
 
+// Asset class mapping for pie chart allocation
+const ASSET_CLASS_MAP = {
+  // Equity
+  'Equity Mutual Funds': 'Equity',
+  'Stocks': 'Equity',
+  'ULIPs': 'Equity',
+  'Crypto': 'Equity',
+  'ESOPs': 'Equity',
+  // Debt
+  'Debt/Arbitrage Mutual Funds': 'Debt',
+  'FDs & RDs': 'Debt',
+  'Savings Bank': 'Debt',
+  'Bonds': 'Debt',
+  'LIC/Insurance Policy': 'Debt',
+  'Gratuity': 'Debt',
+  // Gold
+  'Gold ETFs/SGBs': 'Gold',
+  'Physical Gold': 'Gold',
+  // Real Estate
+  'House': 'Real Estate',
+  'Land': 'Real Estate',
+  // Retirement
+  'EPF Corpus': 'Retirement',
+  'NPS Corpus': 'Retirement',
+  'PPF Corpus': 'Retirement',
+  // Other
+  'Other': 'Other'
+};
+
+// Asset class colors (Tailwind-inspired)
+const ASSET_CLASS_COLORS = {
+  'Equity': '#8b5cf6',      // violet-500
+  'Debt': '#3b82f6',        // blue-500
+  'Gold': '#f59e0b',        // amber-500
+  'Real Estate': '#f97316', // orange-500
+  'Retirement': '#ec4899',  // pink-500
+  'Other': '#6b7280'        // gray-500
+};
+
 // Grouped asset categories for organized dropdown
 const assetCategoryGroups = [
   {
@@ -534,6 +573,110 @@ function updateNetWorthSummary() {
   if (totalAssetsEl) totalAssetsEl.textContent = formatCurrency(totalAssets, currency);
   if (totalLiabilitiesEl) totalLiabilitiesEl.textContent = formatCurrency(totalLiabilities, currency);
   if (netWorthEl) netWorthEl.textContent = formatCurrency(netWorth, currency);
+
+  // Render asset allocation pie chart
+  renderAssetAllocationChart();
+}
+
+/**
+ * Calculate asset allocation by asset class
+ * @returns {object} Allocation by asset class { Equity: 0, Debt: 0, ... }
+ */
+export function getAssetAllocation() {
+  const allocation = { Equity: 0, Debt: 0, Gold: 0, 'Real Estate': 0, Retirement: 0, Other: 0 };
+
+  if (!appData || !appData.assets || !appData.assets.items) {
+    return allocation;
+  }
+
+  appData.assets.items.forEach(asset => {
+    const assetClass = ASSET_CLASS_MAP[asset.category] || 'Other';
+    allocation[assetClass] += asset.value || 0;
+  });
+
+  return allocation;
+}
+
+/**
+ * Render the asset allocation donut chart
+ */
+function renderAssetAllocationChart() {
+  const container = document.getElementById('asset-allocation-chart');
+  if (!container) return;
+
+  const allocation = getAssetAllocation();
+  const total = Object.values(allocation).reduce((a, b) => a + b, 0);
+
+  if (total === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Filter out zero-value classes and calculate percentages
+  const slices = Object.entries(allocation)
+    .filter(([_, value]) => value > 0)
+    .map(([name, value]) => ({
+      name,
+      value,
+      percentage: (value / total) * 100,
+      color: ASSET_CLASS_COLORS[name]
+    }))
+    .sort((a, b) => b.value - a.value); // Sort by value descending
+
+  // Generate SVG donut chart
+  const size = 120;
+  const strokeWidth = 24;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const center = size / 2;
+
+  let currentOffset = 0;
+  const paths = slices.map(slice => {
+    const dashLength = (slice.percentage / 100) * circumference;
+    const dashOffset = -currentOffset;
+    currentOffset += dashLength;
+
+    return `<circle
+      cx="${center}"
+      cy="${center}"
+      r="${radius}"
+      fill="none"
+      stroke="${slice.color}"
+      stroke-width="${strokeWidth}"
+      stroke-dasharray="${dashLength} ${circumference - dashLength}"
+      stroke-dashoffset="${dashOffset}"
+      transform="rotate(-90 ${center} ${center})"
+    />`;
+  }).join('');
+
+  // Build legend items for all slices
+  const legendItems = slices.map(slice => `
+    <div class="flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${slice.color}"></span>
+      <span class="text-sm text-slate-200 flex-1">${slice.name}</span>
+      <span class="text-sm font-semibold text-white">${Math.round(slice.percentage)}%</span>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="flex items-center justify-center gap-6">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="shrink-0">
+        <!-- Background circle -->
+        <circle
+          cx="${center}"
+          cy="${center}"
+          r="${radius}"
+          fill="none"
+          stroke="rgba(255,255,255,0.1)"
+          stroke-width="${strokeWidth}"
+        />
+        ${paths}
+      </svg>
+      <div class="flex flex-col gap-1.5 text-left">
+        ${legendItems}
+      </div>
+    </div>
+  `;
 }
 
 export function getTotalAssets() {

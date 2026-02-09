@@ -302,19 +302,27 @@
         </div>
       </div>
 
-      <!-- Net Worth Summary -->
-      <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center">
-        <div class="text-emerald-100 text-sm uppercase tracking-wide mb-2">Your Net Worth</div>
-        <div id="net-worth" class="text-4xl font-bold mb-6">₹0</div>
-        <div class="flex justify-center gap-4">
-          <div class="bg-white/10 rounded-lg px-4 py-2">
-            <div class="text-emerald-300 text-xs uppercase tracking-wide">↑ Assets</div>
-            <div id="total-assets" class="text-lg font-semibold text-emerald-200">₹0</div>
+      <!-- Net Worth & Asset Distribution -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Net Worth Box -->
+        <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center">
+          <div class="text-emerald-100 text-sm uppercase tracking-wide mb-2">Your Net Worth</div>
+          <div id="net-worth" class="text-4xl font-bold mb-4">₹0</div>
+          <div class="flex justify-center gap-4">
+            <div class="bg-white/10 rounded-lg px-4 py-2">
+              <div class="text-emerald-300 text-xs uppercase tracking-wide">↑ Assets</div>
+              <div id="total-assets" class="text-lg font-semibold text-emerald-200">₹0</div>
+            </div>
+            <div class="bg-white/10 rounded-lg px-4 py-2">
+              <div class="text-orange-300 text-xs uppercase tracking-wide">↓ Liabilities</div>
+              <div id="total-liabilities" class="text-lg font-semibold text-orange-200">₹0</div>
+            </div>
           </div>
-          <div class="bg-white/10 rounded-lg px-4 py-2">
-            <div class="text-orange-300 text-xs uppercase tracking-wide">↓ Liabilities</div>
-            <div id="total-liabilities" class="text-lg font-semibold text-orange-200">₹0</div>
-          </div>
+        </div>
+        <!-- Asset Distribution Box -->
+        <div class="bg-gradient-to-r from-slate-700 to-slate-800 rounded-lg shadow-lg p-6 text-white text-center">
+          <div class="text-slate-300 text-sm uppercase tracking-wide mb-4">Asset Distribution</div>
+          <div id="asset-allocation-chart" class="flex justify-center"></div>
         </div>
       </div>
     </div>

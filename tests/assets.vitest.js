@@ -1,6 +1,6 @@
 // Unit tests for assets.js (Vitest)
 import { describe, it, expect } from 'vitest';
-import { getRetirementAssets, getLinkableAssets, getAssetAllocations, getGoalLinkedTotal, validateLinkAmount, checkAssetOverAllocation } from '../modules/assets.js';
+import { getRetirementAssets, getLinkableAssets, getAssetAllocations, getGoalLinkedTotal, validateLinkAmount, checkAssetOverAllocation, getAssetAllocation } from '../modules/assets.js';
 
 // Helper to create test data with assets
 function createTestData(assets = []) {
@@ -566,6 +566,32 @@ describe('checkAssetOverAllocation', () => {
     const result = checkAssetOverAllocation(data, 'asset-1');
     expect(result.overAllocated).toBe(false);
     expect(result.allocated).toBe(200000);
+  });
+});
+
+describe('getAssetAllocation (Pie Chart)', () => {
+  it('Returns all zeros when no appData is initialized', () => {
+    // getAssetAllocation uses module-level appData, which isn't set in unit tests
+    // This test validates the function returns the expected structure
+    const result = getAssetAllocation();
+    expect(result).toHaveProperty('Equity');
+    expect(result).toHaveProperty('Debt');
+    expect(result).toHaveProperty('Gold');
+    expect(result).toHaveProperty('Real Estate');
+    expect(result).toHaveProperty('Retirement');
+    expect(result).toHaveProperty('Other');
+  });
+
+  it('Returns correct asset class structure', () => {
+    const result = getAssetAllocation();
+    // Should have exactly 6 asset classes
+    expect(Object.keys(result).length).toBe(6);
+    expect(result.Equity).toBe(0);
+    expect(result.Debt).toBe(0);
+    expect(result.Gold).toBe(0);
+    expect(result['Real Estate']).toBe(0);
+    expect(result.Retirement).toBe(0);
+    expect(result.Other).toBe(0);
   });
 });
 
