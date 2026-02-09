@@ -569,10 +569,30 @@ function updateNetWorthSummary() {
   const totalAssetsEl = document.getElementById('total-assets');
   const totalLiabilitiesEl = document.getElementById('total-liabilities');
   const netWorthEl = document.getElementById('net-worth');
+  const netWorthBox = document.getElementById('net-worth-box');
+  const netWorthLabel = document.getElementById('net-worth-label');
+  const assetsLabel = document.getElementById('assets-label');
 
   if (totalAssetsEl) totalAssetsEl.textContent = formatCurrency(totalAssets, currency);
   if (totalLiabilitiesEl) totalLiabilitiesEl.textContent = formatCurrency(totalLiabilities, currency);
   if (netWorthEl) netWorthEl.textContent = formatCurrency(netWorth, currency);
+
+  // Update styling based on positive/negative net worth
+  if (netWorthBox) {
+    if (netWorth < 0) {
+      // Negative net worth: red styling
+      netWorthBox.className = 'bg-gradient-to-r from-red-600 to-red-700 rounded-lg shadow-lg p-6 text-white text-center';
+      if (netWorthLabel) netWorthLabel.className = 'text-red-100 text-sm uppercase tracking-wide mb-2';
+      if (assetsLabel) assetsLabel.className = 'text-red-300 text-xs uppercase tracking-wide';
+      if (totalAssetsEl) totalAssetsEl.className = 'text-lg font-semibold text-red-200';
+    } else {
+      // Positive net worth: green styling
+      netWorthBox.className = 'bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center';
+      if (netWorthLabel) netWorthLabel.className = 'text-emerald-100 text-sm uppercase tracking-wide mb-2';
+      if (assetsLabel) assetsLabel.className = 'text-emerald-300 text-xs uppercase tracking-wide';
+      if (totalAssetsEl) totalAssetsEl.className = 'text-lg font-semibold text-emerald-200';
+    }
+  }
 
   // Render asset allocation pie chart
   renderAssetAllocationChart();

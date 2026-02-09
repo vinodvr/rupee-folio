@@ -170,11 +170,35 @@ const WIZARD_STEPS = [
     format: 'currency'
   },
   {
+    id: 'savings',
+    title: 'What\'s your Savings Account balance?',
+    subtitle: 'Total balance across all savings accounts',
+    type: 'slider',
+    field: 'savingsBank',
+    min: 0,
+    max: 2000000,
+    step: 50000,
+    defaultValue: 0,
+    format: 'currency'
+  },
+  {
     id: 'fds',
     title: 'What\'s your FDs & RDs balance?',
     subtitle: 'Total value of Fixed Deposits and Recurring Deposits',
     type: 'slider',
     field: 'fdsRds',
+    min: 0,
+    max: 5000000,
+    step: 100000,
+    defaultValue: 0,
+    format: 'currency'
+  },
+  {
+    id: 'debtMf',
+    title: 'What\'s your Debt Mutual Funds value?',
+    subtitle: 'Current value of debt and arbitrage fund investments',
+    type: 'slider',
+    field: 'debtMf',
     min: 0,
     max: 5000000,
     step: 100000,

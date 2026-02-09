@@ -201,6 +201,16 @@ function calculateAssets(answers) {
     });
   }
 
+  // Savings Bank
+  if (answers.savingsBank > 0) {
+    assets.push({
+      id: generateId(),
+      name: 'Savings Account',
+      category: 'Savings Bank',
+      value: answers.savingsBank
+    });
+  }
+
   // FDs & RDs
   if (answers.fdsRds > 0) {
     assets.push({
@@ -208,6 +218,16 @@ function calculateAssets(answers) {
       name: 'Fixed & Recurring Deposits',
       category: 'FDs & RDs',
       value: answers.fdsRds
+    });
+  }
+
+  // Debt Mutual Funds
+  if (answers.debtMf > 0) {
+    assets.push({
+      id: generateId(),
+      name: 'Debt Mutual Funds',
+      category: 'Debt/Arbitrage Mutual Funds',
+      value: answers.debtMf
     });
   }
 
