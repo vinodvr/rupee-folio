@@ -37,6 +37,7 @@ New users can use the **Quick Setup** wizard to populate financial data in minut
 - **Asset Tracking**: Track all your assets across categories (Real Estate, Vehicles, Bank/FDs, Stocks, Mutual Funds, Gold, EPF, NPS, Other)
 - **Liability Tracking**: Track loans and debts (Home Loan, Car Loan, Personal Loan, Credit Card, Other)
 - **Net Worth Calculation**: Automatic calculation of total assets, liabilities, and net worth
+- **Asset Distribution Chart**: Visual pie chart showing allocation across 6 asset classes (Equity, Debt, Gold, Real Estate, Retirement, Other)
 - **EPF/NPS Integration**: EPF and NPS corpus tracked as assets, automatically used in retirement goal calculations
 
 ### Financial Goals Manager
@@ -194,16 +195,17 @@ npm test
 npm run test:watch
 ```
 
-**357 tests** organized into 7 suites:
+**400 tests** organized into 8 suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
 | Calculator | 128 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
-| Storage | 75 | CRUD operations, settings, schema migrations |
-| Assets | 47 | EPF/NPS corpus, retirement assets, asset linking, allocations |
-| Plan | 35 | Goal categorization, SIP calculations, fund recommendations |
+| Storage | 91 | CRUD operations, settings, schema migrations |
+| Assets | 49 | EPF/NPS corpus, retirement assets, asset linking, allocations, asset distribution |
+| Plan | 43 | Goal categorization, SIP calculations, fund recommendations |
 | Persona Data | 30 | Sample data generation, persona profiles |
 | Currency | 26 | Formatting, return limits, fund recommendations |
+| Wizard | 17 | Quick setup flow, persona selection |
 | Cash Flow | 16 | Income/expense tracking, EPF/NPS contributions |
 
 ### Test Coverage
@@ -274,11 +276,12 @@ financial-planner/
 │   └── personaData.js    # Generates realistic data from wizard answers
 └── tests/
     ├── calculator.vitest.js      # SIP calculations, step-up, tapering, EPF/NPS (128 tests)
-    ├── storage.vitest.js         # Storage/CRUD tests (75 tests)
-    ├── assets.vitest.js          # Assets module tests (47 tests)
-    ├── investmentplan.vitest.js  # Investment plan tests (35 tests)
+    ├── storage.vitest.js         # Storage/CRUD tests (91 tests)
+    ├── assets.vitest.js          # Assets module tests (49 tests)
+    ├── investmentplan.vitest.js  # Investment plan tests (43 tests)
     ├── personaData.vitest.js     # Sample data tests (30 tests)
     ├── currency.vitest.js        # Currency formatting tests (26 tests)
+    ├── wizard.vitest.js          # Quick setup wizard tests (17 tests)
     └── cashflow.vitest.js        # Cash flow tests (16 tests)
 ```
 
