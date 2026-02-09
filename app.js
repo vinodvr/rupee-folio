@@ -388,6 +388,12 @@ function init() {
   // Set up tab navigation
   const { switchToTab } = setupTabNavigation();
 
+  // Logo click navigates to Home tab
+  document.getElementById('logo-btn')?.addEventListener('click', () => {
+    history.replaceState(null, '', '#home');
+    switchToTab('home');
+  });
+
   // Set up Home tab CTA buttons
   setupHomeTab(switchToTab);
 
