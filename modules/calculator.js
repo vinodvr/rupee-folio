@@ -645,12 +645,20 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
   // baseProjections.linkedAssetsFV already includes linked assets
   const adjustedGapAmount = Math.max(0, baseProjections.inflationAdjustedTarget - totalEpfNpsFV - baseProjections.linkedAssetsFV);
 
-  // Recalculate required SIP for remaining gap (with investment step-up)
-  const adjustedMonthlySIP = adjustedGapAmount > 0
-    ? (investmentStepUp > 0
-        ? calculateStepUpSIP(adjustedGapAmount, baseProjections.blendedReturn, baseProjections.months, investmentStepUp)
-        : calculateRegularSIP(adjustedGapAmount, baseProjections.blendedReturn, baseProjections.months))
-    : 0;
+  // Recalculate required SIP for remaining gap
+  // Use tapering for long-term goals (consistent with calculateUnifiedGoalProjections)
+  let adjustedMonthlySIP;
+  if (adjustedGapAmount <= 0) {
+    adjustedMonthlySIP = 0;
+  } else if (baseProjections.category === 'short') {
+    adjustedMonthlySIP = investmentStepUp > 0
+      ? calculateStepUpSIP(adjustedGapAmount, baseProjections.blendedReturn, baseProjections.months, investmentStepUp)
+      : calculateRegularSIP(adjustedGapAmount, baseProjections.blendedReturn, baseProjections.months);
+  } else {
+    adjustedMonthlySIP = investmentStepUp > 0
+      ? calculateStepUpSIPWithTapering(adjustedGapAmount, baseProjections.months, investmentStepUp, equityAllocation, equityReturn, debtReturn)
+      : calculateRegularSIPWithTapering(adjustedGapAmount, baseProjections.months, equityAllocation, equityReturn, debtReturn);
+  }
 
   return {
     ...baseProjections,

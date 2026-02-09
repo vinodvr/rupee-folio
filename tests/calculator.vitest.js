@@ -1680,3 +1680,125 @@ describe('Linked Assets', () => {
     });
   });
 });
+
+describe('Retirement Goal Golden Data', () => {
+  // Golden scenario: 5 Cr retirement in 20 years with EPF/NPS
+  // Inputs: target 5Cr, inflation 6%, equity allocation 60%
+  // Returns: equity 10%, debt 5%, arbitrage 6%, EPF 8%, NPS 9%
+  // EPF: 20K/mo + 10L corpus, NPS: 10K/mo + 5L corpus
+  //
+  // Expected pipeline:
+  //   inflationAdjustedTarget = 5Cr * 1.06^20 ≈ 16.03 Cr
+  //   EPF corpus FV = 10L compounded at 8% for 20yr
+  //   NPS corpus FV = 5L compounded at 9% for 20yr
+  //   EPF SIP FV = 20K/mo SIP at 8% for 240 months
+  //   NPS SIP FV = 10K/mo SIP at 9% for 240 months
+  //   gap = inflationAdjustedTarget - totalEpfNpsFV
+  //   monthlySIP = SIP needed for gap using tapering glide path
+
+  const retirementGoal = () => createGoal({
+    yearsFromNow: 20,
+    targetAmount: 50000000,
+    inflationRate: 6,
+    goalType: 'retirement',
+    includeEpfNps: true
+  });
+
+  const epfNpsContributions = {
+    monthlyEpf: 20000,
+    monthlyNps: 10000,
+    epfCorpus: 1000000,
+    npsCorpus: 500000,
+    totalMonthly: 30000,
+    totalCorpus: 1500000
+  };
+
+  it('Golden value: Retirement 5Cr/20yr without step-up', () => {
+    const goal = retirementGoal();
+    const result = calculateRetirementProjectionsWithEpfNps(
+      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, null
+    );
+
+    // 20 years = 240 months, long-term category
+    expect(result.months).toBe(240);
+    expect(result.category).toBe('long');
+
+    // 5Cr at 6% inflation for 20 years ≈ 16.03 Cr
+    expect(result.inflationAdjustedTarget).toBeCloseTo(160346885, -5);
+
+    // EPF corpus (10L) at 8% + NPS corpus (5L) at 9% for 20 years ≈ 79.3L
+    expect(result.epfNps.epfNpsCorpusFV).toBeCloseTo(7931379, -4);
+
+    // EPF SIP (20K/mo at 8%) + NPS SIP (10K/mo at 9%) for 240 months ≈ 1.86 Cr
+    expect(result.epfNps.epfNpsSipFV).toBeCloseTo(18587905, -4);
+
+    // Total EPF/NPS FV ≈ 2.65 Cr
+    expect(result.epfNps.totalEpfNpsFV).toBeCloseTo(26519283, -4);
+
+    // Gap = inflationAdjustedTarget - totalEpfNpsFV ≈ 13.38 Cr
+    expect(result.gapAmount).toBeCloseTo(133827343, -5);
+
+    // Monthly SIP needed (with equity tapering glide path) ≈ ₹2.65L
+    expect(result.monthlySIP).toBeCloseTo(265233, -3);
+  });
+
+  it('Golden value: Retirement 5Cr/20yr with 5% step-up', () => {
+    const goal = retirementGoal();
+    const result = calculateRetirementProjectionsWithEpfNps(
+      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 5, 5, null
+    );
+
+    expect(result.months).toBe(240);
+    expect(result.category).toBe('long');
+
+    // Same inflation-adjusted target
+    expect(result.inflationAdjustedTarget).toBeCloseTo(160346885, -5);
+
+    // Corpus FV unchanged (step-up doesn't affect existing corpus)
+    expect(result.epfNps.epfNpsCorpusFV).toBeCloseTo(7931379, -4);
+
+    // EPF/NPS SIP FV is higher with 5% step-up ≈ 2.71 Cr
+    expect(result.epfNps.epfNpsSipFV).toBeCloseTo(27110050, -4);
+
+    // Total EPF/NPS FV ≈ 3.50 Cr
+    expect(result.epfNps.totalEpfNpsFV).toBeCloseTo(35041429, -4);
+
+    // Smaller gap due to higher EPF/NPS ≈ 12.53 Cr
+    expect(result.gapAmount).toBeCloseTo(125305197, -5);
+
+    // Lower starting SIP with 5% annual step-up and tapering ≈ ₹1.69L
+    expect(result.monthlySIP).toBeCloseTo(169095, -3);
+
+    // Step-up should meaningfully reduce starting SIP vs no step-up
+    const noStepUp = calculateRetirementProjectionsWithEpfNps(
+      retirementGoal(), epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, null
+    );
+    expect(result.monthlySIP).toBeLessThan(noStepUp.monthlySIP * 0.7);
+  });
+
+  it('Golden value: Retirement with linked assets reduces SIP further', () => {
+    const goal = retirementGoal();
+    goal.linkedAssets = [{ assetId: 'eq-1', amount: 500000 }];
+
+    const assetsData = {
+      items: [{ id: 'eq-1', category: 'Equity Mutual Funds', value: 1000000 }]
+    };
+
+    const withLinked = calculateRetirementProjectionsWithEpfNps(
+      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, assetsData
+    );
+    const withoutLinked = calculateRetirementProjectionsWithEpfNps(
+      retirementGoal(), epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, null
+    );
+
+    // 5L equity at 10% for 20 years grows substantially
+    expect(withLinked.linkedAssetsFV).toBeGreaterThan(2500000);
+
+    // Gap and SIP should be lower with linked assets
+    expect(withLinked.gapAmount).toBeLessThan(withoutLinked.gapAmount);
+    expect(withLinked.monthlySIP).toBeLessThan(withoutLinked.monthlySIP);
+
+    // EPF/NPS values unchanged by linked assets
+    expect(withLinked.epfNps.totalEpfNpsFV).toBeCloseTo(withoutLinked.epfNps.totalEpfNpsFV, -2);
+  });
+});
