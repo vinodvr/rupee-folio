@@ -140,7 +140,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'epfCorpus',
     min: 0,
-    max: 5000000,
+    max: 10000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -152,7 +152,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'ppfCorpus',
     min: 0,
-    max: 5000000,
+    max: 10000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -164,7 +164,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'npsCorpus',
     min: 0,
-    max: 5000000,
+    max: 10000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -176,8 +176,8 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'savingsBank',
     min: 0,
-    max: 2000000,
-    step: 50000,
+    max: 10000000,
+    step: 100000,
     defaultValue: 0,
     format: 'currency'
   },
@@ -188,7 +188,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'fdsRds',
     min: 0,
-    max: 5000000,
+    max: 10000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -200,7 +200,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'debtMf',
     min: 0,
-    max: 5000000,
+    max: 10000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -212,7 +212,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'equityMf',
     min: 0,
-    max: 10000000,
+    max: 50000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -224,7 +224,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'directStocks',
     min: 0,
-    max: 10000000,
+    max: 50000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -236,7 +236,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'physicalGold',
     min: 0,
-    max: 5000000,
+    max: 10000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
