@@ -1,5 +1,6 @@
 // Unit tests for investmentplan.js - Auto-assign Algorithm (Vitest)
 import { describe, it, expect, beforeEach } from 'vitest';
+import { createGoal, createTestData } from './helpers.js';
 
 // Since the auto-assign functions are not exported, we need to test them indirectly
 // or extract the logic. For now, let's create a testable version of the algorithm.
@@ -152,34 +153,6 @@ function calculateAutoAssignments(data) {
   });
 
   return assignments;
-}
-
-// Helper to create test data
-function createTestData(assets = [], goals = []) {
-  return {
-    settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
-    cashflow: { income: [], expenses: [] },
-    assets: { items: assets },
-    liabilities: { items: [] },
-    goals: goals
-  };
-}
-
-// Helper to create a goal with date
-function createGoal(options) {
-  const today = new Date();
-  const yearsFromNow = options.yearsFromNow || 10;
-  const targetDate = new Date(today.getTime() + yearsFromNow * 365.25 * 24 * 60 * 60 * 1000);
-
-  return {
-    id: options.id || `goal-${Math.random().toString(36).slice(2)}`,
-    name: options.name || 'Test Goal',
-    targetAmount: options.targetAmount ?? 1000000,
-    inflationRate: options.inflationRate ?? 0,
-    targetDate: options.targetDate || targetDate.toISOString().split('T')[0],
-    goalType: options.goalType || 'one-time',
-    linkedAssets: options.linkedAssets || []
-  };
 }
 
 describe('Auto-assign Algorithm', () => {

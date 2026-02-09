@@ -1,29 +1,7 @@
 // Unit tests for assets.js (Vitest)
 import { describe, it, expect } from 'vitest';
 import { getRetirementAssets, getLinkableAssets, getAssetAllocations, getGoalLinkedTotal, validateLinkAmount, checkAssetOverAllocation, getAssetAllocation } from '../modules/assets.js';
-
-// Helper to create test data with assets
-function createTestData(assets = []) {
-  return {
-    settings: {
-      currency: 'INR',
-      fundHouse: 'icici',
-      equityReturn: 10,
-      debtReturn: 5
-    },
-    cashflow: {
-      income: [],
-      expenses: []
-    },
-    assets: {
-      items: assets
-    },
-    liabilities: {
-      items: []
-    },
-    goals: []
-  };
-}
+import { createTestData } from './helpers.js';
 
 describe('getRetirementAssets', () => {
   it('Returns zero for empty assets', () => {

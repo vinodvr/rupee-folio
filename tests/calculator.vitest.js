@@ -16,34 +16,14 @@ import {
   calculateUnifiedGoalProjections,
   calculateEpfNpsCorpusFV,
   calculateEpfNpsSipFV,
-  calculateEpfNpsSipFVWithStepUp,
   calculateRetirementProjectionsWithEpfNps,
   getTaperedEquityAllocation,
-  calculateSipFVWithTapering,
-  calculateRegularSIPWithTapering,
-  calculateSipFVWithTaperingAndStepUp,
-  calculateStepUpSIPWithTapering,
+  calculateTaperedSipFV,
+  calculateTaperedSIP,
   getReturnForCategory,
   calculateLinkedAssetsFV
 } from '../modules/calculator.js';
-
-// Helper to create a goal object
-function createGoal(options) {
-  const today = new Date();
-  const yearsFromNow = options.yearsFromNow || 10;
-  const targetDate = new Date(today.getTime() + yearsFromNow * 365.25 * 24 * 60 * 60 * 1000);
-
-  return {
-    id: options.id || 'test-goal',
-    name: options.name || 'Test Goal',
-    targetAmount: options.targetAmount || 1000000,
-    inflationRate: options.inflationRate ?? 6,
-    targetDate: options.targetDate || targetDate.toISOString().split('T')[0],
-    goalType: options.goalType || 'one-time',
-    startDate: options.startDate || today.toISOString().split('T')[0],
-    includeEpfNps: options.includeEpfNps || false
-  };
-}
+import { createGoal } from './helpers.js';
 
 describe('Basic Calculation Functions', () => {
   it('calculateBlendedReturn: 70/30 allocation', () => {
@@ -252,7 +232,7 @@ describe('EPF/NPS Calculations', () => {
   it('Step-up increases future value', () => {
     const goal = createGoal({ yearsFromNow: 10 });
     const withoutStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate);
-    const withStepUp = calculateEpfNpsSipFVWithStepUp(5000, 5000, goal.targetDate, 7);
+    const withStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 7);
 
     expect(withStepUp).toBeGreaterThan(withoutStepUp);
     expect(withStepUp).toBeGreaterThan(withoutStepUp * 1.25);
@@ -497,7 +477,7 @@ describe('Consistency', () => {
     const goal = createGoal({ yearsFromNow: 10 });
 
     const regular = calculateEpfNpsSipFV(5000, 5000, goal.targetDate);
-    const withZeroStepUp = calculateEpfNpsSipFVWithStepUp(5000, 5000, goal.targetDate, 0);
+    const withZeroStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 0);
 
     expect(withZeroStepUp).toBeCloseTo(regular, 0);
   });
@@ -731,18 +711,18 @@ describe('Equity Tapering (Glide Path)', () => {
     });
   });
 
-  describe('calculateSipFVWithTapering', () => {
+  describe('calculateTaperedSipFV', () => {
     it('Returns 0 for invalid inputs', () => {
-      expect(calculateSipFVWithTapering(0, 120, 60, 10, 5)).toBe(0);
-      expect(calculateSipFVWithTapering(1000, 0, 60, 10, 5)).toBe(0);
-      expect(calculateSipFVWithTapering(-1000, 120, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSipFV(0, 120, 0, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSipFV(1000, 0, 0, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSipFV(-1000, 120, 0, 60, 10, 5)).toBe(0);
     });
 
     it('10-year goal with 60% initial has lower FV than constant 60% equity', () => {
       // With tapering, returns decrease as we approach goal
       const sipAmount = 10000;
       const months = 120; // 10 years
-      const tapered = calculateSipFVWithTapering(sipAmount, months, 60, 10, 5);
+      const tapered = calculateTaperedSipFV(sipAmount, months, 0, 60, 10, 5);
       const constant = calculateSipFV(sipAmount, 8, months); // 60/40 blend = 8%
 
       // Tapered should produce less than constant equity due to reduced returns near goal
@@ -753,7 +733,7 @@ describe('Equity Tapering (Glide Path)', () => {
     it('Short-term goal (2 years) uses 0% equity throughout', () => {
       const sipAmount = 10000;
       const months = 24; // 2 years
-      const tapered = calculateSipFVWithTapering(sipAmount, months, 60, 10, 5);
+      const tapered = calculateTaperedSipFV(sipAmount, months, 0, 60, 10, 5);
       const pureDebt = calculateSipFV(sipAmount, 5, months); // 0% equity = 5% return
 
       // Should be essentially the same since 0% equity for entire period
@@ -763,7 +743,7 @@ describe('Equity Tapering (Glide Path)', () => {
     it('4-year goal uses reduced equity (15%) for entire period', () => {
       const sipAmount = 10000;
       const months = 48; // 4 years
-      const tapered = calculateSipFVWithTapering(sipAmount, months, 60, 10, 5);
+      const tapered = calculateTaperedSipFV(sipAmount, months, 0, 60, 10, 5);
 
       // With 15% equity: blended return = 15% * 10% + 85% * 5% = 5.75%
       // But last year is 0% equity, so actual return is lower
@@ -772,17 +752,17 @@ describe('Equity Tapering (Glide Path)', () => {
     });
   });
 
-  describe('calculateRegularSIPWithTapering', () => {
+  describe('calculateTaperedSIP', () => {
     it('Returns 0 for invalid inputs', () => {
-      expect(calculateRegularSIPWithTapering(0, 120, 60, 10, 5)).toBe(0);
-      expect(calculateRegularSIPWithTapering(1000000, 0, 60, 10, 5)).toBe(0);
-      expect(calculateRegularSIPWithTapering(-1000000, 120, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSIP(0, 120, 0, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSIP(1000000, 0, 0, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSIP(-1000000, 120, 0, 60, 10, 5)).toBe(0);
     });
 
     it('10-year goal with tapering requires higher SIP than constant equity', () => {
       const target = 1000000;
       const months = 120;
-      const taperedSIP = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
+      const taperedSIP = calculateTaperedSIP(target, months, 0, 60, 10, 5);
       const constantSIP = calculateRegularSIP(target, 8, months); // 60/40 = 8%
 
       // Tapering reduces returns, so need higher SIP
@@ -792,8 +772,8 @@ describe('Equity Tapering (Glide Path)', () => {
     it('Round-trip: SIP produces correct FV', () => {
       const target = 1000000;
       const months = 120;
-      const sip = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
-      const fv = calculateSipFVWithTapering(sip, months, 60, 10, 5);
+      const sip = calculateTaperedSIP(target, months, 0, 60, 10, 5);
+      const fv = calculateTaperedSipFV(sip, months, 0, 60, 10, 5);
 
       expect(fv).toBeCloseTo(target, 0);
     });
@@ -801,9 +781,9 @@ describe('Equity Tapering (Glide Path)', () => {
     it('Higher initial equity means lower required SIP', () => {
       const target = 1000000;
       const months = 120;
-      const sip40 = calculateRegularSIPWithTapering(target, months, 40, 10, 5);
-      const sip60 = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
-      const sip80 = calculateRegularSIPWithTapering(target, months, 80, 10, 5);
+      const sip40 = calculateTaperedSIP(target, months, 0, 40, 10, 5);
+      const sip60 = calculateTaperedSIP(target, months, 0, 60, 10, 5);
+      const sip80 = calculateTaperedSIP(target, months, 0, 80, 10, 5);
 
       expect(sip40).toBeGreaterThan(sip60);
       expect(sip60).toBeGreaterThan(sip80);
@@ -812,7 +792,7 @@ describe('Equity Tapering (Glide Path)', () => {
     it('Works for short-term goals', () => {
       const target = 500000;
       const months = 24; // 2 years
-      const sip = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
+      const sip = calculateTaperedSIP(target, months, 0, 60, 10, 5);
 
       // Should be positive and reasonable
       expect(sip).toBeGreaterThan(0);
@@ -885,7 +865,7 @@ describe('Equity Tapering (Glide Path)', () => {
       expect(projections.monthlySIP).toBeGreaterThan(constantSIP);
 
       // Verify round-trip: the calculated SIP should produce the target with tapering
-      const fv = calculateSipFVWithTapering(projections.monthlySIP, 120, 60, 10, 5);
+      const fv = calculateTaperedSipFV(projections.monthlySIP, 120, 0, 60, 10, 5);
       expect(fv).toBeCloseTo(1000000, 0);
     });
 
@@ -909,15 +889,15 @@ describe('Equity Tapering (Glide Path)', () => {
 
   describe('Step-up SIP with Tapering', () => {
     it('Returns 0 for invalid inputs', () => {
-      expect(calculateStepUpSIPWithTapering(0, 120, 10, 60, 10, 5)).toBe(0);
-      expect(calculateStepUpSIPWithTapering(1000000, 0, 10, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSIP(0, 120, 10, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSIP(1000000, 0, 10, 60, 10, 5)).toBe(0);
     });
 
     it('0% step-up equals regular tapering SIP', () => {
       const target = 1000000;
       const months = 120;
-      const regularTapering = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
-      const stepUpTapering = calculateStepUpSIPWithTapering(target, months, 0, 60, 10, 5);
+      const regularTapering = calculateTaperedSIP(target, months, 0, 60, 10, 5);
+      const stepUpTapering = calculateTaperedSIP(target, months, 0, 60, 10, 5);
 
       expect(stepUpTapering).toBeCloseTo(regularTapering, 2);
     });
@@ -925,9 +905,9 @@ describe('Equity Tapering (Glide Path)', () => {
     it('Higher step-up reduces starting SIP', () => {
       const target = 1000000;
       const months = 120;
-      const sip0 = calculateStepUpSIPWithTapering(target, months, 0, 60, 10, 5);
-      const sip5 = calculateStepUpSIPWithTapering(target, months, 5, 60, 10, 5);
-      const sip10 = calculateStepUpSIPWithTapering(target, months, 10, 60, 10, 5);
+      const sip0 = calculateTaperedSIP(target, months, 0, 60, 10, 5);
+      const sip5 = calculateTaperedSIP(target, months, 5, 60, 10, 5);
+      const sip10 = calculateTaperedSIP(target, months, 10, 60, 10, 5);
 
       expect(sip0).toBeGreaterThan(sip5);
       expect(sip5).toBeGreaterThan(sip10);
@@ -937,8 +917,8 @@ describe('Equity Tapering (Glide Path)', () => {
       const target = 1000000;
       const months = 120;
       const stepUp = 7;
-      const sip = calculateStepUpSIPWithTapering(target, months, stepUp, 60, 10, 5);
-      const fv = calculateSipFVWithTaperingAndStepUp(sip, months, stepUp, 60, 10, 5);
+      const sip = calculateTaperedSIP(target, months, stepUp, 60, 10, 5);
+      const fv = calculateTaperedSipFV(sip, months, stepUp, 60, 10, 5);
 
       expect(fv).toBeCloseTo(target, 0);
     });
@@ -946,16 +926,16 @@ describe('Equity Tapering (Glide Path)', () => {
     it('Combined step-up + tapering requires lower starting SIP than tapering alone', () => {
       const target = 1000000;
       const months = 120;
-      const taperingOnly = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
-      const taperingWithStepUp = calculateStepUpSIPWithTapering(target, months, 10, 60, 10, 5);
+      const taperingOnly = calculateTaperedSIP(target, months, 0, 60, 10, 5);
+      const taperingWithStepUp = calculateTaperedSIP(target, months, 10, 60, 10, 5);
 
       // Step-up means starting lower and increasing, so starting SIP should be less
       expect(taperingWithStepUp).toBeLessThan(taperingOnly);
     });
 
     it('FV function handles edge cases', () => {
-      expect(calculateSipFVWithTaperingAndStepUp(0, 120, 10, 60, 10, 5)).toBe(0);
-      expect(calculateSipFVWithTaperingAndStepUp(1000, 0, 10, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSipFV(0, 120, 10, 60, 10, 5)).toBe(0);
+      expect(calculateTaperedSipFV(1000, 0, 10, 60, 10, 5)).toBe(0);
     });
   });
 
@@ -974,7 +954,7 @@ describe('Equity Tapering (Glide Path)', () => {
       expect(withStepUp.monthlySIP).toBeLessThan(withoutStepUp.monthlySIP);
 
       // Verify round-trip
-      const fv = calculateSipFVWithTaperingAndStepUp(withStepUp.monthlySIP, 120, 10, 60, 10, 5);
+      const fv = calculateTaperedSipFV(withStepUp.monthlySIP, 120, 10, 60, 10, 5);
       expect(fv).toBeCloseTo(1000000, 0);
     });
 
@@ -1001,9 +981,9 @@ describe('Equity Tapering (Glide Path)', () => {
       // 2. Step-up only (no tapering)
       const stepUpOnlySIP = calculateStepUpSIP(target, 8, months, 10);
       // 3. Tapering only (no step-up)
-      const taperingOnlySIP = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
+      const taperingOnlySIP = calculateTaperedSIP(target, months, 0, 60, 10, 5);
       // 4. Both tapering and step-up
-      const bothSIP = calculateStepUpSIPWithTapering(target, months, 10, 60, 10, 5);
+      const bothSIP = calculateTaperedSIP(target, months, 10, 60, 10, 5);
 
       // Tapering increases required SIP (lower effective return)
       expect(taperingOnlySIP).toBeGreaterThan(constantSIP);
@@ -1024,7 +1004,7 @@ describe('Equity Tapering (Glide Path)', () => {
 
       // Manual calculation: 0% equity = 5% debt return
       const pureDebtFV = calculateSipFV(sipAmount, 5, months);
-      const taperedFV = calculateSipFVWithTapering(sipAmount, months, 60, 10, 5);
+      const taperedFV = calculateTaperedSipFV(sipAmount, months, 0, 60, 10, 5);
 
       // Should match pure debt since 0% equity for entire period
       expect(taperedFV).toBeCloseTo(pureDebtFV, 0);
@@ -1043,7 +1023,7 @@ describe('Equity Tapering (Glide Path)', () => {
 
       // FV should be higher than pure debt (because first year has 15% equity)
       const pureDebtFV = calculateSipFV(sipAmount, 5, months);
-      const taperedFV = calculateSipFVWithTapering(sipAmount, months, 60, 10, 5);
+      const taperedFV = calculateTaperedSipFV(sipAmount, months, 0, 60, 10, 5);
 
       expect(taperedFV).toBeGreaterThan(pureDebtFV);
     });
@@ -1054,14 +1034,14 @@ describe('Equity Tapering (Glide Path)', () => {
       // At 8 years: switch to 30% (5-8 bucket)
       const months = 96;
       const target = 1000000;
-      const sip = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
+      const sip = calculateTaperedSIP(target, months, 0, 60, 10, 5);
 
       // Should require more than constant 60/40 due to tapering
       const constantSIP = calculateRegularSIP(target, 8, months);
       expect(sip).toBeGreaterThan(constantSIP);
 
       // Round-trip verification
-      const fv = calculateSipFVWithTapering(sip, months, 60, 10, 5);
+      const fv = calculateTaperedSipFV(sip, months, 0, 60, 10, 5);
       expect(fv).toBeCloseTo(target, 0);
     });
 
@@ -1071,7 +1051,7 @@ describe('Equity Tapering (Glide Path)', () => {
       // At 5 years: stays in 5-8 bucket until year 3
       const months = 60;
       const target = 1000000;
-      const sip = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
+      const sip = calculateTaperedSIP(target, months, 0, 60, 10, 5);
 
       // Effective return is lower than constant 60/40
       const constantSIP = calculateRegularSIP(target, 8, months);
@@ -1081,7 +1061,7 @@ describe('Equity Tapering (Glide Path)', () => {
       expect(getTaperedEquityAllocation(5, 60)).toBe(30);
 
       // Round-trip verification
-      const fv = calculateSipFVWithTapering(sip, months, 60, 10, 5);
+      const fv = calculateTaperedSipFV(sip, months, 0, 60, 10, 5);
       expect(fv).toBeCloseTo(target, 0);
     });
 
@@ -1090,13 +1070,13 @@ describe('Equity Tapering (Glide Path)', () => {
       // Starts in 3-5 bucket (15% equity for 60% initial)
       const months = 36;
       const target = 500000;
-      const sip = calculateRegularSIPWithTapering(target, months, 60, 10, 5);
+      const sip = calculateTaperedSIP(target, months, 0, 60, 10, 5);
 
       // Verify the phase at month 0 (3 years remaining)
       expect(getTaperedEquityAllocation(3, 60)).toBe(15);
 
       // Round-trip verification
-      const fv = calculateSipFVWithTapering(sip, months, 60, 10, 5);
+      const fv = calculateTaperedSipFV(sip, months, 0, 60, 10, 5);
       expect(fv).toBeCloseTo(target, 0);
     });
 
@@ -1120,7 +1100,7 @@ describe('Equity Tapering (Glide Path)', () => {
         expectedFV += paymentFV;
       }
 
-      const calculatedFV = calculateSipFVWithTapering(sipAmount, months, 60, 10, 5);
+      const calculatedFV = calculateTaperedSipFV(sipAmount, months, 0, 60, 10, 5);
       expect(calculatedFV).toBeCloseTo(expectedFV, 2);
     });
   });

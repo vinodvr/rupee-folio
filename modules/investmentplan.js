@@ -7,7 +7,8 @@ import {
   calculateUnifiedGoalProjections,
   calculateRetirementProjectionsWithEpfNps,
   calculateInflationAdjustedAmount,
-  getYearsRemaining
+  getYearsRemaining,
+  formatTimeline
 } from './calculator.js';
 import { getRetirementContributions } from './cashflow.js';
 import { getLinkableAssets, getAssetAllocations, SHORT_TERM_ONLY, LONG_TERM_ONLY, BOTH_TERMS } from './assets.js';
@@ -144,19 +145,6 @@ function calculateCategorySummary(goals, category) {
       }
     };
   }
-}
-
-/**
- * Format timeline string
- */
-function formatTimeline(years) {
-  const totalMonths = Math.round(years * 12);
-  const y = Math.floor(totalMonths / 12);
-  const m = totalMonths % 12;
-
-  if (y === 0) return `${m} month${m !== 1 ? 's' : ''}`;
-  if (m === 0) return `${y} year${y !== 1 ? 's' : ''}`;
-  return `${y}y ${m}m`;
 }
 
 /**

@@ -4,7 +4,8 @@ import { formatCurrency, getSymbol } from './currency.js';
 import {
   getYearsRemaining,
   getUnifiedCategory,
-  getCategoryDisplay
+  getCategoryDisplay,
+  formatTimeline
 } from './calculator.js';
 
 let appData = null;
@@ -14,16 +15,6 @@ let equityReturn = 10;
 let debtReturn = 5;
 let arbitrageReturn = 6;
 let onDataChange = null;
-
-function formatTimeline(years) {
-  const totalMonths = Math.round(years * 12);
-  const y = Math.floor(totalMonths / 12);
-  const m = totalMonths % 12;
-
-  if (y === 0) return `${m} month${m !== 1 ? 's' : ''}`;
-  if (m === 0) return `${y} year${y !== 1 ? 's' : ''}`;
-  return `${y}y ${m}m`;
-}
 
 export function initGoals(data, curr, fh, eqReturn, debtRet, arbReturn, onChange) {
   appData = data;
