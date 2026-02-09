@@ -628,7 +628,19 @@ function renderAssetAllocationChart() {
   const total = Object.values(allocation).reduce((a, b) => a + b, 0);
 
   if (total === 0) {
-    container.innerHTML = '';
+    const size = 120;
+    const strokeWidth = 24;
+    const radius = (size - strokeWidth) / 2;
+    const center = size / 2;
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center gap-3">
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+          <circle cx="${center}" cy="${center}" r="${radius}" fill="none"
+            stroke="rgba(255,255,255,0.1)" stroke-width="${strokeWidth}" />
+        </svg>
+        <p class="text-sm text-slate-400">No assets yet</p>
+      </div>
+    `;
     return;
   }
 
