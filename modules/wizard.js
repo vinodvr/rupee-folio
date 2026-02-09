@@ -9,6 +9,52 @@ let currentStep = 0;
 let answers = {};
 let generatedData = null;
 
+/**
+ * Convert number to Indian English words
+ */
+export function numberToWords(num) {
+  if (num === 0) return 'Zero';
+  if (!num || isNaN(num)) return '';
+
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  function convertLessThanHundred(n) {
+    if (n < 20) return ones[n];
+    return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+  }
+
+  function convertLessThanThousand(n) {
+    if (n < 100) return convertLessThanHundred(n);
+    return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convertLessThanHundred(n % 100) : '');
+  }
+
+  // Indian numbering: Crore (10^7), Lakh (10^5), Thousand (10^3)
+  let result = '';
+
+  if (num >= 10000000) {
+    result += convertLessThanThousand(Math.floor(num / 10000000)) + ' Crore ';
+    num %= 10000000;
+  }
+
+  if (num >= 100000) {
+    result += convertLessThanHundred(Math.floor(num / 100000)) + ' Lakh ';
+    num %= 100000;
+  }
+
+  if (num >= 1000) {
+    result += convertLessThanHundred(Math.floor(num / 1000)) + ' Thousand ';
+    num %= 1000;
+  }
+
+  if (num > 0) {
+    result += convertLessThanThousand(num);
+  }
+
+  return result.trim();
+}
+
 // Wizard step definitions
 const WIZARD_STEPS = [
   {
@@ -70,7 +116,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'monthlyIncome',
     min: 20000,
-    max: 1000000,
+    max: 2000000,
     step: 10000,
     defaultValue: 100000,
     format: 'currency'
@@ -378,14 +424,22 @@ function renderCards(step) {
  */
 function renderSlider(step) {
   const currentValue = answers[step.field];
-  const displayValue = step.format === 'currency'
-    ? formatCurrency(currentValue, 'INR')
-    : currentValue.toLocaleString('en-IN');
+  const wordsText = currentValue > 0 ? numberToWords(currentValue) : '';
 
   return `
     <div class="py-8">
       <div class="text-center mb-8">
-        <div id="wizard-slider-value" class="text-4xl font-bold text-blue-600">${displayValue}</div>
+        <div class="flex items-center justify-center gap-2">
+          <span class="text-2xl text-gray-400">₹</span>
+          <input
+            type="text"
+            id="wizard-text-input"
+            value="${currentValue.toLocaleString('en-IN')}"
+            class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-48"
+            inputmode="numeric"
+          >
+        </div>
+        <p id="wizard-words" class="text-sm text-gray-500 mt-2 h-6">${wordsText}</p>
       </div>
       <div class="px-4">
         <input
@@ -461,7 +515,7 @@ function renderReviewStep() {
             </svg>
           </div>
           <div>
-            <h4 class="font-medium text-gray-800">Investment Plan</h4>
+            <h4 class="font-medium text-gray-800">Plan</h4>
             <p class="text-sm text-gray-600 mt-1">Assign existing investments to goals to reduce SIP</p>
           </div>
         </div>
@@ -492,14 +546,43 @@ function setupStepEventListeners(step) {
 
     case 'slider':
       const slider = document.getElementById('wizard-input');
-      const valueDisplay = document.getElementById('wizard-slider-value');
+      const textInput = document.getElementById('wizard-text-input');
+      const wordsDisplay = document.getElementById('wizard-words');
 
+      // Slider changes update text input and words
       slider.addEventListener('input', (e) => {
         const value = parseInt(e.target.value);
         answers[step.field] = value;
-        valueDisplay.textContent = step.format === 'currency'
-          ? formatCurrency(value, 'INR')
-          : value.toLocaleString('en-IN');
+        textInput.value = value.toLocaleString('en-IN');
+        wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
+      });
+
+      // Text input changes update slider and words
+      textInput.addEventListener('input', (e) => {
+        // Remove non-numeric characters and parse
+        const rawValue = e.target.value.replace(/[^0-9]/g, '');
+        const value = parseInt(rawValue) || 0;
+        answers[step.field] = value;
+
+        // Update slider (clamp to slider range for visual)
+        const clampedValue = Math.min(Math.max(value, step.min), step.max);
+        slider.value = clampedValue;
+
+        // Update words display
+        wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
+      });
+
+      // Format on blur
+      textInput.addEventListener('blur', (e) => {
+        const rawValue = e.target.value.replace(/[^0-9]/g, '');
+        const value = parseInt(rawValue) || 0;
+        answers[step.field] = value;
+        e.target.value = value.toLocaleString('en-IN');
+      });
+
+      // Select all on focus
+      textInput.addEventListener('focus', (e) => {
+        e.target.select();
       });
       break;
   }

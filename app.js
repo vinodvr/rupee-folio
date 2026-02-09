@@ -99,7 +99,7 @@ const TAB_LABELS = {
   cashflow: 'Cash Flow',
   assets: 'Assets',
   goals: 'Goals',
-  investmentplan: 'Investment Plan'
+  investmentplan: 'Plan'
 };
 
 const REVIEW_BANNER_MESSAGES = {
@@ -236,7 +236,7 @@ function setupTabNavigation() {
     bottomNav.classList.remove('hidden');
 
     // Show review banner on data tabs (if not dismissed)
-    const isDataTab = currentIndex >= 1 && currentIndex <= 4; // Cash Flow, Assets, Goals, Investment Plan
+    const isDataTab = currentIndex >= 1 && currentIndex <= 4; // Cash Flow, Assets, Goals, Plan
     if (reviewBanner && isDataTab && localStorage.getItem(REVIEW_BANNER_KEY) !== 'true') {
       reviewBanner.classList.remove('hidden');
       const bannerText = document.getElementById('review-banner-text');
@@ -296,6 +296,9 @@ function setupTabNavigation() {
 
     // Update bottom navigation
     updateBottomNav();
+
+    // Scroll to top of page
+    window.scrollTo(0, 0);
   }
 
   tabs.forEach(tab => {

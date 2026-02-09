@@ -54,7 +54,7 @@
             Goals
           </button>
           <button id="tab-investmentplan" class="tab-btn px-3 py-2 text-sm font-medium transition-colors">
-            Investment Plan
+            Plan
           </button>
         </nav>
       </div>
@@ -303,20 +303,17 @@
       </div>
 
       <!-- Net Worth Summary -->
-      <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-5 text-white">
-        <h2 class="text-lg font-semibold mb-4">Net Worth</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-white/10 rounded-lg p-4">
-            <div class="text-emerald-100 text-sm">Total Assets</div>
-            <div id="total-assets" class="text-2xl font-bold">₹0</div>
+      <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center">
+        <div class="text-emerald-100 text-sm uppercase tracking-wide mb-2">Your Net Worth</div>
+        <div id="net-worth" class="text-4xl font-bold mb-6">₹0</div>
+        <div class="flex justify-center gap-4">
+          <div class="bg-white/10 rounded-lg px-4 py-2">
+            <div class="text-emerald-300 text-xs uppercase tracking-wide">↑ Assets</div>
+            <div id="total-assets" class="text-lg font-semibold text-emerald-200">₹0</div>
           </div>
-          <div class="bg-white/10 rounded-lg p-4">
-            <div class="text-emerald-100 text-sm">Total Liabilities</div>
-            <div id="total-liabilities" class="text-2xl font-bold">₹0</div>
-          </div>
-          <div class="bg-white/10 rounded-lg p-4">
-            <div class="text-emerald-100 text-sm">Net Worth</div>
-            <div id="net-worth" class="text-2xl font-bold">₹0</div>
+          <div class="bg-white/10 rounded-lg px-4 py-2">
+            <div class="text-orange-300 text-xs uppercase tracking-wide">↓ Liabilities</div>
+            <div id="total-liabilities" class="text-lg font-semibold text-orange-200">₹0</div>
           </div>
         </div>
       </div>
@@ -336,7 +333,7 @@
       </div>
     </div>
 
-    <!-- Investment Plan Panel -->
+    <!-- Plan Panel -->
     <div id="panel-investmentplan" class="tab-panel hidden">
       <!-- Investment Summary -->
       <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-5 text-white mb-4">

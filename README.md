@@ -71,7 +71,7 @@ The app uses a simplified **Unified Portfolio** approach instead of per-goal all
 
 This unified approach simplifies portfolio management by consolidating all goals into two buckets rather than managing separate allocations per goal.
 
-### Investment Plan Tab
+### Plan Tab
 A dedicated tab for viewing your consolidated investment plan:
 - **Compact Goal Cards**: Each goal shows name, target amount, timeline, and monthly SIP at a glance
 - **Expandable Details**: Click "Details" to see FV breakdown, linked assets, EPF/NPS deductions, and gap to fill
@@ -111,7 +111,7 @@ For INR currency, get specific fund recommendations from:
 **Long-Term Goals**:
 - Equity (70% Nifty 50 + 30% Nifty Next 50)
 - Debt (Money Market Fund)
-**SIP Split**: Shows exact amounts per fund with total in the Investment Plan tab
+**SIP Split**: Shows exact amounts per fund with total in the Plan tab
 
 ### Additional Features
 - **Goal Reordering**: Prioritize goals with up/down buttons
@@ -201,7 +201,7 @@ npm run test:watch
 | Calculator | 128 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
 | Storage | 75 | CRUD operations, settings, schema migrations |
 | Assets | 47 | EPF/NPS corpus, retirement assets, asset linking, allocations |
-| Investment Plan | 35 | Goal categorization, SIP calculations, fund recommendations |
+| Plan | 35 | Goal categorization, SIP calculations, fund recommendations |
 | Persona Data | 30 | Sample data generation, persona profiles |
 | Currency | 26 | Formatting, return limits, fund recommendations |
 | Cash Flow | 16 | Income/expense tracking, EPF/NPS contributions |
@@ -235,7 +235,7 @@ modules/
 ├── cashflow.js       # Cash Flow tab UI and logic
 ├── assets.js         # Assets & Liabilities tab UI and logic
 ├── goals.js          # Goals tab UI and logic
-├── investmentplan.js # Investment Plan tab (aggregates all goals)
+├── investmentplan.js # Plan tab (aggregates all goals)
 ├── wizard.js         # Quick Setup wizard UI and flow
 └── personaData.js    # Generates realistic data from wizard answers
 ```
@@ -269,7 +269,7 @@ financial-planner/
 │   ├── cashflow.js       # Cash flow UI & logic
 │   ├── assets.js         # Assets & Liabilities management
 │   ├── goals.js          # Goals management
-│   ├── investmentplan.js # Investment Plan tab (unified portfolio view)
+│   ├── investmentplan.js # Plan tab (unified portfolio view)
 │   ├── wizard.js         # Quick Setup wizard UI and flow
 │   └── personaData.js    # Generates realistic data from wizard answers
 └── tests/
@@ -284,7 +284,7 @@ financial-planner/
 
 ## Usage Guide
 
-The app is organized into four tabs: **Cash Flow**, **Assets**, **Goals**, and **Investment Plan**.
+The app is organized into four tabs: **Cash Flow**, **Assets**, **Goals**, and **Plan**.
 
 ### Setting Up Cash Flow
 
@@ -312,9 +312,9 @@ The app is organized into four tabs: **Cash Flow**, **Assets**, **Goals**, and *
    - For Retirement goals: Configure EPF/NPS step-up with salary growth
 3. Click **Save Goal**
 
-### Using the Investment Plan
+### Using the Plan
 
-1. Switch to the **Investment Plan** tab to see your consolidated investment view
+1. Switch to the **Plan** tab to see your consolidated investment view
 2. Goals are automatically categorized:
    - **Short-term** (< 5 years): Invested in Arbitrage Fund
    - **Long-term** (5+ years): Split between Equity and Debt funds

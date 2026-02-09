@@ -151,9 +151,9 @@ function showAddAssetForm() {
       </div>
       <input type="text" id="new-asset-name" placeholder="Description - optional (e.g., HDFC Savings)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
-      <div class="flex gap-2">
-        <button id="save-asset-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm hover:bg-emerald-700">Save</button>
+      <div class="flex gap-2 justify-end">
         <button id="cancel-asset-btn" class="bg-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-400">Cancel</button>
+        <button id="save-asset-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm hover:bg-emerald-700">Save</button>
       </div>
     </div>
   `;
@@ -223,12 +223,12 @@ function renderAssetsList() {
               <span class="text-sm">${asset.name}</span>
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium text-emerald-600">${formatCurrency(asset.value, currency)}</span>
-                <button class="edit-asset-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" data-id="${asset.id}">
+                <button class="edit-asset-btn text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded p-1 transition-colors" data-id="${asset.id}">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                   </svg>
                 </button>
-                <button class="delete-asset-btn text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" data-id="${asset.id}">
+                <button class="delete-asset-btn text-gray-400 hover:text-red-600 hover:bg-red-50 rounded p-1 transition-colors" data-id="${asset.id}">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
@@ -254,21 +254,21 @@ function editAsset(id) {
   if (!asset) return;
 
   const row = document.querySelector(`[data-asset-id="${id}"]`);
-  row.className = 'py-2 border-b border-gray-100';
+  row.className = 'py-3 border-b border-gray-100';
   row.innerHTML = `
-    <div class="flex flex-wrap gap-2 mb-2">
-      <select class="edit-asset-category px-2 py-1 border rounded text-sm">
+    <div class="space-y-2 mb-3">
+      <select class="edit-asset-category w-full px-3 py-2 border rounded text-sm">
         ${renderAssetCategoryOptions(asset.category)}
       </select>
-      <input type="text" value="${asset.name}" class="edit-asset-name flex-1 min-w-[120px] px-2 py-1 border rounded text-sm">
+      <input type="text" value="${asset.name}" class="edit-asset-name w-full px-3 py-2 border rounded text-sm" placeholder="Description">
       <div class="relative">
-        <span class="absolute left-2 top-1 text-gray-500 text-sm">${getSymbol(currency)}</span>
-        <input type="number" value="${asset.value}" class="edit-asset-value w-28 pl-6 pr-2 py-1 border rounded text-sm">
+        <span class="absolute left-3 top-2 text-gray-500 text-sm">${getSymbol(currency)}</span>
+        <input type="number" value="${asset.value}" class="edit-asset-value w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Value">
       </div>
     </div>
-    <div class="flex gap-2">
-      <button class="save-edit-asset bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700">Save</button>
-      <button class="cancel-edit-asset bg-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-400">Cancel</button>
+    <div class="flex gap-2 justify-end">
+      <button class="cancel-edit-asset bg-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-400">Cancel</button>
+      <button class="save-edit-asset bg-emerald-600 text-white px-3 py-1.5 rounded text-sm hover:bg-emerald-700">Save</button>
     </div>
   `;
 
@@ -349,7 +349,7 @@ function showAssetValidationError(errorMessage, allocations) {
         </div>
         <p class="text-xs text-gray-500 mb-4">
           To modify this asset, first adjust or remove the allocations using the
-          <span class="font-medium">Investment Plan</span> tab.
+          <span class="font-medium">Plan</span> tab.
         </p>
       ` : ''}
 
@@ -392,9 +392,9 @@ function showAddLiabilityForm() {
       </div>
       <input type="text" id="new-liability-name" placeholder="Description - optional (e.g., SBI Home Loan)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
-      <div class="flex gap-2">
-        <button id="save-liability-btn" class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700">Save</button>
+      <div class="flex gap-2 justify-end">
         <button id="cancel-liability-btn" class="bg-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-400">Cancel</button>
+        <button id="save-liability-btn" class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700">Save</button>
       </div>
     </div>
   `;
@@ -447,12 +447,12 @@ function renderLiabilitiesList() {
           <span class="text-sm">${liability.name}</span>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-orange-600">${formatCurrency(liability.amount, currency)}</span>
-            <button class="edit-liability-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" data-id="${liability.id}">
+            <button class="edit-liability-btn text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded p-1 transition-colors" data-id="${liability.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
               </svg>
             </button>
-            <button class="delete-liability-btn text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" data-id="${liability.id}">
+            <button class="delete-liability-btn text-gray-400 hover:text-red-600 hover:bg-red-50 rounded p-1 transition-colors" data-id="${liability.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
@@ -477,21 +477,21 @@ function editLiability(id) {
   if (!liability) return;
 
   const row = document.querySelector(`[data-liability-id="${id}"]`);
-  row.className = 'py-2 border-b border-gray-100';
+  row.className = 'py-3 border-b border-gray-100';
   row.innerHTML = `
-    <div class="flex flex-wrap gap-2 mb-2">
-      <select class="edit-liability-category px-2 py-1 border rounded text-sm">
+    <div class="space-y-2 mb-3">
+      <select class="edit-liability-category w-full px-3 py-2 border rounded text-sm">
         ${liabilityCategories.map(cat => `<option value="${cat}" ${cat === liability.category ? 'selected' : ''}>${cat}</option>`).join('')}
       </select>
-      <input type="text" value="${liability.name}" class="edit-liability-name flex-1 min-w-[120px] px-2 py-1 border rounded text-sm">
+      <input type="text" value="${liability.name}" class="edit-liability-name w-full px-3 py-2 border rounded text-sm" placeholder="Description">
       <div class="relative">
-        <span class="absolute left-2 top-1 text-gray-500 text-sm">${getSymbol(currency)}</span>
-        <input type="number" value="${liability.amount}" class="edit-liability-amount w-28 pl-6 pr-2 py-1 border rounded text-sm">
+        <span class="absolute left-3 top-2 text-gray-500 text-sm">${getSymbol(currency)}</span>
+        <input type="number" value="${liability.amount}" class="edit-liability-amount w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Amount">
       </div>
     </div>
-    <div class="flex gap-2">
-      <button class="save-edit-liability bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700">Save</button>
-      <button class="cancel-edit-liability bg-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-400">Cancel</button>
+    <div class="flex gap-2 justify-end">
+      <button class="cancel-edit-liability bg-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-400">Cancel</button>
+      <button class="save-edit-liability bg-orange-600 text-white px-3 py-1.5 rounded text-sm hover:bg-orange-700">Save</button>
     </div>
   `;
 

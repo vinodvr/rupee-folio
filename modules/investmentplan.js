@@ -1,4 +1,4 @@
-// Investment Plan module - Unified Portfolio View
+// Plan module - Unified Portfolio View
 import { formatCurrency, getFunds, getSymbol } from './currency.js';
 import {
   UNIFIED_PORTFOLIO,
@@ -280,7 +280,7 @@ function renderGoalRow(goal) {
 }
 
 /**
- * Main render function for the Investment Plan tab
+ * Main render function for the Plan tab
  */
 function renderInvestmentPlan() {
   const container = document.getElementById('investment-plan-content');
