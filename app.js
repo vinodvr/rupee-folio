@@ -103,10 +103,10 @@ const TAB_LABELS = {
 };
 
 const REVIEW_BANNER_MESSAGES = {
-  cashflow: 'Edit your income, deductions, and expense amounts to match your actual numbers.',
-  assets: 'Add any savings, real estate, or other assets which are missing here.',
-  goals: 'Adjust target amounts and dates to match your actual plans.',
-  investmentplan: 'Assign existing investments to goals to reduce the SIP required.'
+  cashflow: 'Review your income, EPF/NPS deductions, and expenses to match your actual numbers.',
+  assets: 'Add any savings, FDs, equity, real estate, or other assets and liabilities (home loan, car loan) which are missing here.',
+  goals: 'Review your goals — adjust amounts, dates, or add new ones like education or a house.',
+  investmentplan: 'Link your existing investments to goals to reduce the monthly SIP needed.'
 };
 
 // Helper: Set up a collapsible section

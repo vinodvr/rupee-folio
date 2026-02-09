@@ -503,7 +503,7 @@ function renderReviewStep() {
           </div>
           <div>
             <h4 class="font-medium text-gray-800">Cash Flow</h4>
-            <p class="text-sm text-gray-600 mt-1">Edit your income, deductions, and expense amounts</p>
+            <p class="text-sm text-gray-600 mt-1">Review your income, EPF/NPS deductions, and expenses</p>
           </div>
         </div>
 
@@ -515,7 +515,7 @@ function renderReviewStep() {
           </div>
           <div>
             <h4 class="font-medium text-gray-800">Assets</h4>
-            <p class="text-sm text-gray-600 mt-1">Add savings, real estate, and other assets we missed</p>
+            <p class="text-sm text-gray-600 mt-1">Add any savings, FDs, equity, real estate, or other assets and liabilities (home loan, car loan)</p>
           </div>
         </div>
 
@@ -527,7 +527,7 @@ function renderReviewStep() {
           </div>
           <div>
             <h4 class="font-medium text-gray-800">Goals</h4>
-            <p class="text-sm text-gray-600 mt-1">Adjust target amounts and dates to match your plans</p>
+            <p class="text-sm text-gray-600 mt-1">Review goals — adjust amounts, dates, or add new ones</p>
           </div>
         </div>
 
@@ -540,7 +540,7 @@ function renderReviewStep() {
           </div>
           <div>
             <h4 class="font-medium text-gray-800">Plan</h4>
-            <p class="text-sm text-gray-600 mt-1">Assign existing investments to goals to reduce SIP</p>
+            <p class="text-sm text-gray-600 mt-1">Link existing investments to goals to reduce monthly SIP</p>
           </div>
         </div>
       </div>
