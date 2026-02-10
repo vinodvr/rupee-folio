@@ -18,6 +18,7 @@ import {
   calculateEpfNpsSipFV,
   calculateRetirementProjectionsWithEpfNps,
   getTaperedEquityAllocation,
+  calculateEffectiveTaperedReturn,
   calculateTaperedSipFV,
   calculateTaperedSIP,
   getReturnForCategory,
@@ -708,6 +709,50 @@ describe('Equity Tapering (Glide Path)', () => {
       // 100% initial (hypothetical): caps should limit
       expect(getTaperedEquityAllocation(6, 100)).toBe(40); // min(50, 40) = 40
       expect(getTaperedEquityAllocation(4, 100)).toBe(20); // min(25, 20) = 20
+    });
+  });
+
+  describe('calculateEffectiveTaperedReturn', () => {
+    it('20yr goal, 60% equity: time-weighted average is 7.25%', () => {
+      // 13×8.0 + 3×6.5 + 2×5.75 + 2×5.0 = 145, /20 = 7.25
+      expect(calculateEffectiveTaperedReturn(20, 60, 10, 5)).toBeCloseTo(7.25, 2);
+    });
+
+    it('6yr goal, 60% equity: 5.75%', () => {
+      // yr1,2→5.0, yr3,4→5.75, yr5,6→6.5 → 34.5/6 = 5.75
+      expect(calculateEffectiveTaperedReturn(6, 60, 10, 5)).toBeCloseTo(5.75, 2);
+    });
+
+    it('3yr goal, 60% equity: 5.25%', () => {
+      // yr1,2→0% equity→5.0, yr3→15% equity→5.75 → 15.75/3 = 5.25
+      expect(calculateEffectiveTaperedReturn(3, 60, 10, 5)).toBeCloseTo(5.25, 2);
+    });
+
+    it('0yr or negative years returns debtReturn', () => {
+      expect(calculateEffectiveTaperedReturn(0, 60, 10, 5)).toBe(5);
+      expect(calculateEffectiveTaperedReturn(-3, 60, 10, 5)).toBe(5);
+    });
+
+    it('10yr goal, 80% equity: 7.0%', () => {
+      // yr1,2→5.0, yr3,4→6.0(20%eq), yr5,6,7→7.0(40%eq), yr8,9,10→9.0(80%eq)
+      // = 10+12+21+27 = 70/10 = 7.0
+      expect(calculateEffectiveTaperedReturn(10, 80, 10, 5)).toBeCloseTo(7.0, 2);
+    });
+
+    it('long-term goal effectiveReturn < blendedReturn in projections', () => {
+      const goal = createGoal({ targetAmount: 5000000, yearsFromNow: 20, inflationRate: 6 });
+      const projections = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0);
+      expect(projections.category).toBe('long');
+      expect(projections.effectiveReturn).toBeLessThan(projections.blendedReturn);
+      expect(projections.effectiveReturn).toBeCloseTo(7.25, 1);
+    });
+
+    it('short-term goal effectiveReturn equals blendedReturn (arbitrage)', () => {
+      const goal = createGoal({ targetAmount: 500000, yearsFromNow: 3, inflationRate: 6 });
+      const projections = calculateUnifiedGoalProjections(goal, 10, 5, 6, 60, 0);
+      expect(projections.category).toBe('short');
+      expect(projections.effectiveReturn).toBe(projections.blendedReturn);
+      expect(projections.effectiveReturn).toBe(6); // arbitrage rate
     });
   });
 

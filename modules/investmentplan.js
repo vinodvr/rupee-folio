@@ -220,18 +220,25 @@ function renderGoalRow(goal) {
             <span>Inflation Rate:</span>
             <span class="font-medium text-gray-700">${goal.inflationRate}%</span>
           </div>
-          ${goal.projections.annualStepUp > 0 ? `
-            <div class="flex justify-between">
-              <span>Annual Step-up:</span>
-              <span class="font-medium text-gray-700">${goal.projections.annualStepUp}%</span>
-            </div>
-          ` : ''}
+          <div class="flex justify-between">
+            <span>Future Value:</span>
+            <span class="font-medium text-gray-700">${formatCurrency(Math.round(goal.projections.inflationAdjustedTarget), currency)}</span>
+          </div>
 
-          <!-- FV Calculations -->
           <div class="border-t border-gray-200 pt-2 mt-2">
+            ${goal.projections.annualStepUp > 0 ? `
+              <div class="flex justify-between">
+                <span>Annual SIP Step-up:</span>
+                <span class="font-medium text-gray-700">${goal.projections.annualStepUp}%</span>
+              </div>
+            ` : ''}
             <div class="flex justify-between">
-              <span>Future Value:</span>
-              <span class="font-medium text-gray-700">${formatCurrency(Math.round(goal.projections.inflationAdjustedTarget), currency)}</span>
+              <span>Expected Return post tax:</span>
+              <span class="font-medium text-gray-700">${goal.projections.effectiveReturn.toFixed(2)}%</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Final Corpus Value:</span>
+              <span class="font-medium text-green-600">${formatCurrency(Math.round(goal.projections.totalCorpusFV), currency)}</span>
             </div>
           </div>
           ${linkedAssetsList.length > 0 ? `
@@ -340,7 +347,6 @@ function renderInvestmentPlan() {
               <span class="font-medium text-gray-700">Total SIP for Short Term Goals</span>
               <span class="text-xl font-bold text-amber-600">${formatCurrency(Math.round(shortTermSummary.totalSIP), currency)}</span>
             </div>
-            <div class="text-xs text-gray-500">Expected return: ${shortTermSummary.blendedReturn.toFixed(1)}% p.a. post tax</div>
           </div>
         `}
       </div>
@@ -369,7 +375,6 @@ function renderInvestmentPlan() {
               <span class="font-medium text-gray-700">Total SIP for Long Term Goals</span>
               <span class="text-xl font-bold text-green-600">${formatCurrency(Math.round(longTermSummary.totalSIP), currency)}</span>
             </div>
-            <div class="text-xs text-gray-500">Expected return: ${longTermSummary.blendedReturn.toFixed(1)}% p.a. post tax</div>
           </div>
         `}
       </div>

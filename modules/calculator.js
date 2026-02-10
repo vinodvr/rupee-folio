@@ -54,6 +54,31 @@ export function getTaperedEquityAllocation(yearsRemaining, initialEquity) {
 }
 
 /**
+ * Calculate effective time-weighted average return with equity tapering
+ * Averages the blended return across each year, using getTaperedEquityAllocation
+ * to determine equity allocation at each phase — same glide path as calculateTaperedSipFV
+ * @param years - Total investment period in years
+ * @param initialEquity - Initial equity allocation percentage
+ * @param equityReturn - Annual equity return percentage
+ * @param debtReturn - Annual debt return percentage
+ * @returns Effective annualized blended return percentage
+ */
+export function calculateEffectiveTaperedReturn(years, initialEquity, equityReturn, debtReturn) {
+  if (years <= 0) return debtReturn;
+
+  const n = Math.ceil(years);
+  let totalReturn = 0;
+
+  for (let yr = 1; yr <= n; yr++) {
+    const equity = getTaperedEquityAllocation(yr, initialEquity);
+    const blended = (equity / 100 * equityReturn) + ((100 - equity) / 100 * debtReturn);
+    totalReturn += blended;
+  }
+
+  return totalReturn / n;
+}
+
+/**
  * Calculate future value of SIP with equity tapering (glide path) and optional annual step-up
  * Simulates month-by-month compounding with varying equity allocation
  * When annualStepUp=0, behaves as a simple tapered FV calculation
@@ -139,6 +164,20 @@ function calculateSipForGap(gap, category, months, annualStepUp, blendedReturn, 
 }
 
 /**
+ * Calculate FV of a SIP based on goal category (mirrors calculateSipForGap)
+ * Short-term: constant return (with optional step-up)
+ * Long-term: tapered return (glide path with equity tapering)
+ */
+function calculateSipFVForGoal(sip, category, months, annualStepUp, blendedReturn, equityAllocation, equityReturn, debtReturn) {
+  if (sip <= 0 || months <= 0) return 0;
+  if (category === 'short') {
+    if (annualStepUp === 0) return calculateSipFV(sip, blendedReturn, months);
+    return calculateStepUpSIPFutureValue(sip, blendedReturn / 100 / 12, months, annualStepUp / 100);
+  }
+  return calculateTaperedSipFV(sip, months, annualStepUp, equityAllocation, equityReturn, debtReturn);
+}
+
+/**
  * Calculate unified goal projections with equity tapering for long-term goals
  * Optionally supports annual step-up for SIP calculations
  * Optionally accounts for linked assets that reduce required SIP
@@ -177,15 +216,27 @@ export function calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, 
   // Calculate required SIP for gap amount with tapering for long-term goals
   const monthlySIP = calculateSipForGap(gapAmount, category, months, annualStepUp, blendedReturn, equityAllocation, equityReturn, debtReturn);
 
+  // Actual corpus the SIP will build (from binary search result)
+  const sipCorpusFV = calculateSipFVForGoal(monthlySIP, category, months, annualStepUp, blendedReturn, equityAllocation, equityReturn, debtReturn);
+  const totalCorpusFV = sipCorpusFV + linkedAssetsFV;
+
+  // Effective return accounting for equity tapering glide path
+  const effectiveReturn = category === 'short'
+    ? blendedReturn
+    : calculateEffectiveTaperedReturn(years, equityAllocation, equityReturn, debtReturn);
+
   return {
     years,
     months,
     category,
     inflationAdjustedTarget,
     blendedReturn,
+    effectiveReturn,
     linkedAssetsFV,         // Future value of linked assets
     linkedAssetsCount: linkedAssets.length,
     gapAmount,              // What SIP needs to cover
+    sipCorpusFV,            // Actual FV the SIP will produce
+    totalCorpusFV,          // SIP FV + linked assets FV
     monthlySIP,
     annualStepUp,
     tapering: {
@@ -589,11 +640,17 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
   // Use tapering for long-term goals (consistent with calculateUnifiedGoalProjections)
   const adjustedMonthlySIP = calculateSipForGap(adjustedGapAmount, baseProjections.category, baseProjections.months, investmentStepUp, baseProjections.blendedReturn, equityAllocation, equityReturn, debtReturn);
 
+  // Actual corpus the adjusted SIP will build
+  const adjustedSipCorpusFV = calculateSipFVForGoal(adjustedMonthlySIP, baseProjections.category, baseProjections.months, investmentStepUp, baseProjections.blendedReturn, equityAllocation, equityReturn, debtReturn);
+  const adjustedTotalCorpusFV = adjustedSipCorpusFV + baseProjections.linkedAssetsFV + totalEpfNpsFV;
+
   return {
     ...baseProjections,
     // Override with adjusted values
     gapAmount: adjustedGapAmount,
     monthlySIP: adjustedMonthlySIP,
+    sipCorpusFV: adjustedSipCorpusFV,
+    totalCorpusFV: adjustedTotalCorpusFV,
     // EPF/NPS details
     epfNps: {
       monthlyEpf,
