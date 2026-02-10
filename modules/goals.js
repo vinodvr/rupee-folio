@@ -127,6 +127,14 @@ function showAddGoalModal(editGoal = null) {
             <input type="number" id="goal-amount" value="${goal.targetAmount}" placeholder="e.g., 5000000"
               class="w-full pl-8 pr-3 py-2 border rounded-lg">
           </div>
+          <div id="estimate-retirement-container" class="${(goal.goalType || 'one-time') === 'retirement' ? '' : 'hidden'}">
+            <button type="button" id="estimate-retirement-btn" class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 px-3 py-1.5 rounded-lg shadow-sm mt-1.5 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+              </svg>
+              Help me estimate
+            </button>
+          </div>
         </div>
 
         <!-- Inflation Rate -->
@@ -178,13 +186,16 @@ function showAddGoalModal(editGoal = null) {
 
   const goalTypeSelect = document.getElementById('goal-type');
 
-  // Show/hide EPF/NPS step-up option based on goal type
+  // Show/hide retirement-specific options based on goal type
   goalTypeSelect.addEventListener('change', () => {
     const epfNpsContainer = document.getElementById('epf-nps-stepup-container');
+    const estimateContainer = document.getElementById('estimate-retirement-container');
     if (goalTypeSelect.value === 'retirement') {
       epfNpsContainer.classList.remove('hidden');
+      estimateContainer.classList.remove('hidden');
     } else {
       epfNpsContainer.classList.add('hidden');
+      estimateContainer.classList.add('hidden');
     }
   });
 
@@ -249,11 +260,204 @@ function showAddGoalModal(editGoal = null) {
     if (onDataChange) onDataChange();
   });
 
+  // Estimate retirement corpus button
+  document.getElementById('estimate-retirement-btn').addEventListener('click', () => {
+    showEstimateModal();
+  });
+
   // Close on backdrop click
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.classList.add('hidden');
     }
+  });
+}
+
+// Constants matching personaData.js
+const RETIREMENT_EXPENSE_RATIO = 0.70;
+const HEALTHCARE_PERCENT = 0.05;
+const HEALTHCARE_CAP = 25000;
+const LIFE_EXPECTANCY = 90;
+
+export function calculateRetirementEstimate() {
+  const expenses = appData?.cashflow?.expenses || [];
+  const incomes = appData?.cashflow?.income || [];
+
+  if (expenses.length === 0 && incomes.length === 0) {
+    return null;
+  }
+
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const emiExpenses = expenses
+    .filter(e => e.category === 'EMIs/Loans')
+    .reduce((sum, e) => sum + e.amount, 0);
+  const nonEmiExpenses = totalExpenses - emiExpenses;
+  const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
+
+  const healthcare = Math.round(
+    Math.min(totalIncome * HEALTHCARE_PERCENT, HEALTHCARE_CAP) / 1000
+  ) * 1000;
+  const monthlyRetirement = Math.round(nonEmiExpenses * RETIREMENT_EXPENSE_RATIO + healthcare);
+
+  const retirementAges = [45, 50, 55];
+  const estimates = retirementAges.map(age => {
+    const yearsInRetirement = LIFE_EXPECTANCY - age;
+    const corpus = monthlyRetirement * 12 * yearsInRetirement;
+    // Round to nearest 10 Lakh (1,000,000)
+    const rounded = Math.round(corpus / 1000000) * 1000000;
+    return { age, yearsInRetirement, corpus: rounded };
+  });
+
+  return {
+    nonEmiExpenses,
+    totalIncome,
+    healthcare,
+    monthlyRetirement,
+    estimates
+  };
+}
+
+export function showEstimateModal() {
+  const estimate = calculateRetirementEstimate();
+
+  const formulaHtml = `
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h4 class="font-semibold text-gray-900">The Formula</h4>
+      </div>
+      <div class="bg-gray-50 rounded-lg p-4 space-y-2.5 text-sm">
+        <div class="flex items-start gap-2">
+          <span class="text-emerald-500 mt-0.5 flex-shrink-0">1.</span>
+          <p class="text-gray-700"><span class="font-medium text-gray-900">Monthly retirement spend</span> = Non-EMI expenses × 70% + Healthcare</p>
+        </div>
+        <div class="flex items-start gap-2">
+          <span class="text-emerald-500 mt-0.5 flex-shrink-0">2.</span>
+          <p class="text-gray-700"><span class="font-medium text-gray-900">Healthcare budget</span> = 5% of income <span class="text-gray-400">(max ₹25K/month)</span></p>
+        </div>
+        <div class="flex items-start gap-2">
+          <span class="text-emerald-500 mt-0.5 flex-shrink-0">3.</span>
+          <p class="text-gray-700"><span class="font-medium text-gray-900">Years in retirement</span> = 90 − Retirement age</p>
+        </div>
+        <div class="flex items-start gap-2 pt-2 border-t border-gray-200">
+          <span class="text-emerald-600 mt-0.5 flex-shrink-0">=</span>
+          <p class="text-gray-800 font-medium">Corpus = Monthly spend × 12 × Years in retirement</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let personalHtml = '';
+  if (estimate) {
+    const fmt = (v) => formatCurrency(v, currency);
+    personalHtml = `
+      <div class="mt-5">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </div>
+          <h4 class="font-semibold text-gray-900">Your Estimate</h4>
+        </div>
+
+        <!-- Calculation breakdown -->
+        <div class="bg-blue-50 rounded-lg p-4 space-y-2 text-sm">
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600">Non-EMI monthly expenses</span>
+            <span class="font-medium text-gray-900">${fmt(estimate.nonEmiExpenses)}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600">× 70% (retirement ratio)</span>
+            <span class="font-medium text-gray-900">${fmt(Math.round(estimate.nonEmiExpenses * RETIREMENT_EXPENSE_RATIO))}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600">+ Healthcare budget</span>
+            <span class="font-medium text-gray-900">${fmt(estimate.healthcare)}</span>
+          </div>
+          <div class="flex justify-between items-center pt-2 border-t border-blue-200">
+            <span class="font-medium text-blue-800">Monthly retirement spend</span>
+            <span class="font-semibold text-blue-800">${fmt(estimate.monthlyRetirement)}</span>
+          </div>
+        </div>
+
+        <!-- Corpus table -->
+        <div class="mt-4 rounded-lg border border-gray-200 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="text-left py-2.5 px-3 font-medium text-gray-600">Retire at</th>
+                <th class="text-center py-2.5 px-3 font-medium text-gray-600">Years in retirement</th>
+                <th class="text-right py-2.5 px-3 font-medium text-gray-600">Corpus needed</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${estimate.estimates.map((e, i) => `
+                <tr class="${i < estimate.estimates.length - 1 ? 'border-b border-gray-100' : ''}">
+                  <td class="py-2.5 px-3 text-gray-700">Age ${e.age}</td>
+                  <td class="py-2.5 px-3 text-center text-gray-700">${e.yearsInRetirement} years</td>
+                  <td class="py-2.5 px-3 text-right font-semibold text-gray-900">${fmt(e.corpus)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-xs text-gray-400 mt-3 text-center">These are today's values — inflation adjustment is handled separately by the app.</p>
+      </div>
+    `;
+  } else {
+    personalHtml = `
+      <div class="mt-5 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm text-amber-800">Add your income and expenses in Cash Flow to see a personalized estimate.</p>
+      </div>
+    `;
+  }
+
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'estimate-modal-overlay';
+  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4';
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-blue-50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900">Estimating Retirement Corpus</h3>
+        </div>
+        <button id="close-estimate-modal" class="text-gray-400 hover:text-gray-600 hover:bg-white/80 rounded-lg p-1.5 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-5 overflow-y-auto">
+        ${formulaHtml}
+        ${personalHtml}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const closeModal = () => overlay.remove();
+  overlay.querySelector('#close-estimate-modal').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
   });
 }
 
@@ -304,6 +508,9 @@ function renderGoalsList() {
     });
   });
 
+  container.querySelectorAll('.estimate-retirement-link').forEach(btn => {
+    btn.addEventListener('click', () => showEstimateModal());
+  });
 }
 
 function renderGoalCard(goal) {
@@ -332,6 +539,12 @@ function renderGoalCard(goal) {
             <div>Timeline: <span class="font-medium text-gray-700">${formatTimeline(years)}</span> (${new Date(goal.targetDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})</div>
             <div>Inflation: <span class="font-medium text-gray-700">${goal.inflationRate}%</span></div>
             ${isRetirement && goal.includeEpfNps ? '<div class="text-purple-600">EPF/NPS deductions included</div>' : ''}
+            ${isRetirement ? `<button type="button" class="estimate-retirement-link inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 px-3 py-1.5 rounded-lg shadow-sm mt-1.5 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+              </svg>
+              Help me estimate
+            </button>` : ''}
           </div>
         </div>
 

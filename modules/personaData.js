@@ -6,33 +6,36 @@ import { generateId } from './storage.js';
 // Expense percentages based on income (as % of in-hand income)
 // With caps to prevent unrealistic amounts at higher incomes
 const EXPENSE_CONFIG = {
-  // Housing varies by type
   housing: {
-    renting: { percent: 0.25, cap: 50000 },
-    rentingToBuy: { percent: 0.25, cap: 50000 },
-    ownWithLoan: { percent: 0.30, cap: null }, // EMI scales with home value, no cap
+    renting: { percent: 0.25, cap: 150000 },
+    rentingToBuy: { percent: 0.25, cap: 150000 },
+    ownWithLoan: { percent: 0.30, cap: null },
     ownNoLoan: { percent: 0, cap: 0 }
   },
-  // Food varies by family size (capped at ₹20k)
   food: {
-    single: { percent: 0.08, cap: 20000 },
-    married: { percent: 0.10, cap: 20000 },
-    marriedDual: { percent: 0.10, cap: 20000 },
-    withKids1: { percent: 0.12, cap: 20000 },
-    withKids2: { percent: 0.15, cap: 20000 }
+    single: { percent: 0.08, cap: 50000 },
+    married: { percent: 0.10, cap: 60000 },
+    marriedDual: { percent: 0.10, cap: 60000 },
+    withKids1: { percent: 0.12, cap: 70000 },
+    withKids2: { percent: 0.15, cap: 80000 }
   },
-  // Fixed categories with caps
-  utilities: { percent: 0.03, cap: 8000 },
-  insurance: { percent: 0.02, cap: 6000 },
-  entertainment: { percent: 0.05, cap: 12000 },
-  shopping: { percent: 0.04, cap: 10000 },
-  houseHelp: { percent: 0.03, cap: 10000 }
+  utilities: { percent: 0.03, cap: 15000 },
+  insurance: { percent: 0.03, cap: 30000 },
+  entertainment: { percent: 0.05, cap: 30000 },
+  shopping: { percent: 0.05, cap: 30000 },
+  houseHelp: { percent: 0.03, cap: 20000 }
 };
 
 // EPF/NPS estimation (as % of in-hand income)
 // In-hand is post-deduction, so we back-calculate what EPF might be
 const EPF_PERCENTAGE = 0.06; // ~6% of in-hand
 const NPS_PERCENTAGE = 0.05; // ~5% of in-hand if opted
+
+// Retirement expense adjustments
+const RETIREMENT_EXPENSE_RATIO = 0.70;   // 70% of current non-EMI expenses
+const HEALTHCARE_PERCENT = 0.05;          // 5% of income
+const HEALTHCARE_CAP = 25000;             // Capped at ₹25K/month
+const LIFE_EXPECTANCY = 90;
 
 // Home value multipliers based on income (annual in-hand * multiplier)
 const HOME_VALUE_MULTIPLIER = 8; // 8x annual in-hand income
@@ -119,7 +122,17 @@ function calculateExpenses(answers) {
     amount: calcExpense(income, EXPENSE_CONFIG.houseHelp)
   });
 
-  // Loan EMIs (if any)
+  // Home Loan EMI (if any)
+  if (answers.homeLoanEmi > 0) {
+    expenses.push({
+      id: generateId(),
+      category: 'EMIs/Loans',
+      name: 'Home Loan EMI',
+      amount: answers.homeLoanEmi
+    });
+  }
+
+  // Other Loan EMIs (if any)
   if (answers.otherEmi > 0) {
     expenses.push({
       id: generateId(),
@@ -280,25 +293,22 @@ function calculateAssets(answers) {
 function calculateLiabilities(answers) {
   const liabilities = [];
 
+  if (answers.homeLoanOutstanding > 0) {
+    liabilities.push({
+      id: generateId(),
+      name: 'Home Loan',
+      category: 'Home Loan',
+      amount: answers.homeLoanOutstanding
+    });
+  }
+
   if (answers.otherEmi > 0) {
-    if (answers.housing === 'ownWithLoan') {
-      // If owns with loan, assume most EMI is home loan
-      // Estimate outstanding as roughly 100x EMI (rough approximation for 15yr loan at 9%)
-      liabilities.push({
-        id: generateId(),
-        name: 'Home Loan',
-        category: 'Home Loan',
-        amount: answers.otherEmi * 100
-      });
-    } else {
-      // Other loans - estimate outstanding as 36x EMI (3-year personal/car loan)
-      liabilities.push({
-        id: generateId(),
-        name: 'Personal/Car Loan',
-        category: 'Personal Loan',
-        amount: answers.otherEmi * 36
-      });
-    }
+    liabilities.push({
+      id: generateId(),
+      name: 'Personal/Car Loan',
+      category: 'Personal Loan',
+      amount: answers.otherEmi * 36
+    });
   }
 
   return liabilities;
@@ -334,26 +344,30 @@ function calculateGoals(answers, expenses) {
     startDate: todayStr
   });
 
-  // 2. Retirement (always) - target age 50
-  const retirementAge = 50;
-  const currentAge = answers.age;
-  const yearsToRetirement = retirementAge - currentAge;
+  // 2. Financial Independence goal
+  const retirementAge = answers.retirementAge || 50;
+  const yearsToRetirement = retirementAge - answers.age;
 
   if (yearsToRetirement > 0) {
-    // Calculate corpus in TODAY's value (goal system will handle inflation)
-    // Corpus = monthly expenses × 12 months × 30 years in retirement
-    const retirementCorpus = nonEmiExpenses * 12 * 30;
-    // Round down to nearest 50 lakh
-    const roundedCorpus = Math.floor(retirementCorpus / 5000000) * 5000000;
+    const healthcareBudget = Math.min(
+      Math.round(answers.monthlyIncome * HEALTHCARE_PERCENT / 1000) * 1000,
+      HEALTHCARE_CAP
+    );
+    const retirementMonthlyExpenses = Math.round(
+      nonEmiExpenses * RETIREMENT_EXPENSE_RATIO + healthcareBudget
+    );
+    const yearsInRetirement = LIFE_EXPECTANCY - retirementAge;
+    const retirementCorpus = retirementMonthlyExpenses * 12 * yearsInRetirement;
+    const roundedCorpus = Math.floor(retirementCorpus / 1000000) * 1000000;
 
     const retirementTarget = new Date(today);
     retirementTarget.setFullYear(retirementTarget.getFullYear() + yearsToRetirement);
 
     goals.push({
       id: generateId(),
-      name: 'Retirement at 50',
+      name: `Financial Independence at ${retirementAge}`,
       goalType: 'retirement',
-      targetAmount: Math.max(roundedCorpus, 10000000), // Minimum 1 Cr
+      targetAmount: Math.max(roundedCorpus, 10000000),
       inflationRate: 6,
       targetDate: retirementTarget.toISOString().split('T')[0],
       startDate: todayStr,
@@ -363,21 +377,27 @@ function calculateGoals(answers, expenses) {
 
   // 3. Child Education (if kids)
   if (answers.kids !== 'none') {
-    const numKids = answers.kids === '1' ? 1 : 2;
-    const educationAmount = 3000000 * numKids; // 30L per child
+    const parentAgeAtFirstChild = Math.min(30, answers.age);
+    const estimatedChildAge = answers.age - parentAgeAtFirstChild;
+    const yearsToEducation = 18 - estimatedChildAge;
 
-    const educationTarget = new Date(today);
-    educationTarget.setFullYear(educationTarget.getFullYear() + 18);
+    if (yearsToEducation > 0) {
+      const numKids = answers.kids === '1' ? 1 : 2;
+      const educationAmount = 3000000 * numKids; // 30L per child
 
-    goals.push({
-      id: generateId(),
-      name: `Child Education${numKids > 1 ? ' (2 kids)' : ''}`,
-      goalType: 'one-time',
-      targetAmount: educationAmount,
-      inflationRate: 8, // Education inflation
-      targetDate: educationTarget.toISOString().split('T')[0],
-      startDate: todayStr
-    });
+      const educationTarget = new Date(today);
+      educationTarget.setFullYear(educationTarget.getFullYear() + yearsToEducation);
+
+      goals.push({
+        id: generateId(),
+        name: `Child Education${numKids > 1 ? ' (2 kids)' : ''}`,
+        goalType: 'one-time',
+        targetAmount: educationAmount,
+        inflationRate: 8, // Education inflation
+        targetDate: educationTarget.toISOString().split('T')[0],
+        startDate: todayStr
+      });
+    }
   }
 
   // 4. Home Down Payment (if planning to buy)

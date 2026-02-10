@@ -219,10 +219,50 @@
         </div>
       </section>
 
-      <!-- Retirement Goals & EPF/NPS -->
+      <!-- Retirement Corpus Estimation -->
       <section class="mb-8">
         <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
           <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">5</span>
+          Retirement Corpus Estimation
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 sm:ml-8">
+          <p>RupeeFolio estimates a <strong>Financial Independence</strong> corpus — the amount you need to stop working. This calculation is used by the Quick Setup wizard, and is also available via the <strong>"Help me estimate"</strong> button on any retirement goal in the Goals and Plan tabs. Here's how it's calculated:</p>
+
+          <div class="bg-gray-50 rounded-lg p-4 font-mono text-xs overflow-x-auto space-y-1">
+            <p>1. Retirement Monthly Expenses = Non-EMI Expenses × 70% + Healthcare</p>
+            <p>2. Healthcare = min(Monthly Income × 5%, ₹25,000)</p>
+            <p>3. Years in Retirement = 90 − FI Age</p>
+            <p>4. Corpus = Retirement Monthly Expenses × 12 × Years in Retirement</p>
+            <p class="text-gray-500 mt-2">Rounded down to nearest ₹10 Lakh, minimum ₹1 Crore</p>
+          </div>
+
+          <div class="space-y-3 mt-4">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <h3 class="font-medium text-emerald-800 mb-2">Why 70% of current expenses?</h3>
+              <p class="text-sm text-emerald-700">Post-retirement, several costs drop naturally — no commute, no work clothes, no career-related spending. 70% is a widely-used rule of thumb for estimating retirement expenses.</p>
+            </div>
+
+            <div class="bg-rose-50 border border-rose-200 rounded-lg p-4">
+              <h3 class="font-medium text-rose-800 mb-2">Why add a healthcare buffer?</h3>
+              <p class="text-sm text-rose-700">Healthcare costs rise significantly with age. The wizard adds 5% of your income (capped at ₹25,000/month) as a dedicated healthcare budget on top of the 70% expense ratio.</p>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 class="font-medium text-blue-800 mb-2">Configurable FI Age</h3>
+              <p class="text-sm text-blue-700">You can choose your Financial Independence age between 40 and 55 (default 50). An earlier FI age means more years in retirement and a larger corpus, but also a more ambitious savings target.</p>
+            </div>
+          </div>
+
+          <p class="text-gray-500 bg-gray-50 p-3 rounded-lg mt-4">
+            <strong>Note:</strong> This is an initial estimate in today's rupees. The goal system applies 6% inflation to calculate the actual future value you'll need. EPF, NPS, and linked assets are then subtracted to determine your additional SIP requirement.
+          </p>
+        </div>
+      </section>
+
+      <!-- Retirement Goals & EPF/NPS -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">6</span>
           Retirement Goals & EPF/NPS
         </h2>
         <div class="text-sm text-gray-600 space-y-3 sm:ml-8">
@@ -245,11 +285,12 @@
       <!-- Step-up SIP -->
       <section class="mb-8">
         <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">6</span>
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">7</span>
           Step-up SIP
         </h2>
         <div class="text-sm text-gray-600 space-y-3 sm:ml-8">
           <p>Step-up SIP increases your monthly investment by a fixed percentage each year (default 5%):</p>
+
           <div class="bg-gray-50 rounded-lg p-4">
             <p class="mb-2"><strong>Example:</strong> ₹10,000/month with 5% step-up</p>
             <div class="grid grid-cols-2 gap-2 text-xs">
@@ -268,7 +309,7 @@
       <!-- Net Worth & Asset Distribution -->
       <section class="mb-8">
         <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">7</span>
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">8</span>
           Net Worth & Asset Distribution
         </h2>
         <div class="text-sm text-gray-600 space-y-3 sm:ml-8">
@@ -327,7 +368,7 @@
       <!-- Asset Linking Rules -->
       <section class="mb-8">
         <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">8</span>
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">9</span>
           Asset Linking Rules
         </h2>
         <div class="text-sm text-gray-600 space-y-4 sm:ml-8">
@@ -360,7 +401,7 @@
       <!-- SIP Calculation -->
       <section class="mb-8">
         <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">9</span>
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">10</span>
           How SIP is Calculated
         </h2>
         <div class="text-sm text-gray-600 space-y-3 sm:ml-8">

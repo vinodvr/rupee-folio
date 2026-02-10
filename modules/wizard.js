@@ -56,7 +56,7 @@ export function numberToWords(num) {
 }
 
 // Wizard step definitions
-const WIZARD_STEPS = [
+export const WIZARD_STEPS = [
   {
     id: 'age',
     title: 'How old are you?',
@@ -68,6 +68,18 @@ const WIZARD_STEPS = [
       label: `${18 + i} years`
     })),
     defaultValue: 30
+  },
+  {
+    id: 'retirementAge',
+    title: 'At what age do you want Financial Independence?',
+    subtitle: 'The age by which you want enough savings to stop working',
+    type: 'slider',
+    field: 'retirementAge',
+    min: 40,
+    max: 55,
+    step: 1,
+    defaultValue: 50,
+    format: 'years'
   },
   {
     id: 'family',
@@ -110,6 +122,17 @@ const WIZARD_STEPS = [
     defaultValue: 'renting'
   },
   {
+    id: 'homeLoan',
+    title: 'Home loan details',
+    subtitle: 'Your monthly EMI and remaining loan balance',
+    type: 'dual-slider',
+    fields: [
+      { field: 'homeLoanEmi', label: 'Monthly EMI', min: 0, max: 500000, step: 5000, defaultValue: 0, format: 'currency' },
+      { field: 'homeLoanOutstanding', label: 'Outstanding Balance', min: 0, max: 50000000, step: 100000, defaultValue: 0, format: 'currency' }
+    ],
+    showIf: (answers) => answers.housing === 'ownWithLoan'
+  },
+  {
     id: 'income',
     title: 'What\'s your monthly in-hand income?',
     subtitle: 'Total household income after tax and deductions',
@@ -123,8 +146,8 @@ const WIZARD_STEPS = [
   },
   {
     id: 'otherEmi',
-    title: 'Monthly EMIs?',
-    subtitle: 'Home loan, car loan, personal loan, credit card, etc.',
+    title: 'Other Monthly EMIs?',
+    subtitle: 'Car loan, personal loan, credit card, etc.',
     type: 'slider',
     field: 'otherEmi',
     min: 0,
@@ -200,7 +223,7 @@ const WIZARD_STEPS = [
     type: 'slider',
     field: 'debtMf',
     min: 0,
-    max: 10000000,
+    max: 50000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -269,6 +292,8 @@ export function openWizard() {
   WIZARD_STEPS.forEach(step => {
     if (step.field) {
       answers[step.field] = step.defaultValue;
+    } else if (step.fields) {
+      step.fields.forEach(f => { answers[f.field] = f.defaultValue; });
     }
   });
 
@@ -376,6 +401,9 @@ function renderCurrentStep() {
     case 'slider':
       content.innerHTML = renderSlider(step);
       break;
+    case 'dual-slider':
+      content.innerHTML = renderDualSlider(step);
+      break;
     case 'review':
       content.innerHTML = renderReviewStep();
       break;
@@ -448,12 +476,12 @@ function renderCards(step) {
  */
 function renderSlider(step) {
   const currentValue = answers[step.field];
-  const wordsText = currentValue > 0 ? numberToWords(currentValue) : '';
+  const isYears = step.format === 'years';
+  const wordsText = !isYears && currentValue > 0 ? numberToWords(currentValue) : '';
 
-  return `
-    <div class="py-8">
-      <div class="text-center mb-8">
-        <div class="flex items-center justify-center gap-2">
+  const valueDisplay = isYears
+    ? `<span class="text-4xl font-bold text-blue-600">${currentValue} years</span>`
+    : `<div class="flex items-center justify-center gap-2">
           <span class="text-2xl text-gray-400">₹</span>
           <input
             type="text"
@@ -462,7 +490,18 @@ function renderSlider(step) {
             class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-64"
             inputmode="numeric"
           >
-        </div>
+        </div>`;
+
+  const formatLabel = (val) => {
+    if (isYears) return `${val} years`;
+    if (step.format === 'currency') return formatCurrency(val, 'INR');
+    return val.toLocaleString('en-IN');
+  };
+
+  return `
+    <div class="py-8">
+      <div class="text-center mb-8">
+        ${valueDisplay}
         <p id="wizard-words" class="text-sm text-gray-500 mt-2 h-6">${wordsText}</p>
       </div>
       <div class="px-4">
@@ -476,10 +515,58 @@ function renderSlider(step) {
           class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer wizard-slider"
         >
         <div class="flex justify-between text-sm text-gray-500 mt-2">
-          <span>${step.format === 'currency' ? formatCurrency(step.min, 'INR') : step.min.toLocaleString('en-IN')}</span>
-          <span>${step.format === 'currency' ? formatCurrency(step.max, 'INR') : step.max.toLocaleString('en-IN')}</span>
+          <span>${formatLabel(step.min)}</span>
+          <span>${formatLabel(step.max)}</span>
         </div>
       </div>
+    </div>
+  `;
+}
+
+/**
+ * Render dual-slider step (two sliders on one screen)
+ */
+function renderDualSlider(step) {
+  return `
+    <div class="py-4 space-y-8">
+      ${step.fields.map((f, i) => {
+        const currentValue = answers[f.field];
+        const wordsText = currentValue > 0 ? numberToWords(currentValue) : '';
+
+        return `
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-3">${f.label}</label>
+            <div class="text-center mb-4">
+              <div class="flex items-center justify-center gap-2">
+                <span class="text-2xl text-gray-400">₹</span>
+                <input
+                  type="text"
+                  id="wizard-text-input-${i}"
+                  value="${currentValue.toLocaleString('en-IN')}"
+                  class="text-3xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-64"
+                  inputmode="numeric"
+                >
+              </div>
+              <p id="wizard-words-${i}" class="text-sm text-gray-500 mt-1 h-5">${wordsText}</p>
+            </div>
+            <div class="px-4">
+              <input
+                type="range"
+                id="wizard-input-${i}"
+                min="${f.min}"
+                max="${f.max}"
+                step="${f.step}"
+                value="${currentValue}"
+                class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer wizard-slider"
+              >
+              <div class="flex justify-between text-sm text-gray-500 mt-2">
+                <span>${formatCurrency(f.min, 'INR')}</span>
+                <span>${formatCurrency(f.max, 'INR')}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -573,40 +660,84 @@ function setupStepEventListeners(step) {
       const textInput = document.getElementById('wizard-text-input');
       const wordsDisplay = document.getElementById('wizard-words');
 
-      // Slider changes update text input and words
-      slider.addEventListener('input', (e) => {
-        const value = parseInt(e.target.value);
-        answers[step.field] = value;
-        textInput.value = value.toLocaleString('en-IN');
-        wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
-      });
+      if (step.format === 'years') {
+        // Years slider: just update the display span
+        slider.addEventListener('input', (e) => {
+          const value = parseInt(e.target.value);
+          answers[step.field] = value;
+          renderCurrentStep();
+        });
+      } else {
+        // Currency slider: update text input and words
+        slider.addEventListener('input', (e) => {
+          const value = parseInt(e.target.value);
+          answers[step.field] = value;
+          textInput.value = value.toLocaleString('en-IN');
+          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
+        });
 
-      // Text input changes update slider and words
-      textInput.addEventListener('input', (e) => {
-        // Remove non-numeric characters and parse
-        const rawValue = e.target.value.replace(/[^0-9]/g, '');
-        const value = parseInt(rawValue) || 0;
-        answers[step.field] = value;
+        // Text input changes update slider and words
+        textInput.addEventListener('input', (e) => {
+          // Remove non-numeric characters and parse
+          const rawValue = e.target.value.replace(/[^0-9]/g, '');
+          const value = parseInt(rawValue) || 0;
+          answers[step.field] = value;
 
-        // Update slider (clamp to slider range for visual)
-        const clampedValue = Math.min(Math.max(value, step.min), step.max);
-        slider.value = clampedValue;
+          // Update slider (clamp to slider range for visual)
+          const clampedValue = Math.min(Math.max(value, step.min), step.max);
+          slider.value = clampedValue;
 
-        // Update words display
-        wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
-      });
+          // Update words display
+          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
+        });
 
-      // Format on blur
-      textInput.addEventListener('blur', (e) => {
-        const rawValue = e.target.value.replace(/[^0-9]/g, '');
-        const value = parseInt(rawValue) || 0;
-        answers[step.field] = value;
-        e.target.value = value.toLocaleString('en-IN');
-      });
+        // Format on blur
+        textInput.addEventListener('blur', (e) => {
+          const rawValue = e.target.value.replace(/[^0-9]/g, '');
+          const value = parseInt(rawValue) || 0;
+          answers[step.field] = value;
+          e.target.value = value.toLocaleString('en-IN');
+        });
 
-      // Select all on focus
-      textInput.addEventListener('focus', (e) => {
-        e.target.select();
+        // Select all on focus
+        textInput.addEventListener('focus', (e) => {
+          e.target.select();
+        });
+      }
+      break;
+
+    case 'dual-slider':
+      step.fields.forEach((f, i) => {
+        const slider = document.getElementById(`wizard-input-${i}`);
+        const textInput = document.getElementById(`wizard-text-input-${i}`);
+        const wordsDisplay = document.getElementById(`wizard-words-${i}`);
+
+        slider.addEventListener('input', (e) => {
+          const value = parseInt(e.target.value);
+          answers[f.field] = value;
+          textInput.value = value.toLocaleString('en-IN');
+          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
+        });
+
+        textInput.addEventListener('input', (e) => {
+          const rawValue = e.target.value.replace(/[^0-9]/g, '');
+          const value = parseInt(rawValue) || 0;
+          answers[f.field] = value;
+          const clampedValue = Math.min(Math.max(value, f.min), f.max);
+          slider.value = clampedValue;
+          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
+        });
+
+        textInput.addEventListener('blur', (e) => {
+          const rawValue = e.target.value.replace(/[^0-9]/g, '');
+          const value = parseInt(rawValue) || 0;
+          answers[f.field] = value;
+          e.target.value = value.toLocaleString('en-IN');
+        });
+
+        textInput.addEventListener('focus', (e) => {
+          e.target.select();
+        });
       });
       break;
   }

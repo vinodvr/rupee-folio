@@ -14,7 +14,8 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 New users can use the **Quick Setup** wizard to populate financial data in minutes:
 - Answer simple questions about age, family, housing, income, and existing savings
 - Automatically generates realistic income, expenses, assets, liabilities, and goals
-- Creates Emergency Fund, Retirement at 50, and other relevant goals based on your situation
+- Configurable Financial Independence age (40-55) with smart corpus estimation
+- Creates Emergency Fund, Financial Independence, and other relevant goals based on your situation
 
 ### Cash Flow Calculator
 - **Income Tracking**: Add multiple income sources (salary, freelance, rental income, etc.)
@@ -50,6 +51,7 @@ New users can use the **Quick Setup** wizard to populate financial data in minut
     - Configurable EPF (default 8%) and NPS (default 9%) returns
 - **Inflation Adjustment**: Each goal can have its own inflation rate (e.g., 6% for education, 4% for general expenses)
 - **Target Date**: Set absolute dates for your goals with automatic timeline calculation
+- **"Help me estimate" for Retirement**: A built-in calculator that uses your cashflow data to estimate a retirement corpus across different retirement ages
 
 ### Unified Portfolio Model
 The app uses a simplified **Unified Portfolio** approach instead of per-goal allocations:
@@ -195,18 +197,19 @@ npm test
 npm run test:watch
 ```
 
-**400 tests** organized into 8 suites:
+**435 tests** organized into 9 suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
-| Calculator | 128 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
+| Calculator | 138 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
 | Storage | 91 | CRUD operations, settings, schema migrations |
 | Assets | 49 | EPF/NPS corpus, retirement assets, asset linking, allocations, asset distribution |
 | Plan | 43 | Goal categorization, SIP calculations, fund recommendations |
-| Persona Data | 30 | Sample data generation, persona profiles |
+| Persona Data | 41 | Sample data generation, persona profiles, retirement corpus estimation |
 | Currency | 26 | Formatting, return limits, fund recommendations |
-| Wizard | 17 | Quick setup flow, persona selection |
+| Wizard | 22 | Quick setup flow, persona selection |
 | Cash Flow | 16 | Income/expense tracking, EPF/NPS contributions |
+| Goals | 9 | Retirement corpus estimation from cashflow data |
 
 ### Test Coverage
 
@@ -279,10 +282,11 @@ financial-planner/
     ├── storage.vitest.js         # Storage/CRUD tests (91 tests)
     ├── assets.vitest.js          # Assets module tests (49 tests)
     ├── investmentplan.vitest.js  # Investment plan tests (43 tests)
-    ├── personaData.vitest.js     # Sample data tests (30 tests)
+    ├── personaData.vitest.js     # Sample data tests (41 tests)
     ├── currency.vitest.js        # Currency formatting tests (26 tests)
-    ├── wizard.vitest.js          # Quick setup wizard tests (17 tests)
-    └── cashflow.vitest.js        # Cash flow tests (16 tests)
+    ├── wizard.vitest.js          # Quick setup wizard tests (22 tests)
+    ├── cashflow.vitest.js        # Cash flow tests (16 tests)
+    └── goals.vitest.js           # Goals module tests (9 tests)
 ```
 
 ## Usage Guide
@@ -390,6 +394,18 @@ For retirement goals, EPF and NPS contributions are factored in separately:
 - EPF return: 8% (configurable)
 - NPS return: 9% (configurable)
 - Optional step-up: EPF/NPS contributions can grow with salary
+
+**Quick Setup: Retirement Corpus Estimation:**
+The wizard estimates a Financial Independence corpus using:
+```
+Retirement Monthly Expenses = (Non-EMI Expenses × 70%) + Healthcare Budget
+Corpus = Retirement Monthly Expenses × 12 × Years in Retirement
+```
+Where:
+- **70% expense ratio**: Post-retirement expenses drop (no commute, work clothes, etc.)
+- **Healthcare budget**: 5% of income, capped at ₹25,000/month
+- **Years in retirement**: Life expectancy (90) minus FI age (configurable, default 50)
+- **Rounding**: Corpus rounded down to nearest ₹10 Lakh, minimum ₹1 Crore
 
 ### LocalStorage Schema
 

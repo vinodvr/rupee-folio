@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numberToWords } from '../modules/wizard.js';
+import { numberToWords, WIZARD_STEPS } from '../modules/wizard.js';
 
 describe('numberToWords', () => {
   describe('Basic numbers', () => {
@@ -101,6 +101,32 @@ describe('numberToWords', () => {
     it('handles large amounts', () => {
       expect(numberToWords(25000000)).toBe('Two Crore Fifty Lakh');
       expect(numberToWords(99999999)).toBe('Nine Crore Ninety Nine Lakh Ninety Nine Thousand Nine Hundred Ninety Nine');
+    });
+  });
+
+  describe('Conditional step visibility', () => {
+    const homeLoanStep = WIZARD_STEPS.find(s => s.id === 'homeLoan');
+
+    it('home loan step is visible when housing is ownWithLoan', () => {
+      expect(homeLoanStep.showIf({ housing: 'ownWithLoan' })).toBe(true);
+    });
+
+    it('home loan step is hidden when housing is renting', () => {
+      expect(homeLoanStep.showIf({ housing: 'renting' })).toBe(false);
+    });
+
+    it('home loan step is hidden when housing is ownNoLoan', () => {
+      expect(homeLoanStep.showIf({ housing: 'ownNoLoan' })).toBe(false);
+    });
+
+    it('home loan step is hidden when housing is rentingToBuy', () => {
+      expect(homeLoanStep.showIf({ housing: 'rentingToBuy' })).toBe(false);
+    });
+
+    it('home loan step has two fields', () => {
+      expect(homeLoanStep.fields).toHaveLength(2);
+      expect(homeLoanStep.fields[0].field).toBe('homeLoanEmi');
+      expect(homeLoanStep.fields[1].field).toBe('homeLoanOutstanding');
     });
   });
 

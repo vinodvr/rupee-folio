@@ -11,6 +11,7 @@ import {
   formatTimeline
 } from './calculator.js';
 import { getRetirementContributions } from './cashflow.js';
+import { showEstimateModal } from './goals.js';
 import { getLinkableAssets, getAssetAllocations, SHORT_TERM_ONLY, LONG_TERM_ONLY, BOTH_TERMS } from './assets.js';
 import { saveData } from './storage.js';
 
@@ -207,6 +208,14 @@ function renderGoalRow(goal) {
           </svg>
         </button>
       </div>
+      ${isRetirement ? `<div class="mt-1.5">
+        <button type="button" class="estimate-retirement-link inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 px-3 py-1.5 rounded-lg shadow-sm transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          Help me estimate
+        </button>
+      </div>` : ''}
 
       <!-- Expandable Details Section -->
       <div id="${detailsId}" class="goal-details-expanded hidden mt-3 bg-gray-50 rounded p-3">
@@ -503,6 +512,11 @@ function renderInvestmentPlan() {
         }
       }
     });
+  });
+
+  // Add event listeners for estimate retirement links
+  document.querySelectorAll('#investment-plan-content .estimate-retirement-link').forEach(btn => {
+    btn.addEventListener('click', () => showEstimateModal());
   });
 }
 
