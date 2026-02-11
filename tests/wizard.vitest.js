@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numberToWords, WIZARD_STEPS } from '../modules/wizard.js';
+import { numberToWords, WIZARD_STEPS, getRetirementAgeBounds } from '../modules/wizard.js';
 
 describe('numberToWords', () => {
   describe('Basic numbers', () => {
@@ -101,6 +101,48 @@ describe('numberToWords', () => {
     it('handles large amounts', () => {
       expect(numberToWords(25000000)).toBe('Two Crore Fifty Lakh');
       expect(numberToWords(99999999)).toBe('Nine Crore Ninety Nine Lakh Ninety Nine Thousand Nine Hundred Ninety Nine');
+    });
+  });
+
+  describe('getRetirementAgeBounds', () => {
+    it('age 30 → min 40, max 55, default 45', () => {
+      expect(getRetirementAgeBounds(30)).toEqual({ min: 40, max: 55, defaultValue: 45 });
+    });
+
+    it('age 45 → min 46, max 55, default 50 (age+5=50)', () => {
+      expect(getRetirementAgeBounds(45)).toEqual({ min: 46, max: 55, defaultValue: 50 });
+    });
+
+    it('age 50 → min 51, max 60, default 55 (age+5=55)', () => {
+      expect(getRetirementAgeBounds(50)).toEqual({ min: 51, max: 60, defaultValue: 55 });
+    });
+
+    it('age 55 → min 56, max 65, default 60', () => {
+      expect(getRetirementAgeBounds(55)).toEqual({ min: 56, max: 65, defaultValue: 60 });
+    });
+
+    it('age 60 → min 61, max 70, default 65 (upper end of age dropdown)', () => {
+      expect(getRetirementAgeBounds(60)).toEqual({ min: 61, max: 70, defaultValue: 65 });
+    });
+
+    it('age 18 → min 40, max 55, default 45', () => {
+      expect(getRetirementAgeBounds(18)).toEqual({ min: 40, max: 55, defaultValue: 45 });
+    });
+
+    it('age 39 → min 40, max 55, default 45 (age+5=44 < 45 floor)', () => {
+      expect(getRetirementAgeBounds(39)).toEqual({ min: 40, max: 55, defaultValue: 45 });
+    });
+
+    it('default is always at least 5 years from age when range allows', () => {
+      for (let age = 18; age <= 60; age++) {
+        const { min, max, defaultValue } = getRetirementAgeBounds(age);
+        expect(defaultValue).toBeGreaterThanOrEqual(min);
+        expect(defaultValue).toBeLessThanOrEqual(max);
+        // At least 5 years gap, unless the range is too small (max < age+5)
+        if (age + 5 <= max) {
+          expect(defaultValue).toBeGreaterThanOrEqual(age + 5);
+        }
+      }
     });
   });
 

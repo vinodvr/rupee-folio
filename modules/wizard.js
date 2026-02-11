@@ -55,6 +55,18 @@ export function numberToWords(num) {
   return result.trim();
 }
 
+/**
+ * Compute dynamic retirement age slider bounds based on current age.
+ * min: at least 40, but at least age + 1
+ * max: at least 55, but at least age + 10
+ */
+export function getRetirementAgeBounds(age) {
+  const min = Math.max(40, age + 1);
+  const max = Math.max(55, age + 10);
+  const defaultValue = Math.max(min, Math.min(Math.max(45, age + 5), max));
+  return { min, max, defaultValue };
+}
+
 // Wizard step definitions
 export const WIZARD_STEPS = [
   {
@@ -72,7 +84,7 @@ export const WIZARD_STEPS = [
   {
     id: 'retirementAge',
     title: 'At what age do you want Financial Independence?',
-    subtitle: 'The age by which you want enough savings to stop working',
+    subtitle: 'The age by which you want to be financially independent',
     type: 'slider',
     field: 'retirementAge',
     min: 40,
@@ -88,7 +100,7 @@ export const WIZARD_STEPS = [
     type: 'cards',
     field: 'family',
     options: [
-      { value: 'single', label: 'Single', icon: 'person' },
+      { value: 'single', label: 'Not married', icon: 'person' },
       { value: 'married', label: 'Married (single income)', icon: 'couple' },
       { value: 'marriedDual', label: 'Married (dual income)', icon: 'couple-work' }
     ],
@@ -116,8 +128,8 @@ export const WIZARD_STEPS = [
     options: [
       { value: 'renting', label: 'Renting', icon: 'rent' },
       { value: 'rentingToBuy', label: 'Renting (planning to buy)', icon: 'rent-buy' },
-      { value: 'ownWithLoan', label: 'Own with home loan', icon: 'home-loan' },
-      { value: 'ownNoLoan', label: 'Own (no loan)', icon: 'home' }
+      { value: 'ownWithLoan', label: 'Living in own home (with loan)', icon: 'home-loan' },
+      { value: 'ownNoLoan', label: 'Living in own home (no loan)', icon: 'home' }
     ],
     defaultValue: 'renting'
   },
@@ -127,7 +139,7 @@ export const WIZARD_STEPS = [
     subtitle: 'Your monthly EMI and remaining loan balance',
     type: 'dual-slider',
     fields: [
-      { field: 'homeLoanEmi', label: 'Monthly EMI', min: 0, max: 500000, step: 5000, defaultValue: 0, format: 'currency' },
+      { field: 'homeLoanEmi', label: 'Monthly EMI for Home', min: 0, max: 500000, step: 5000, defaultValue: 0, format: 'currency' },
       { field: 'homeLoanOutstanding', label: 'Outstanding Balance', min: 0, max: 50000000, step: 100000, defaultValue: 0, format: 'currency' }
     ],
     showIf: (answers) => answers.housing === 'ownWithLoan'
@@ -475,7 +487,25 @@ function renderCards(step) {
  * Render slider step
  */
 function renderSlider(step) {
-  const currentValue = answers[step.field];
+  // Compute dynamic bounds for the retirement age step
+  let sliderMin = step.min;
+  let sliderMax = step.max;
+  if (step.id === 'retirementAge' && answers.age != null) {
+    const bounds = getRetirementAgeBounds(answers.age);
+    sliderMin = bounds.min;
+    sliderMax = bounds.max;
+  }
+
+  // Clamp current value to valid range
+  let currentValue = answers[step.field];
+  if (currentValue < sliderMin) {
+    currentValue = sliderMin;
+    answers[step.field] = currentValue;
+  } else if (currentValue > sliderMax) {
+    currentValue = sliderMax;
+    answers[step.field] = currentValue;
+  }
+
   const isYears = step.format === 'years';
   const wordsText = !isYears && currentValue > 0 ? numberToWords(currentValue) : '';
 
@@ -508,15 +538,15 @@ function renderSlider(step) {
         <input
           type="range"
           id="wizard-input"
-          min="${step.min}"
-          max="${step.max}"
+          min="${sliderMin}"
+          max="${sliderMax}"
           step="${step.step}"
           value="${currentValue}"
           class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer wizard-slider"
         >
         <div class="flex justify-between text-sm text-gray-500 mt-2">
-          <span>${formatLabel(step.min)}</span>
-          <span>${formatLabel(step.max)}</span>
+          <span>${formatLabel(sliderMin)}</span>
+          <span>${formatLabel(sliderMax)}</span>
         </div>
       </div>
     </div>
@@ -808,6 +838,12 @@ function goNext() {
   const nextStep = findNextVisibleStep(currentStep);
   if (nextStep >= 0) {
     const nextStepDef = WIZARD_STEPS[nextStep];
+
+    // Always recompute retirement age default based on current age
+    if (nextStepDef.id === 'retirementAge' && answers.age != null) {
+      const bounds = getRetirementAgeBounds(answers.age);
+      answers.retirementAge = bounds.defaultValue;
+    }
 
     // Generate data right before showing review step
     if (nextStepDef.type === 'review') {

@@ -28,6 +28,34 @@ describe('Savings Rate Calculation', () => {
     it('returns 100 when no expenses', () => {
       expect(getSavingsRate(100000, 100000)).toBe(100);
     });
+
+    it('includes EPF/NPS in gross income and savings', () => {
+      // In-hand 100K, net cashflow 40K, EPF/NPS 15K
+      // Gross = 115K, total savings = 55K, rate = 55/115 = 47.8% → 48%
+      expect(getSavingsRate(100000, 40000, 15000)).toBe(48);
+    });
+
+    it('returns unchanged rate when EPF/NPS is 0', () => {
+      // In-hand 100K, net cashflow 60K, EPF/NPS 0
+      // Gross = 100K, total savings = 60K, rate = 60%
+      expect(getSavingsRate(100000, 60000, 0)).toBe(60);
+    });
+
+    it('handles case where only EPF/NPS makes savings positive', () => {
+      // In-hand 100K, net cashflow -5K (expenses exceed income), EPF/NPS 20K
+      // Gross = 120K, total savings = 15K, rate = 15/120 = 12.5% → 13%
+      expect(getSavingsRate(100000, -5000, 20000)).toBe(13);
+    });
+
+    it('returns 0 when in-hand income is 0 but EPF/NPS is also 0', () => {
+      expect(getSavingsRate(0, 0, 0)).toBe(0);
+    });
+
+    it('handles case where in-hand income is 0 but EPF/NPS exists', () => {
+      // In-hand 0, net cashflow 0, EPF/NPS 10K
+      // Gross = 10K, total savings = 10K, rate = 100%
+      expect(getSavingsRate(0, 0, 10000)).toBe(100);
+    });
   });
 
   describe('getSavingsRateLabel', () => {

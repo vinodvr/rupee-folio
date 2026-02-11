@@ -409,9 +409,22 @@ function updateSummary() {
   const totalIncome = appData.cashflow.income.reduce((sum, i) => sum + i.amount, 0);
   const totalExpenses = appData.cashflow.expenses.reduce((sum, e) => sum + e.amount, 0);
   const netFlow = totalIncome - totalExpenses;
+  const totalEpfNps = appData.cashflow.income.reduce((sum, i) => sum + (i.epf || 0) + (i.nps || 0), 0);
 
   document.getElementById('total-income').textContent = formatCurrency(totalIncome, currency);
   document.getElementById('total-expenses').textContent = formatCurrency(totalExpenses, currency);
+
+  // Show/hide EPF/NPS contributions row
+  const epfNpsRow = document.getElementById('epf-nps-row');
+  const epfNpsEl = document.getElementById('epf-nps-contributions');
+  if (epfNpsRow && epfNpsEl) {
+    if (totalEpfNps > 0) {
+      epfNpsRow.classList.remove('hidden');
+      epfNpsEl.textContent = formatCurrency(totalEpfNps, currency);
+    } else {
+      epfNpsRow.classList.add('hidden');
+    }
+  }
 
   const netFlowEl = document.getElementById('net-cashflow');
   netFlowEl.textContent = formatCurrency(netFlow, currency);
@@ -423,32 +436,22 @@ function updateSummary() {
     availableEl.textContent = formatCurrency(Math.max(0, netFlow), currency);
   }
 
-  // Update savings rate
+  // Update savings rate (includes EPF/NPS as part of gross income and savings)
   const savingsRateEl = document.getElementById('savings-rate');
   const savingsRateLabelEl = document.getElementById('savings-rate-label');
   if (savingsRateEl && savingsRateLabelEl) {
-    const savingsRate = totalIncome > 0 ? Math.round((netFlow / totalIncome) * 100) : 0;
+    const grossIncome = totalIncome + totalEpfNps;
+    const savingsRate = grossIncome > 0 ? getSavingsRate(totalIncome, netFlow, totalEpfNps) : 0;
     savingsRateEl.textContent = `${savingsRate}%`;
 
-    // Determine label and styling based on rate
-    let label, bgClass, textClass;
-    if (savingsRate >= 60) {
-      label = 'Excellent';
-      bgClass = 'bg-green-100';
-      textClass = 'text-green-700';
-    } else if (savingsRate >= 40) {
-      label = 'Good';
-      bgClass = 'bg-blue-100';
-      textClass = 'text-blue-700';
-    } else if (savingsRate >= 30) {
-      label = 'Reasonable';
-      bgClass = 'bg-yellow-100';
-      textClass = 'text-yellow-700';
-    } else {
-      label = 'Poor';
-      bgClass = 'bg-red-100';
-      textClass = 'text-red-700';
-    }
+    const { label, level } = getSavingsRateLabel(savingsRate);
+    const styleMap = {
+      excellent: { bg: 'bg-green-100', text: 'text-green-700' },
+      good: { bg: 'bg-blue-100', text: 'text-blue-700' },
+      reasonable: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+      poor: { bg: 'bg-red-100', text: 'text-red-700' },
+    };
+    const { bg: bgClass, text: textClass } = styleMap[level];
 
     savingsRateEl.className = `font-semibold ${textClass}`;
     savingsRateLabelEl.textContent = label;
@@ -457,7 +460,7 @@ function updateSummary() {
     // Show/hide suggestion for low savings rate
     const suggestionEl = document.getElementById('savings-rate-suggestion');
     if (suggestionEl) {
-      if (totalIncome > 0 && savingsRate < 40) {
+      if (shouldShowSavingsSuggestion(grossIncome, savingsRate)) {
         suggestionEl.classList.remove('hidden');
       } else {
         suggestionEl.classList.add('hidden');
@@ -481,9 +484,11 @@ export function getNetCashflow() {
 /**
  * Calculate savings rate as a percentage
  */
-export function getSavingsRate(totalIncome, netCashflow) {
-  if (totalIncome <= 0) return 0;
-  return Math.round((netCashflow / totalIncome) * 100);
+export function getSavingsRate(totalIncome, netCashflow, epfNpsTotal = 0) {
+  const grossIncome = totalIncome + epfNpsTotal;
+  if (grossIncome <= 0) return 0;
+  const totalSavings = netCashflow + epfNpsTotal;
+  return Math.round((totalSavings / grossIncome) * 100);
 }
 
 /**
