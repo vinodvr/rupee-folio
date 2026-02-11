@@ -51,7 +51,7 @@ New users can use the **Quick Setup** wizard to populate financial data in minut
     - Configurable EPF (default 8%) and NPS (default 9%) returns
 - **Inflation Adjustment**: Each goal can have its own inflation rate (e.g., 6% for education, 4% for general expenses)
 - **Target Date**: Set absolute dates for your goals with automatic timeline calculation
-- **"Help me estimate" for Retirement**: A built-in calculator that uses your cashflow data to estimate a retirement corpus across different retirement ages
+- **"Estimate FI Corpus" for Retirement**: A built-in calculator that uses your cashflow data to estimate a retirement corpus across different retirement ages
 
 ### Unified Portfolio Model
 The app uses a simplified **Unified Portfolio** approach instead of per-goal allocations:
