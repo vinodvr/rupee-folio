@@ -66,7 +66,7 @@ The app uses a simplified **Unified Portfolio** approach instead of per-goal all
 - Equity split: 70% Nifty 50 + 30% Nifty Next 50
 - Debt: Money Market Fund
 - Adjustable from 20% to 80% equity
-- **Equity Tapering (Glide Path)**: Automatically reduces equity exposure as goal approaches
+- **Equity Reduction Strategy**: Automatically reduces equity exposure as goal approaches
   - 8+ years: Full equity allocation
   - 5-8 years: Half allocation (max 40%)
   - 3-5 years: Quarter allocation (max 20%)
@@ -216,10 +216,10 @@ npm run test:watch
 Tests cover:
 - **Short-term goals** (< 5 years): 100% arbitrage allocation
 - **Long-term goals** (5+ years): Configurable equity/debt split with tapering
-- **Equity tapering (glide path)**: Phase boundaries, golden values, month-by-month verification
+- **Equity reduction strategy**: Phase boundaries, golden values, month-by-month verification
 - **Unified portfolio categorization**: Correct bucket assignment
 - **SIP calculations**: Regular SIP and step-up SIP with blended returns
-- **Step-up SIP with tapering**: Combined annual step-up and equity glide path
+- **Step-up SIP with tapering**: Combined annual step-up and equity reduction
 - **Step-up SIP validation**: 0% step-up equals regular SIP, monotonic property, round-trip verification
 - **EPF/NPS calculations**: Corpus and SIP future values with step-up
 - **Retirement projections**: With EPF/NPS integration
@@ -364,7 +364,7 @@ The app uses a simplified two-bucket approach:
   - Default: 60% equity (10%) + 40% debt (5%) = 8% blended return
   - **Equity Tapering**: Allocation reduces as goal approaches (see below)
 
-**Equity Tapering (Glide Path):**
+**Equity Reduction Strategy:**
 Long-term goals automatically reduce equity exposure to protect gains:
 | Years Remaining | Equity Allocation |
 |-----------------|-------------------|
