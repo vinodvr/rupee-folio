@@ -335,6 +335,9 @@ function init() {
   // Load data from localStorage
   appData = loadData();
 
+  // Run auto-assign before any module renders (ensures fresh FV-aware allocations)
+  autoAssignAssets(appData);
+
   const currency = getCurrency(appData);
   const fundHouse = getFundHouse(appData);
   const equityAllocation = getEquityAllocation(appData);

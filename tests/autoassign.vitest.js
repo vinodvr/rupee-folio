@@ -1,7 +1,19 @@
 // Unit tests for autoassign.js (Vitest)
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { autoAssignAssets } from '../modules/autoassign.js';
+import { calculateLumpsumFV, getReturnForCategory, getYearsRemaining } from '../modules/calculator.js';
 import { createGoal, createTestData } from './helpers.js';
+
+// Helper: compute total FV of a goal's linked assets using the same years the algorithm sees
+function linkedFV(goal, assets, equityReturn = 10, debtReturn = 5) {
+  const years = getYearsRemaining(goal.targetDate);
+  return (goal.linkedAssets || []).reduce((total, la) => {
+    const asset = assets.find(a => a.id === la.assetId);
+    if (!asset) return total;
+    const rate = getReturnForCategory(asset.category, equityReturn, debtReturn);
+    return total + calculateLumpsumFV(la.amount, rate, years);
+  }, 0);
+}
 
 // Clear localStorage before each test (saveData writes to it)
 beforeEach(() => {
@@ -83,7 +95,7 @@ describe('autoAssignAssets - Basic', () => {
 });
 
 describe('autoAssignAssets - Single Goal', () => {
-  it('Assigns FD to single short-term goal (full allocation)', () => {
+  it('Assigns FD to single short-term goal (full allocation when FV < target)', () => {
     const data = createTestData([
       { id: 'a1', name: 'FD', category: 'FDs & RDs', value: 200000 }
     ], [
@@ -92,12 +104,13 @@ describe('autoAssignAssets - Single Goal', () => {
 
     autoAssignAssets(data);
 
+    // FD 200k at 5% for 3yr = 231k FV, which is < 500k target, so full asset is assigned
     expect(data.goals[0].linkedAssets.length).toBe(1);
     expect(data.goals[0].linkedAssets[0].assetId).toBe('a1');
     expect(data.goals[0].linkedAssets[0].amount).toBe(200000);
   });
 
-  it('Assigns Equity MF to single long-term goal (full allocation)', () => {
+  it('Assigns Equity MF to single long-term goal (full allocation when FV < target)', () => {
     const data = createTestData([
       { id: 'a1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 300000 }
     ], [
@@ -106,6 +119,7 @@ describe('autoAssignAssets - Single Goal', () => {
 
     autoAssignAssets(data);
 
+    // Equity 300k at 10% for 10yr = 778k FV, which is < 1M target, so full asset assigned
     expect(data.goals[0].linkedAssets.length).toBe(1);
     expect(data.goals[0].linkedAssets[0].assetId).toBe('a1');
     expect(data.goals[0].linkedAssets[0].amount).toBe(300000);
@@ -135,7 +149,7 @@ describe('autoAssignAssets - Single Goal', () => {
     expect(data.goals[0].linkedAssets).toEqual([]);
   });
 
-  it('Assigns Debt/Arbitrage MF to short-term goal', () => {
+  it('Assigns Debt/Arbitrage MF to short-term goal (full allocation when FV < target)', () => {
     const data = createTestData([
       { id: 'a1', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 200000 }
     ], [
@@ -144,6 +158,7 @@ describe('autoAssignAssets - Single Goal', () => {
 
     autoAssignAssets(data);
 
+    // Debt MF 200k at 5% for 3yr = 231k FV < 500k, full allocation
     expect(data.goals[0].linkedAssets.length).toBe(1);
     expect(data.goals[0].linkedAssets[0].assetId).toBe('a1');
     expect(data.goals[0].linkedAssets[0].amount).toBe(200000);
@@ -166,7 +181,7 @@ describe('autoAssignAssets - Single Goal', () => {
 describe('autoAssignAssets - Greedy: Closest Goal First', () => {
   it('Closer goal gets served first when assets are scarce', () => {
     // FD = 300k, Goal 2yr needs 10M, Goal 4yr needs 10M
-    // Closest goal (2yr) gets all 300k, further goal gets nothing
+    // FD FV at 5% for 2yr = 330k << 10M, so full 300k goes to closest goal
     const data = createTestData([
       { id: 'a1', name: 'FD', category: 'FDs & RDs', value: 300000 }
     ], [
@@ -185,11 +200,10 @@ describe('autoAssignAssets - Greedy: Closest Goal First', () => {
   });
 
   it('Closer goal is fully covered before further goal gets assets', () => {
-    // FD = 500k, Goal 2yr needs 200k, Goal 4yr needs 10M
-    // Goal 2yr gets 200k (fully covered), Goal 4yr gets remaining 300k
-    const data = createTestData([
-      { id: 'a1', name: 'FD', category: 'FDs & RDs', value: 500000 }
-    ], [
+    // FD = 500k, Goal 2yr target=200k, Goal 4yr target=10M
+    // FV-aware: only assign PV that grows to 200k at 5% over 2yr
+    const assets = [{ id: 'a1', name: 'FD', category: 'FDs & RDs', value: 500000 }];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-2yr', yearsFromNow: 2, targetAmount: 200000, inflationRate: 0 }),
       createGoal({ id: 'g-4yr', yearsFromNow: 4, targetAmount: 10000000, inflationRate: 0 })
     ]);
@@ -199,16 +213,19 @@ describe('autoAssignAssets - Greedy: Closest Goal First', () => {
     const g2yr = data.goals.find(g => g.id === 'g-2yr');
     const g4yr = data.goals.find(g => g.id === 'g-4yr');
 
-    expect(g2yr.linkedAssets[0].amount).toBeCloseTo(200000, -2);
-    expect(g4yr.linkedAssets[0].amount).toBeCloseTo(300000, -2);
+    // Goal 2yr: FV of assigned amount should equal target
+    const g2yrFV = linkedFV(g2yr, assets);
+    expect(g2yrFV).toBeCloseTo(200000, -2);
+    // Goal 2yr gets less current value than 200k (growth handles the rest)
+    expect(g2yr.linkedAssets[0].amount).toBeLessThan(200000);
+    // Goal 4yr gets the remainder
+    expect(g4yr.linkedAssets[0].amount).toBeGreaterThan(300000);
   });
 
   it('Multiple long-term goals: closest gets served first', () => {
     // Equity MF = 600k, Goal 5yr needs 400k, Goal 10yr needs 10M
-    // Goal 5yr gets 400k, Goal 10yr gets remaining 200k
-    const data = createTestData([
-      { id: 'a1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 600000 }
-    ], [
+    const assets = [{ id: 'a1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 600000 }];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-5yr', yearsFromNow: 5.1, targetAmount: 400000, inflationRate: 0 }),
       createGoal({ id: 'g-10yr', yearsFromNow: 10, targetAmount: 10000000, inflationRate: 0 })
     ]);
@@ -218,19 +235,26 @@ describe('autoAssignAssets - Greedy: Closest Goal First', () => {
     const g5yr = data.goals.find(g => g.id === 'g-5yr');
     const g10yr = data.goals.find(g => g.id === 'g-10yr');
 
-    expect(g5yr.linkedAssets[0].amount).toBeCloseTo(400000, -2);
-    expect(g10yr.linkedAssets[0].amount).toBeCloseTo(200000, -2);
+    // Goal 5yr: FV of assigned should cover the target
+    const g5yrFV = linkedFV(g5yr, assets);
+    expect(g5yrFV).toBeCloseTo(400000, -2);
+    // Less current value assigned since equity grows at 10%
+    expect(g5yr.linkedAssets[0].amount).toBeLessThan(400000);
+    // Goal 10yr gets the rest
+    expect(g10yr.linkedAssets[0].amount).toBeGreaterThan(300000);
   });
 });
 
 describe('autoAssignAssets - Greedy: Fewest Assets Per Goal', () => {
   it('Uses single large asset to cover a goal instead of spreading many', () => {
     // Goal needs 200k. Available: FD 300k, Savings 100k
-    // Should use just the FD (1 asset), not both
-    const data = createTestData([
+    // FD at 5% for 3yr: 300k grows to 347k. PV for 200k = ~173k.
+    // Since FD alone can cover it, only FD is used (1 asset)
+    const assets = [
       { id: 'fd', name: 'FD', category: 'FDs & RDs', value: 300000 },
       { id: 'savings', name: 'Savings', category: 'Savings Bank', value: 100000 }
-    ], [
+    ];
+    const data = createTestData(assets, [
       createGoal({ id: 'g1', yearsFromNow: 3, targetAmount: 200000, inflationRate: 0 })
     ]);
 
@@ -240,16 +264,19 @@ describe('autoAssignAssets - Greedy: Fewest Assets Per Goal', () => {
     // Only 1 asset linked (the larger FD)
     expect(g1.linkedAssets.length).toBe(1);
     expect(g1.linkedAssets[0].assetId).toBe('fd');
-    expect(g1.linkedAssets[0].amount).toBeCloseTo(200000, -2);
+    // FV of assigned should equal target
+    const fv = linkedFV(g1, assets);
+    expect(fv).toBeCloseTo(200000, -2);
   });
 
   it('Uses two assets only when largest is insufficient', () => {
-    // Goal needs 350k. Available: FD 300k, Savings 100k
-    // FD covers 300k, then Savings covers remaining 50k = 2 assets
-    const data = createTestData([
+    // Goal needs 350k. FD 300k at 5%/3yr → FV 347k < 350k.
+    // So FD is fully used (300k), then Savings fills remaining gap
+    const assets = [
       { id: 'fd', name: 'FD', category: 'FDs & RDs', value: 300000 },
       { id: 'savings', name: 'Savings', category: 'Savings Bank', value: 100000 }
-    ], [
+    ];
+    const data = createTestData(assets, [
       createGoal({ id: 'g1', yearsFromNow: 3, targetAmount: 350000, inflationRate: 0 })
     ]);
 
@@ -257,20 +284,26 @@ describe('autoAssignAssets - Greedy: Fewest Assets Per Goal', () => {
 
     const g1 = data.goals.find(g => g.id === 'g1');
     expect(g1.linkedAssets.length).toBe(2);
+    // FD fully used since its FV (347k) < target (350k)
     expect(g1.linkedAssets.find(la => la.assetId === 'fd').amount).toBe(300000);
-    expect(g1.linkedAssets.find(la => la.assetId === 'savings').amount).toBe(50000);
+    // Savings fills small remaining gap
+    const savingsAmount = g1.linkedAssets.find(la => la.assetId === 'savings').amount;
+    expect(savingsAmount).toBeGreaterThan(0);
+    expect(savingsAmount).toBeLessThan(10000); // Only ~2.6k needed in PV
+    // Total FV should match target
+    const fv = linkedFV(g1, assets);
+    expect(fv).toBeCloseTo(350000, -2);
   });
 
   it('Leftover from first goal flows to second goal', () => {
     // Goal A (2yr, 200k), Goal B (4yr, 300k)
     // Assets: FD 300k, Savings 100k, Debt MF 200k
-    // Pass 1 (SHORT_TERM_ONLY): Goal A uses FD (200k), Goal B uses FD (100k) + Savings (100k)
-    // Pass 2 (BOTH_TERMS): Goal B still needs 100k, gets Debt MF (100k)
-    const data = createTestData([
+    const assets = [
       { id: 'fd', name: 'FD', category: 'FDs & RDs', value: 300000 },
       { id: 'savings', name: 'Savings', category: 'Savings Bank', value: 100000 },
       { id: 'debt', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 200000 }
-    ], [
+    ];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-a', yearsFromNow: 2, targetAmount: 200000, inflationRate: 0 }),
       createGoal({ id: 'g-b', yearsFromNow: 4, targetAmount: 300000, inflationRate: 0 })
     ]);
@@ -280,36 +313,39 @@ describe('autoAssignAssets - Greedy: Fewest Assets Per Goal', () => {
     const gA = data.goals.find(g => g.id === 'g-a');
     const gB = data.goals.find(g => g.id === 'g-b');
 
-    // Goal A should use just 1 asset (largest first = FD)
-    expect(gA.linkedAssets.length).toBe(1);
-    expect(gA.linkedAssets[0].assetId).toBe('fd');
-    expect(gA.linkedAssets[0].amount).toBeCloseTo(200000, -2);
+    // Goal A: FV of assigned should match target
+    const fvA = linkedFV(gA, assets);
+    expect(fvA).toBeCloseTo(200000, -2);
 
-    // Goal B uses remaining assets
-    const gBTotal = gB.linkedAssets.reduce((s, la) => s + la.amount, 0);
-    expect(gBTotal).toBeCloseTo(300000, -2);
+    // Goal B: FV of assigned should match target
+    const fvB = linkedFV(gB, assets);
+    expect(fvB).toBeCloseTo(300000, -2);
   });
 });
 
 describe('autoAssignAssets - Goal Capping', () => {
-  it('Caps allocation at inflation-adjusted target', () => {
-    // Goal target = 100k (no inflation), Asset = 300k
-    // Should only assign 100k, not 300k
-    const data = createTestData([
-      { id: 'a1', name: 'FD', category: 'FDs & RDs', value: 300000 }
-    ], [
+  it('Caps allocation so FV matches inflation-adjusted target', () => {
+    // Goal target = 100k (no inflation), Asset = 300k FD
+    // FD at 5%/2yr: 300k → 330k FV. But goal only needs 100k.
+    // Should assign PV = 100k / 1.1025 ≈ 90.7k
+    const assets = [{ id: 'a1', name: 'FD', category: 'FDs & RDs', value: 300000 }];
+    const data = createTestData(assets, [
       createGoal({ id: 'g1', yearsFromNow: 2, targetAmount: 100000, inflationRate: 0 })
     ]);
 
     autoAssignAssets(data);
 
-    expect(data.goals[0].linkedAssets[0].amount).toBeCloseTo(100000, -2);
+    const assigned = data.goals[0].linkedAssets[0].amount;
+    // Should be less than 100k (growth handles the rest)
+    expect(assigned).toBeLessThan(100000);
+    // FV of assigned should equal target
+    const fv = linkedFV(data.goals[0], assets);
+    expect(fv).toBeCloseTo(100000, -2);
   });
 
   it('Does not over-assign when asset exceeds all goals combined', () => {
-    const data = createTestData([
-      { id: 'a1', name: 'FD', category: 'FDs & RDs', value: 1000000 }
-    ], [
+    const assets = [{ id: 'a1', name: 'FD', category: 'FDs & RDs', value: 1000000 }];
+    const data = createTestData(assets, [
       createGoal({ id: 'g1', yearsFromNow: 2, targetAmount: 100000, inflationRate: 0 }),
       createGoal({ id: 'g2', yearsFromNow: 4, targetAmount: 200000, inflationRate: 0 })
     ]);
@@ -319,42 +355,49 @@ describe('autoAssignAssets - Goal Capping', () => {
     const g1 = data.goals.find(g => g.id === 'g1');
     const g2 = data.goals.find(g => g.id === 'g2');
 
-    const totalAllocated = (g1.linkedAssets[0]?.amount || 0) + (g2.linkedAssets[0]?.amount || 0);
+    // FV of each goal's allocation should match its target
+    expect(linkedFV(g1, assets)).toBeCloseTo(100000, -2);
+    expect(linkedFV(g2, assets)).toBeCloseTo(200000, -2);
 
-    // Should not exceed 300k total (100k + 200k)
-    expect(totalAllocated).toBeCloseTo(300000, -2);
-    expect(g1.linkedAssets[0].amount).toBeCloseTo(100000, -2);
-    expect(g2.linkedAssets[0].amount).toBeCloseTo(200000, -2);
+    // Total current value assigned should be well under 300k (since growth covers the gap)
+    const totalAllocated = (g1.linkedAssets[0]?.amount || 0) + (g2.linkedAssets[0]?.amount || 0);
+    expect(totalAllocated).toBeLessThan(300000);
   });
 });
 
 describe('autoAssignAssets - Exclusive-First Priority', () => {
   it('Short-term: uses SHORT_TERM_ONLY before BOTH_TERMS even when BOTH_TERMS is larger', () => {
     // Debt MF 500k (BOTH_TERMS) vs Savings 100k (SHORT_TERM_ONLY)
-    // Goal needs 150k — should use Savings (100k) first, then Debt MF (50k)
-    // This preserves 450k of Debt MF for potential long-term goals
-    const data = createTestData([
+    // Goal needs 150k — should use Savings first, then Debt MF for remaining gap
+    const assets = [
       { id: 'debt', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 500000 },
       { id: 'savings', name: 'Savings', category: 'Savings Bank', value: 100000 }
-    ], [
+    ];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-short', yearsFromNow: 3, targetAmount: 150000, inflationRate: 0 })
     ]);
 
     autoAssignAssets(data);
 
     const g = data.goals[0];
-    // Savings should be fully used
+    // Savings should be fully used (its FV < 150k target)
     expect(g.linkedAssets.find(la => la.assetId === 'savings').amount).toBe(100000);
-    // Debt MF should only fill the remaining 50k gap
-    expect(g.linkedAssets.find(la => la.assetId === 'debt').amount).toBe(50000);
+    // Debt MF fills the remaining FV gap
+    const debtAmount = g.linkedAssets.find(la => la.assetId === 'debt').amount;
+    expect(debtAmount).toBeGreaterThan(0);
+    expect(debtAmount).toBeLessThan(50000); // Less PV needed due to growth
+    // Total FV should match target
+    const fv = linkedFV(g, assets);
+    expect(fv).toBeCloseTo(150000, -2);
   });
 
   it('Short-term: BOTH_TERMS preserved for long-term when SHORT_TERM_ONLY suffices', () => {
-    // FD 300k covers short-term goal (200k). Debt MF 400k should be fully available for long-term.
-    const data = createTestData([
+    // FD 300k covers short-term goal (200k FV). Debt MF should be available for long-term.
+    const assets = [
       { id: 'fd', name: 'FD', category: 'FDs & RDs', value: 300000 },
       { id: 'debt', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 400000 }
-    ], [
+    ];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-short', yearsFromNow: 3, targetAmount: 200000, inflationRate: 0 }),
       createGoal({ id: 'g-long', yearsFromNow: 10, targetAmount: 1000000, inflationRate: 0 })
     ]);
@@ -364,10 +407,10 @@ describe('autoAssignAssets - Exclusive-First Priority', () => {
     const gShort = data.goals.find(g => g.id === 'g-short');
     const gLong = data.goals.find(g => g.id === 'g-long');
 
-    // Short-term uses only FD
+    // Short-term uses only FD (FD's FV at 5%/3yr = 347k > 200k, so partial)
     expect(gShort.linkedAssets.length).toBe(1);
     expect(gShort.linkedAssets[0].assetId).toBe('fd');
-    expect(gShort.linkedAssets[0].amount).toBeCloseTo(200000, -2);
+    expect(linkedFV(gShort, assets)).toBeCloseTo(200000, -2);
 
     // Long-term gets full Debt MF (preserved from short-term)
     expect(gLong.linkedAssets.find(la => la.assetId === 'debt').amount).toBeCloseTo(400000, -2);
@@ -375,21 +418,25 @@ describe('autoAssignAssets - Exclusive-First Priority', () => {
 
   it('Long-term: uses LONG_TERM_ONLY before BOTH_TERMS even when BOTH_TERMS is larger', () => {
     // Debt MF 800k (BOTH_TERMS) vs Equity MF 200k (LONG_TERM_ONLY)
-    // Long-term goal needs 300k — should use Equity MF (200k) first, then Debt MF (100k)
-    const data = createTestData([
+    // Long-term goal needs 300k — should use Equity MF first, then Debt MF
+    const assets = [
       { id: 'debt', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 800000 },
       { id: 'equity', name: 'Equity MF', category: 'Equity Mutual Funds', value: 200000 }
-    ], [
+    ];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-long', yearsFromNow: 10, targetAmount: 300000, inflationRate: 0 })
     ]);
 
     autoAssignAssets(data);
 
     const g = data.goals[0];
-    // Equity MF should be fully used
-    expect(g.linkedAssets.find(la => la.assetId === 'equity').amount).toBe(200000);
-    // Debt MF should only fill the remaining 100k gap
-    expect(g.linkedAssets.find(la => la.assetId === 'debt').amount).toBe(100000);
+    // Equity MF: 200k at 10%/10yr → FV 519k > 300k target, so partial assignment
+    const equityAmount = g.linkedAssets.find(la => la.assetId === 'equity').amount;
+    expect(equityAmount).toBeLessThan(200000); // Only enough PV to cover 300k FV
+    // Debt MF should not be needed (equity alone covers the target)
+    expect(g.linkedAssets.find(la => la.assetId === 'debt')).toBeUndefined();
+    // Total FV should match target
+    expect(linkedFV(g, assets)).toBeCloseTo(300000, -2);
   });
 
   it('No SHORT_TERM_ONLY assets stranded when BOTH_TERMS is larger', () => {
@@ -408,7 +455,7 @@ describe('autoAssignAssets - Exclusive-First Priority', () => {
 
     const gShort = data.goals.find(g => g.id === 'g-short');
 
-    // All short-term-only assets should be assigned
+    // All short-term-only assets should be fully assigned (their FV << 10M target)
     expect(gShort.linkedAssets.find(la => la.assetId === 'savings').amount).toBe(100000);
     expect(gShort.linkedAssets.find(la => la.assetId === 'fd').amount).toBe(200000);
     expect(gShort.linkedAssets.find(la => la.assetId === 'debt').amount).toBe(500000);
@@ -417,9 +464,8 @@ describe('autoAssignAssets - Exclusive-First Priority', () => {
 
 describe('autoAssignAssets - BOTH_TERMS Priority', () => {
   it('Debt/Arbitrage MF: short-term goals first, overflow to long-term', () => {
-    const data = createTestData([
-      { id: 'a1', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 500000 }
-    ], [
+    const assets = [{ id: 'a1', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 500000 }];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-short', yearsFromNow: 3, targetAmount: 200000, inflationRate: 0 }),
       createGoal({ id: 'g-long', yearsFromNow: 10, targetAmount: 1000000, inflationRate: 0 })
     ]);
@@ -429,10 +475,12 @@ describe('autoAssignAssets - BOTH_TERMS Priority', () => {
     const gShort = data.goals.find(g => g.id === 'g-short');
     const gLong = data.goals.find(g => g.id === 'g-long');
 
-    // Short-term goal gets 200k (capped at target)
-    expect(gShort.linkedAssets[0].amount).toBeCloseTo(200000, -2);
-    // Long-term goal gets remaining 300k
-    expect(gLong.linkedAssets[0].amount).toBeCloseTo(300000, -2);
+    // Short-term goal: FV of assigned should equal target
+    expect(linkedFV(gShort, assets)).toBeCloseTo(200000, -2);
+    // Short-term gets less PV than 200k
+    expect(gShort.linkedAssets[0].amount).toBeLessThan(200000);
+    // Long-term goal gets the remainder
+    expect(gLong.linkedAssets[0].amount).toBeGreaterThan(300000);
   });
 
   it('Debt/Arbitrage MF: all goes to short-term if it needs it all', () => {
@@ -448,7 +496,7 @@ describe('autoAssignAssets - BOTH_TERMS Priority', () => {
     const gShort = data.goals.find(g => g.id === 'g-short');
     const gLong = data.goals.find(g => g.id === 'g-long');
 
-    // Short-term goal gets all 300k
+    // Debt MF FV at 5%/3yr = 347k < 500k target, so all 300k goes to short-term
     expect(gShort.linkedAssets[0].amount).toBeCloseTo(300000, -2);
     // Long-term goal gets nothing from this asset
     expect(gLong.linkedAssets.length).toBe(0);
@@ -472,29 +520,30 @@ describe('autoAssignAssets - Mixed Scenarios', () => {
     const gShort = data.goals.find(g => g.id === 'g-short');
     const gLong = data.goals.find(g => g.id === 'g-long');
 
-    // Short-term: FD (200k) + Savings (100k) + Debt MF (300k) = 600k
-    const shortTotal = gShort.linkedAssets.reduce((s, la) => s + la.amount, 0);
+    // Short-term: FD + Savings + Debt MF (all fully used since FV << 10M)
     expect(gShort.linkedAssets.some(la => la.assetId === 'fd')).toBe(true);
     expect(gShort.linkedAssets.some(la => la.assetId === 'savings')).toBe(true);
     expect(gShort.linkedAssets.some(la => la.assetId === 'debt')).toBe(true);
 
-    // Long-term: Equity MF (500k) + any remaining Debt MF
-    const longTotal = gLong.linkedAssets.reduce((s, la) => s + la.amount, 0);
+    // Long-term: Equity MF (fully used since FV << 10M)
     expect(gLong.linkedAssets.some(la => la.assetId === 'equity')).toBe(true);
 
-    // Total allocated = short + long should equal total assets (1.1M)
+    // Total allocated = all assets (since targets are huge)
+    const shortTotal = gShort.linkedAssets.reduce((s, la) => s + la.amount, 0);
+    const longTotal = gLong.linkedAssets.reduce((s, la) => s + la.amount, 0);
     expect(shortTotal + longTotal).toBeCloseTo(1100000, -2);
   });
 
   it('Multiple assets: larger assets used first to minimize links', () => {
     // 3 equity MFs: 500k, 300k, 200k
-    // Goal at 6yr needs 600k → should use 500k + 100k from 300k = 2 assets
-    // Goal at 12yr needs 10M → should use remaining 200k from 300k + 200k = 2 assets
-    const data = createTestData([
+    // Goal at 6yr needs 600k. Equity at 10%/6yr: 500k → 886k FV > 600k.
+    // So only eq1 is needed (partial), and remaining goes to goal 2.
+    const assets = [
       { id: 'eq1', name: 'Equity MF 1', category: 'Equity Mutual Funds', value: 500000 },
       { id: 'eq2', name: 'Equity MF 2', category: 'Equity Mutual Funds', value: 300000 },
       { id: 'eq3', name: 'Equity MF 3', category: 'Equity Mutual Funds', value: 200000 }
-    ], [
+    ];
+    const data = createTestData(assets, [
       createGoal({ id: 'g1', yearsFromNow: 6, targetAmount: 600000, inflationRate: 0 }),
       createGoal({ id: 'g2', yearsFromNow: 12, targetAmount: 10000000, inflationRate: 0 })
     ]);
@@ -504,23 +553,20 @@ describe('autoAssignAssets - Mixed Scenarios', () => {
     const g1 = data.goals.find(g => g.id === 'g1');
     const g2 = data.goals.find(g => g.id === 'g2');
 
-    // g1 should use eq1 (500k) + 100k from eq2 = 2 assets, 600k total
-    expect(g1.linkedAssets.length).toBe(2);
-    const g1Total = g1.linkedAssets.reduce((s, la) => s + la.amount, 0);
-    expect(g1Total).toBeCloseTo(600000, -2);
+    // g1: single asset sufficient (500k at 10%/6yr = 886k > 600k)
+    expect(g1.linkedAssets.length).toBe(1);
+    expect(g1.linkedAssets[0].assetId).toBe('eq1');
+    expect(linkedFV(g1, assets)).toBeCloseTo(600000, -2);
 
-    // g2 gets remaining: eq2 (200k) + eq3 (200k) = 400k
+    // g2 gets remaining eq1 + all of eq2 + eq3
     const g2Total = g2.linkedAssets.reduce((s, la) => s + la.amount, 0);
-    expect(g2Total).toBeCloseTo(400000, -2);
-
-    // Total
-    expect(g1Total + g2Total).toBeCloseTo(1000000, -2);
+    expect(g2Total).toBeGreaterThan(400000);
   });
 
   it('Stocks assigned to long-term goals only', () => {
-    const data = createTestData([
-      { id: 'a1', name: 'TCS Stocks', category: 'Stocks', value: 400000 }
-    ], [
+    // Stocks 400k at 10%/10yr = 1.04M > 1M target. Partial assignment.
+    const assets = [{ id: 'a1', name: 'TCS Stocks', category: 'Stocks', value: 400000 }];
+    const data = createTestData(assets, [
       createGoal({ id: 'g-short', yearsFromNow: 3, targetAmount: 500000, inflationRate: 0 }),
       createGoal({ id: 'g-long', yearsFromNow: 10, targetAmount: 1000000, inflationRate: 0 })
     ]);
@@ -532,7 +578,10 @@ describe('autoAssignAssets - Mixed Scenarios', () => {
 
     expect(gShort.linkedAssets.length).toBe(0);
     expect(gLong.linkedAssets.length).toBe(1);
-    expect(gLong.linkedAssets[0].amount).toBe(400000);
+    // FV of assigned should match target
+    expect(linkedFV(gLong, assets)).toBeCloseTo(1000000, -2);
+    // Less than full 400k assigned
+    expect(gLong.linkedAssets[0].amount).toBeLessThan(400000);
   });
 
   it('Gold ETFs/SGBs assigned to long-term goals only', () => {
@@ -620,23 +669,24 @@ describe('autoAssignAssets - Idempotency', () => {
 });
 
 describe('autoAssignAssets - Inflation Adjustment', () => {
-  it('Uses inflation-adjusted target for capping', () => {
+  it('Uses inflation-adjusted target and FV-aware capping', () => {
     // Goal: 100k target, 6% inflation, 10 years
     // Inflation-adjusted = 100000 * (1.06^10) ≈ 179,085
-    // Asset: 200k equity MF
-    // Should cap at ~179k
-    const data = createTestData([
-      { id: 'a1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 200000 }
-    ], [
+    // Asset: 200k equity MF at 10%/10yr → FV 519k > 179k
+    // Should assign PV so that FV = 179k → PV ≈ 69k
+    const assets = [{ id: 'a1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 200000 }];
+    const data = createTestData(assets, [
       createGoal({ id: 'g1', yearsFromNow: 10, targetAmount: 100000, inflationRate: 6 })
     ]);
 
     autoAssignAssets(data);
 
     const linked = data.goals[0].linkedAssets[0]?.amount || 0;
-    // Should be close to 179,085 (inflation-adjusted target)
-    expect(linked).toBeGreaterThan(170000);
-    expect(linked).toBeLessThan(190000);
+    // PV should be ~69k (much less than 179k inflation-adjusted target)
+    expect(linked).toBeGreaterThan(60000);
+    expect(linked).toBeLessThan(80000);
+    // FV of assigned should match inflation-adjusted target
+    expect(linkedFV(data.goals[0], assets)).toBeCloseTo(179085, -3);
     // Should NOT be 200k (full asset value)
     expect(linked).toBeLessThan(200000);
   });

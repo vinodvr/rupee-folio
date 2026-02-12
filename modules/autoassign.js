@@ -1,6 +1,6 @@
 // Auto-assign assets to goals based on asset type and goal timeline
 import { SHORT_TERM_ONLY, LONG_TERM_ONLY, BOTH_TERMS, NOT_LINKABLE } from './assets.js';
-import { getUnifiedCategory, getYearsRemaining, calculateInflationAdjustedAmount } from './calculator.js';
+import { getUnifiedCategory, getYearsRemaining, calculateInflationAdjustedAmount, calculateLumpsumFV, getReturnForCategory } from './calculator.js';
 import { saveData } from './storage.js';
 
 /**
@@ -14,7 +14,7 @@ import { saveData } from './storage.js';
  *    - First pass: exhaust SHORT_TERM_ONLY assets (they can't go anywhere else)
  *    - Second pass: use BOTH_TERMS assets for any remaining gap
  *    - Process goals closest-first, largest available assets first (fewest per goal)
- *    - Cap per goal at inflation-adjusted targetAmount
+ *    - Cap per goal at inflation-adjusted targetAmount using asset FV (not current value)
  * 4. Allocate to long-term goals (>= 5yr):
  *    - First pass: exhaust LONG_TERM_ONLY assets (they can't go anywhere else)
  *    - Second pass: use remaining BOTH_TERMS assets for any remaining gap
@@ -28,6 +28,9 @@ export function autoAssignAssets(data) {
   if (!data || !data.goals || !data.assets || !data.assets.items) {
     return data;
   }
+
+  const equityReturn = data.settings?.equityReturn ?? 10;
+  const debtReturn = data.settings?.debtReturn ?? 5;
 
   // Step 1: Clear all existing linkedAssets
   data.goals.forEach(goal => {
@@ -49,7 +52,8 @@ export function autoAssignAssets(data) {
     );
     if (target <= 0) return; // Skip zero-target goals
 
-    const goalInfo = { goal, years, category, target, allocated: 0 };
+    // allocated tracks FV of assets assigned so far
+    const goalInfo = { goal, years, category, target, allocatedFV: 0 };
     if (category === 'short') {
       shortTermGoals.push(goalInfo);
     } else {
@@ -82,16 +86,16 @@ export function autoAssignAssets(data) {
 
   // Step 3: Allocate to short-term goals (closest first, largest assets first)
   // First pass: exhaust SHORT_TERM_ONLY assets (they can't go anywhere else)
-  greedyAssignToGoals(shortTermPool, shortTermGoals, data);
+  greedyAssignToGoals(shortTermPool, shortTermGoals, data, equityReturn, debtReturn);
   // Second pass: use BOTH_TERMS assets for any remaining gap
-  greedyAssignToGoals(bothTermPool, shortTermGoals, data);
+  greedyAssignToGoals(bothTermPool, shortTermGoals, data, equityReturn, debtReturn);
 
   // Step 4: Allocate to long-term goals
   // First pass: exhaust LONG_TERM_ONLY assets (they can't go anywhere else)
-  greedyAssignToGoals(longTermPool, longTermGoals, data);
+  greedyAssignToGoals(longTermPool, longTermGoals, data, equityReturn, debtReturn);
   // Second pass: use remaining BOTH_TERMS assets for any remaining gap
   const remainingBoth = bothTermPool.filter(a => a.remaining > 0);
-  greedyAssignToGoals(remainingBoth, longTermGoals, data);
+  greedyAssignToGoals(remainingBoth, longTermGoals, data, equityReturn, debtReturn);
 
   // Step 5: Save
   saveData(data);
@@ -101,37 +105,55 @@ export function autoAssignAssets(data) {
 /**
  * Greedy assignment: process goals in order (closest first),
  * for each goal pick largest available assets until goal is covered.
- * Minimizes the number of assets linked to each goal.
+ * Tracks allocation in FV terms to avoid over-allocating.
  */
-function greedyAssignToGoals(assetPool, goalInfos, data) {
+function greedyAssignToGoals(assetPool, goalInfos, data, equityReturn, debtReturn) {
   if (assetPool.length === 0 || goalInfos.length === 0) return;
 
   for (const goalInfo of goalInfos) {
-    const needed = goalInfo.target - goalInfo.allocated;
-    if (needed <= 0.01) continue;
+    const neededFV = goalInfo.target - goalInfo.allocatedFV;
+    if (neededFV <= 0.01) continue;
 
-    assignToSingleGoal(assetPool, goalInfo, needed, data);
+    assignToSingleGoal(assetPool, goalInfo, neededFV, data, equityReturn, debtReturn);
   }
 }
 
 /**
  * Assign assets to a single goal greedily — largest available assets first.
+ * Computes FV of each asset to determine how much current value to assign.
  */
-function assignToSingleGoal(assetPool, goalInfo, needed, data) {
+function assignToSingleGoal(assetPool, goalInfo, neededFV, data, equityReturn, debtReturn) {
   // Sort available assets by remaining value descending (largest first)
   const available = assetPool
     .filter(a => a.remaining > 0.01)
     .sort((a, b) => b.remaining - a.remaining);
 
-  let remaining = needed;
+  let remainingFV = neededFV;
   for (const assetInfo of available) {
-    if (remaining <= 0.01) break;
+    if (remainingFV <= 0.01) break;
 
-    const assignAmount = Math.min(assetInfo.remaining, remaining);
+    const returnRate = getReturnForCategory(assetInfo.asset.category, equityReturn, debtReturn);
+    // FV of the entire remaining current value of this asset at goal date
+    const assetFV = calculateLumpsumFV(assetInfo.remaining, returnRate, goalInfo.years);
+
+    let assignAmount;
+    if (assetFV <= remainingFV) {
+      // Use the entire remaining asset — its FV doesn't exceed the gap
+      assignAmount = assetInfo.remaining;
+    } else {
+      // Partial assignment: find current value whose FV = remainingFV
+      // Must use monthly compounding to match calculateLumpsumFV
+      const monthlyRate = returnRate / 100 / 12;
+      const months = Math.round(goalInfo.years * 12);
+      const growthFactor = Math.pow(1 + monthlyRate, months);
+      assignAmount = Math.min(assetInfo.remaining, remainingFV / growthFactor);
+    }
+
+    const assignedFV = calculateLumpsumFV(assignAmount, returnRate, goalInfo.years);
     linkAssetToGoalDirect(data, goalInfo.goal, assetInfo.asset, assignAmount);
-    goalInfo.allocated += assignAmount;
+    goalInfo.allocatedFV += assignedFV;
     assetInfo.remaining -= assignAmount;
-    remaining -= assignAmount;
+    remainingFV -= assignedFV;
   }
 }
 
