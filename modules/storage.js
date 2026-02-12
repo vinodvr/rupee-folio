@@ -432,21 +432,5 @@ export function updateLinkedAssetAmount(data, goalId, assetId, newAmount) {
   return data;
 }
 
-// Clean up linked asset references when an asset is deleted
-export function cleanupLinkedAssetsOnAssetDelete(data, assetId) {
-  let modified = false;
-  data.goals.forEach(goal => {
-    if (goal.linkedAssets && goal.linkedAssets.length > 0) {
-      const originalLength = goal.linkedAssets.length;
-      goal.linkedAssets = goal.linkedAssets.filter(la => la.assetId !== assetId);
-      if (goal.linkedAssets.length !== originalLength) {
-        modified = true;
-      }
-    }
-  });
-  if (modified) {
-    saveData(data);
-  }
-  return data;
-}
+
 

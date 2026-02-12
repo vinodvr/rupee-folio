@@ -292,13 +292,6 @@ export function calculateInflationAdjustedAmount(presentValue, inflationRate, ye
 }
 
 /**
- * Calculate blended annual return rate
- */
-export function calculateBlendedReturn(equityPercent, equityReturn, debtPercent, debtReturn) {
-  return (equityPercent / 100 * equityReturn) + (debtPercent / 100 * debtReturn);
-}
-
-/**
  * Calculate future value of a lump sum investment
  * FV = PV × (1 + r)^n
  */
@@ -307,56 +300,6 @@ export function calculateLumpsumFV(principal, annualRate, years) {
   const monthlyRate = annualRate / 100 / 12;
   const months = Math.round(years * 12);
   return principal * Math.pow(1 + monthlyRate, months);
-}
-
-/**
- * Calculate total amount invested (without compounding)
- */
-export function calculateTotalInvested(investments, initialLumpsum) {
-  let total = parseFloat(initialLumpsum) || 0;
-  if (investments && investments.length > 0) {
-    total += investments.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
-  }
-  return total;
-}
-
-/**
- * Calculate future value of existing investments (corpus)
- * Each investment compounds from its date to the target date
- */
-export function calculateCurrentCorpus(investments, annualRate, targetDate, initialLumpsum, startDate) {
-  const now = new Date();
-  let corpus = 0;
-  const lumpsum = parseFloat(initialLumpsum) || 0;
-
-  // Add initial lumpsum compounded from start date to now
-  if (lumpsum > 0 && startDate) {
-    const startDateObj = new Date(startDate);
-    const monthsSinceStart = Math.max(0, (now - startDateObj) / (1000 * 60 * 60 * 24 * 30.44));
-    const monthlyRate = annualRate / 100 / 12;
-    corpus += lumpsum * Math.pow(1 + monthlyRate, monthsSinceStart);
-  }
-
-  // Add each logged investment compounded from its date to now
-  if (investments && investments.length > 0) {
-    const monthlyRate = annualRate / 100 / 12;
-    investments.forEach(inv => {
-      const invDate = new Date(inv.date);
-      const monthsSinceInv = Math.max(0, (now - invDate) / (1000 * 60 * 60 * 24 * 30.44));
-      const amount = parseFloat(inv.amount) || 0;
-      corpus += amount * Math.pow(1 + monthlyRate, monthsSinceInv);
-    });
-  }
-
-  return corpus;
-}
-
-/**
- * Calculate future value of current corpus at target date
- */
-export function calculateCorpusFV(currentCorpus, annualRate, targetDate) {
-  const years = getYearsRemaining(targetDate);
-  return calculateLumpsumFV(currentCorpus, annualRate, years);
 }
 
 /**
@@ -471,13 +414,6 @@ function calculateStepUpSIPFutureValue(startingSIP, monthlyRate, totalMonths, st
     return fv;
   }
   return fv * (1 + monthlyRate);
-}
-
-/**
- * Get goal category based on years remaining (unified 2-category system)
- */
-export function getGoalCategory(targetDate) {
-  return getUnifiedCategory(targetDate);
 }
 
 /**

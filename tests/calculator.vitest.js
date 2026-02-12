@@ -4,11 +4,9 @@ import {
   getYearsRemaining,
   getMonthsRemaining,
   calculateInflationAdjustedAmount,
-  calculateBlendedReturn,
   calculateRegularSIP,
   calculateStepUpSIP,
   calculateSipFV,
-  getGoalCategory,
   getCategoryDisplay,
   UNIFIED_PORTFOLIO,
   getUnifiedCategory,
@@ -27,21 +25,6 @@ import {
 import { createGoal } from './helpers.js';
 
 describe('Basic Calculation Functions', () => {
-  it('calculateBlendedReturn: 70/30 allocation', () => {
-    const result = calculateBlendedReturn(70, 11, 30, 5);
-    expect(result).toBeCloseTo(9.2, 1);
-  });
-
-  it('calculateBlendedReturn: 100% equity', () => {
-    const result = calculateBlendedReturn(100, 11, 0, 5);
-    expect(result).toBeCloseTo(11, 1);
-  });
-
-  it('calculateBlendedReturn: 100% debt', () => {
-    const result = calculateBlendedReturn(0, 11, 100, 5);
-    expect(result).toBeCloseTo(5, 1);
-  });
-
   it('calculateInflationAdjustedAmount: 6% for 10 years', () => {
     const result = calculateInflationAdjustedAmount(1000000, 6, 10);
     expect(result).toBeCloseTo(1790848, 0);
