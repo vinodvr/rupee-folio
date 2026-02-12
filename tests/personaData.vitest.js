@@ -407,7 +407,7 @@ describe('Persona Data Generation', () => {
 
       const retirement = data.goals.find(g => g.goalType === 'retirement');
       expect(retirement).toBeDefined();
-      expect(retirement.name).toBe('Financial Independence at 50');
+      expect(retirement.name).toBe('Financial Independence');
       expect(retirement.includeEpfNps).toBe(true);
     });
 
@@ -614,7 +614,7 @@ describe('Persona Data Generation', () => {
       });
 
       const retirement = data.goals.find(g => g.goalType === 'retirement');
-      expect(retirement.name).toBe('Financial Independence at 45');
+      expect(retirement.name).toBe('Financial Independence');
 
       // Target date should be 15 years from now (45 - 30)
       const expectedYear = new Date().getFullYear() + 15;
@@ -635,7 +635,7 @@ describe('Persona Data Generation', () => {
       });
 
       const retirement = data.goals.find(g => g.goalType === 'retirement');
-      expect(retirement.name).toBe('Financial Independence at 50');
+      expect(retirement.name).toBe('Financial Independence');
 
       const expectedYear = new Date().getFullYear() + 20;
       expect(retirement.targetDate).toContain(String(expectedYear));

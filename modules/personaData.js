@@ -365,7 +365,7 @@ function calculateGoals(answers, expenses) {
 
     goals.push({
       id: generateId(),
-      name: `Financial Independence at ${retirementAge}`,
+      name: 'Financial Independence',
       goalType: 'retirement',
       targetAmount: Math.max(roundedCorpus, 10000000),
       inflationRate: 6,
