@@ -253,14 +253,14 @@ function renderAssetsList() {
       const badgeClass = isRetirement ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600';
 
       return `
-        <div class="mb-3">
+        <div class="pt-4 first:pt-0">
           <div class="flex items-center gap-2 mb-1">
             <span class="text-xs font-semibold uppercase ${badgeClass} px-2 py-0.5 rounded">${category}</span>
           </div>
           ${assets.map(asset => `
-            <div class="flex items-center justify-between py-2 border-b border-gray-100 group" data-asset-id="${asset.id}">
-              <span class="text-sm">${asset.name}</span>
-              <div class="flex items-center gap-2">
+            <div class="flex items-center justify-between py-3 border-b border-gray-100 group" data-asset-id="${asset.id}">
+              <span class="text-sm min-w-0">${asset.name}</span>
+              <div class="flex items-center gap-2 shrink-0">
                 <span class="text-sm font-medium text-emerald-600">${formatCurrency(asset.value, currency)}</span>
                 <button class="edit-asset-btn text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded p-1 transition-colors" data-id="${asset.id}">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -316,14 +316,7 @@ function editAsset(id) {
     const newName = row.querySelector('.edit-asset-name').value.trim();
     const newValue = parseFloat(row.querySelector('.edit-asset-value').value);
     if (newName && !isNaN(newValue) && newValue >= 0) {
-      const result = updateAsset(appData, id, { category: newCategory, name: newName, value: newValue });
-
-      // Check if validation failed
-      if (result && result.success === false) {
-        showAssetValidationError(result.error, result.allocations);
-        return;
-      }
-
+      updateAsset(appData, id, { category: newCategory, name: newName, value: newValue });
       renderAssetsList();
       updateNetWorthSummary();
       if (onDataChange) onDataChange();
@@ -336,84 +329,10 @@ function editAsset(id) {
 }
 
 function removeAsset(id) {
-  const result = deleteAsset(appData, id);
-
-  // Check if validation failed
-  if (result && result.success === false) {
-    showAssetValidationError(result.error, result.allocations);
-    return;
-  }
-
+  deleteAsset(appData, id);
   renderAssetsList();
   updateNetWorthSummary();
   if (onDataChange) onDataChange();
-}
-
-/**
- * Show validation error modal when asset cannot be modified/deleted
- */
-function showAssetValidationError(errorMessage, allocations) {
-  const modal = document.getElementById('goal-modal');
-  const content = document.getElementById('goal-modal-content');
-
-  if (!modal || !content) {
-    alert(errorMessage);
-    return;
-  }
-
-  content.innerHTML = `
-    <div class="bg-white rounded-lg p-6 w-full max-w-md">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="p-2 bg-red-100 rounded-full">
-          <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-          </svg>
-        </div>
-        <h3 class="text-lg font-semibold text-gray-800">Cannot Complete Action</h3>
-      </div>
-
-      <p class="text-sm text-gray-600 mb-4">${errorMessage}</p>
-
-      ${allocations && allocations.length > 0 ? `
-        <div class="bg-gray-50 rounded-lg p-3 mb-4">
-          <p class="text-xs font-medium text-gray-500 uppercase mb-2">Linked to Goals:</p>
-          <div class="space-y-2">
-            ${allocations.map(a => `
-              <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-700">${a.goalName}</span>
-                <span class="font-medium text-blue-600">${formatCurrency(a.amount, currency)}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-        <p class="text-xs text-gray-500 mb-4">
-          To modify this asset, first adjust or remove the allocations using the
-          <span class="font-medium">Plan</span> tab.
-        </p>
-      ` : ''}
-
-      <div class="flex justify-end pt-2 border-t">
-        <button id="close-validation-error-btn" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-          OK
-        </button>
-      </div>
-    </div>
-  `;
-
-  modal.classList.remove('hidden');
-
-  document.getElementById('close-validation-error-btn').addEventListener('click', () => {
-    modal.classList.add('hidden');
-  });
-
-  // Close on backdrop click
-  const closeOnBackdrop = (e) => {
-    if (e.target === modal) {
-      modal.classList.add('hidden');
-      modal.removeEventListener('click', closeOnBackdrop);
-    }
-  };
-  modal.addEventListener('click', closeOnBackdrop);
 }
 
 // Liability functions
@@ -479,12 +398,12 @@ function renderLiabilitiesList() {
   });
 
   list.innerHTML = Object.entries(grouped).map(([category, liabilities]) => `
-    <div class="mb-3">
+    <div class="pt-4 first:pt-0">
       <div class="text-xs font-semibold text-gray-500 uppercase mb-1">${category}</div>
       ${liabilities.map(liability => `
-        <div class="flex items-center justify-between py-2 border-b border-gray-100 group" data-liability-id="${liability.id}">
-          <span class="text-sm">${liability.name}</span>
-          <div class="flex items-center gap-2">
+        <div class="flex items-center justify-between py-3 border-b border-gray-100 group" data-liability-id="${liability.id}">
+          <span class="text-sm min-w-0">${liability.name}</span>
+          <div class="flex items-center gap-2 shrink-0">
             <span class="text-sm font-medium text-orange-600">${formatCurrency(liability.amount, currency)}</span>
             <button class="edit-liability-btn text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded p-1 transition-colors" data-id="${liability.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -691,7 +610,7 @@ function renderAssetAllocationChart() {
   `).join('');
 
   container.innerHTML = `
-    <div class="flex items-center justify-center gap-6">
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="shrink-0">
         <!-- Background circle -->
         <circle

@@ -571,24 +571,22 @@ export function calculateEpfNpsCorpusFV(epfCorpus, npsCorpus, targetDate, epfRet
 }
 
 /**
- * Calculate future value of monthly EPF/NPS SIP contributions with optional annual step-up
- * When annualStepUp=0, uses closed-form calculateSipFV; otherwise uses iterative step-up calculation
+ * Calculate future value of monthly EPF/NPS SIP contributions with separate annual step-ups
+ * EPF step-up reflects salary growth; NPS step-up defaults to 0 (voluntary fixed contribution)
  */
-export function calculateEpfNpsSipFV(monthlyEpf, monthlyNps, targetDate, annualStepUp = 0, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN) {
+export function calculateEpfNpsSipFV(monthlyEpf, monthlyNps, targetDate, epfAnnualStepUp = 0, npsAnnualStepUp = 0, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN) {
   const totalMonths = getMonthsRemaining(targetDate);
   if (totalMonths <= 0) return 0;
 
-  if (annualStepUp === 0) {
-    return calculateSipFV(monthlyEpf, epfReturn, totalMonths) +
-           calculateSipFV(monthlyNps, npsReturn, totalMonths);
-  }
+  // EPF FV
+  const epfSipFV = epfAnnualStepUp === 0
+    ? calculateSipFV(monthlyEpf, epfReturn, totalMonths)
+    : calculateStepUpSIPFutureValue(monthlyEpf, epfReturn / 100 / 12, totalMonths, epfAnnualStepUp / 100);
 
-  const stepUpRate = annualStepUp / 100;
-  const epfMonthlyRate = epfReturn / 100 / 12;
-  const npsMonthlyRate = npsReturn / 100 / 12;
-
-  const epfSipFV = calculateStepUpSIPFutureValue(monthlyEpf, epfMonthlyRate, totalMonths, stepUpRate);
-  const npsSipFV = calculateStepUpSIPFutureValue(monthlyNps, npsMonthlyRate, totalMonths, stepUpRate);
+  // NPS FV
+  const npsSipFV = npsAnnualStepUp === 0
+    ? calculateSipFV(monthlyNps, npsReturn, totalMonths)
+    : calculateStepUpSIPFutureValue(monthlyNps, npsReturn / 100 / 12, totalMonths, npsAnnualStepUp / 100);
 
   return epfSipFV + npsSipFV;
 }
@@ -597,11 +595,12 @@ export function calculateEpfNpsSipFV(monthlyEpf, monthlyNps, targetDate, annualS
  * Calculate retirement goal projections with EPF/NPS contributions (unified portfolio)
  * Returns projections with EPF/NPS breakdown for retirement goals
  * Also accounts for linked assets if assetsData is provided
- * @param epfNpsStepUp - Annual step-up percentage for EPF/NPS contributions (from settings)
+ * @param epfStepUp - Annual step-up percentage for EPF contributions (from settings)
+ * @param npsStepUp - Annual step-up percentage for NPS contributions (from settings)
  * @param investmentStepUp - Annual step-up percentage for other investments (from settings)
  * @param assetsData - Assets data for linked asset calculations (optional)
  */
-export function calculateRetirementProjectionsWithEpfNps(goal, retirementContributions, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN, epfNpsStepUp = 0, investmentStepUp = 0, assetsData = null) {
+export function calculateRetirementProjectionsWithEpfNps(goal, retirementContributions, equityReturn, debtReturn, arbitrageReturn, equityAllocation = 60, epfReturn = EPF_RETURN, npsReturn = NPS_RETURN, epfStepUp = 0, npsStepUp = 0, investmentStepUp = 0, assetsData = null) {
   // Get base projections including linked assets FV
   const baseProjections = calculateUnifiedGoalProjections(goal, equityReturn, debtReturn, arbitrageReturn, equityAllocation, investmentStepUp, assetsData);
 
@@ -626,8 +625,8 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
   // Calculate FV of EPF/NPS corpus
   const epfNpsCorpusFV = calculateEpfNpsCorpusFV(epfCorpus, npsCorpus, goal.targetDate, epfReturn, npsReturn);
 
-  // Calculate FV of EPF/NPS SIP contributions (with step-up from settings)
-  const epfNpsSipFV = calculateEpfNpsSipFV(monthlyEpf, monthlyNps, goal.targetDate, epfNpsStepUp, epfReturn, npsReturn);
+  // Calculate FV of EPF/NPS SIP contributions (with separate step-ups from settings)
+  const epfNpsSipFV = calculateEpfNpsSipFV(monthlyEpf, monthlyNps, goal.targetDate, epfStepUp, npsStepUp, epfReturn, npsReturn);
 
   // Total contribution from EPF/NPS at goal date
   const totalEpfNpsFV = epfNpsCorpusFV + epfNpsSipFV;
@@ -664,7 +663,8 @@ export function calculateRetirementProjectionsWithEpfNps(goal, retirementContrib
       totalEpfNpsFV,
       epfReturn,
       npsReturn,
-      stepUpRate: epfNpsStepUp
+      epfStepUp,
+      npsStepUp
     }
   };
 }

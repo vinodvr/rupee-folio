@@ -233,10 +233,19 @@ describe('EPF/NPS Calculations', () => {
   it('Step-up increases future value', () => {
     const goal = createGoal({ yearsFromNow: 10 });
     const withoutStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate);
-    const withStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 7);
+    const withStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 7, 7);
 
     expect(withStepUp).toBeGreaterThan(withoutStepUp);
     expect(withStepUp).toBeGreaterThan(withoutStepUp * 1.25);
+  });
+
+  it('Different EPF and NPS step-ups produce different results', () => {
+    const goal = createGoal({ yearsFromNow: 10 });
+    const sameStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 5, 5);
+    const differentStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 5, 0);
+
+    // EPF with 5% step-up + NPS with 0% should be less than both at 5%
+    expect(differentStepUp).toBeLessThan(sameStepUp);
   });
 });
 
@@ -298,12 +307,17 @@ describe('Retirement Goals with EPF/NPS', () => {
       monthlyEpf: 20000, monthlyNps: 10000, epfCorpus: 0, npsCorpus: 0, totalMonthly: 30000, totalCorpus: 0
     };
 
-    // Compare 0% step-up vs 5% step-up
-    const withoutStepUp = calculateRetirementProjectionsWithEpfNps(goal, contributions, 10, 5, 6, 60, 8, 9, 0, 0);
-    const withStepUp = calculateRetirementProjectionsWithEpfNps(goal, contributions, 10, 5, 6, 60, 8, 9, 5, 0);
+    // Compare 0% step-up vs 5% step-up on both EPF and NPS
+    const withoutStepUp = calculateRetirementProjectionsWithEpfNps(goal, contributions, 10, 5, 6, 60, 8, 9, 0, 0, 0);
+    const withStepUp = calculateRetirementProjectionsWithEpfNps(goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, 0);
 
     expect(withStepUp.epfNps.totalEpfNpsFV).toBeGreaterThan(withoutStepUp.epfNps.totalEpfNpsFV * 1.3);
     expect(withStepUp.monthlySIP).toBeLessThan(withoutStepUp.monthlySIP);
+
+    // EPF-only step-up should produce less FV than both
+    const epfOnlyStepUp = calculateRetirementProjectionsWithEpfNps(goal, contributions, 10, 5, 6, 60, 8, 9, 5, 0, 0);
+    expect(epfOnlyStepUp.epfNps.totalEpfNpsFV).toBeGreaterThan(withoutStepUp.epfNps.totalEpfNpsFV);
+    expect(epfOnlyStepUp.epfNps.totalEpfNpsFV).toBeLessThan(withStepUp.epfNps.totalEpfNpsFV);
   });
 
   it('Short retirement goal uses arbitrage return', () => {
@@ -478,7 +492,7 @@ describe('Consistency', () => {
     const goal = createGoal({ yearsFromNow: 10 });
 
     const regular = calculateEpfNpsSipFV(5000, 5000, goal.targetDate);
-    const withZeroStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 0);
+    const withZeroStepUp = calculateEpfNpsSipFV(5000, 5000, goal.targetDate, 0, 0);
 
     expect(withZeroStepUp).toBeCloseTo(regular, 0);
   });
@@ -498,10 +512,10 @@ describe('Consistency', () => {
   it('EPF at 8% and NPS at 9% compound separately', () => {
     const goal = createGoal({ yearsFromNow: 10 });
 
-    // Calculate separately
-    const epfOnly = calculateEpfNpsSipFV(10000, 0, goal.targetDate, 8, 9);
-    const npsOnly = calculateEpfNpsSipFV(0, 10000, goal.targetDate, 8, 9);
-    const combined = calculateEpfNpsSipFV(10000, 10000, goal.targetDate, 8, 9);
+    // Calculate separately (pass 0 for step-ups, explicit return rates)
+    const epfOnly = calculateEpfNpsSipFV(10000, 0, goal.targetDate, 0, 0, 8, 9);
+    const npsOnly = calculateEpfNpsSipFV(0, 10000, goal.targetDate, 0, 0, 8, 9);
+    const combined = calculateEpfNpsSipFV(10000, 10000, goal.targetDate, 0, 0, 8, 9);
 
     expect(combined).toBeCloseTo(epfOnly + npsOnly, 0);
   });
@@ -1511,12 +1525,12 @@ describe('Linked Assets', () => {
       // With EPF/NPS only
       const goalNoLinked = { ...goal, linkedAssets: [] };
       const projEpfOnly = calculateRetirementProjectionsWithEpfNps(
-        goalNoLinked, contributions, 10, 5, 6, 60, 8, 9, 5, 5, null
+        goalNoLinked, contributions, 10, 5, 6, 60, 8, 9, 5, 5, 5, null
       );
 
       // With EPF/NPS AND linked assets
       const projBoth = calculateRetirementProjectionsWithEpfNps(
-        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, 5, assetsData
       );
 
       // Both should reduce SIP compared to base
@@ -1559,7 +1573,7 @@ describe('Linked Assets', () => {
       };
 
       const proj = calculateRetirementProjectionsWithEpfNps(
-        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, 5, assetsData
       );
 
       // With high contributions and linked assets, gap could be 0
@@ -1592,7 +1606,7 @@ describe('Linked Assets', () => {
       };
 
       const proj = calculateRetirementProjectionsWithEpfNps(
-        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, 5, assetsData
       );
 
       // EPF/NPS should be ignored (not retirement)
@@ -1625,7 +1639,7 @@ describe('Linked Assets', () => {
       };
 
       const proj = calculateRetirementProjectionsWithEpfNps(
-        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, assetsData
+        goal, contributions, 10, 5, 6, 60, 8, 9, 5, 5, 5, assetsData
       );
 
       // EPF/NPS should be ignored
@@ -1741,7 +1755,7 @@ describe('Retirement Goal Golden Data', () => {
   it('Golden value: Retirement 5Cr/20yr without step-up', () => {
     const goal = retirementGoal();
     const result = calculateRetirementProjectionsWithEpfNps(
-      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, null
+      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, 0, null
     );
 
     // 20 years = 240 months, long-term category
@@ -1770,7 +1784,7 @@ describe('Retirement Goal Golden Data', () => {
   it('Golden value: Retirement 5Cr/20yr with 5% step-up', () => {
     const goal = retirementGoal();
     const result = calculateRetirementProjectionsWithEpfNps(
-      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 5, 5, null
+      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 5, 5, 5, null
     );
 
     expect(result.months).toBe(240);
@@ -1796,7 +1810,7 @@ describe('Retirement Goal Golden Data', () => {
 
     // Step-up should meaningfully reduce starting SIP vs no step-up
     const noStepUp = calculateRetirementProjectionsWithEpfNps(
-      retirementGoal(), epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, null
+      retirementGoal(), epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, 0, null
     );
     expect(result.monthlySIP).toBeLessThan(noStepUp.monthlySIP * 0.7);
   });
@@ -1810,10 +1824,10 @@ describe('Retirement Goal Golden Data', () => {
     };
 
     const withLinked = calculateRetirementProjectionsWithEpfNps(
-      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, assetsData
+      goal, epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, 0, assetsData
     );
     const withoutLinked = calculateRetirementProjectionsWithEpfNps(
-      retirementGoal(), epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, null
+      retirementGoal(), epfNpsContributions, 10, 5, 6, 60, 8, 9, 0, 0, 0, null
     );
 
     // 5L equity at 10% for 20 years grows substantially

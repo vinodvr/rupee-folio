@@ -148,12 +148,12 @@ function renderIncomeList() {
     ` : '';
 
     return `
-      <div class="flex items-center justify-between py-2 border-b border-gray-100 group" data-id="${income.id}">
-        <div>
+      <div class="flex items-center justify-between py-3 border-b border-gray-100 group" data-id="${income.id}">
+        <div class="min-w-0">
           <span class="text-sm">${income.name}</span>
           ${epfNpsInfo}
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 shrink-0">
           <span class="text-sm font-medium text-green-600">${formatCurrency(income.amount, currency)}</span>
           <button class="edit-income-btn text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded p-1 transition-colors" data-id="${income.id}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,12 +323,12 @@ function renderExpenseList() {
   });
 
   list.innerHTML = Object.entries(grouped).map(([category, expenses]) => `
-    <div class="mb-3">
+    <div class="pt-4 first:pt-0">
       <div class="text-xs font-semibold text-gray-500 uppercase mb-1">${category}</div>
       ${expenses.map(exp => `
-        <div class="flex items-center justify-between py-2 border-b border-gray-100 group" data-id="${exp.id}">
-          <span class="text-sm">${exp.name}</span>
-          <div class="flex items-center gap-2">
+        <div class="flex items-center justify-between py-3 border-b border-gray-100 group" data-id="${exp.id}">
+          <span class="text-sm min-w-0">${exp.name}</span>
+          <div class="flex items-center gap-2 shrink-0">
             <span class="text-sm font-medium text-red-600">${formatCurrency(exp.amount, currency)}</span>
             <button class="edit-expense-btn text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded p-1 transition-colors" data-id="${exp.id}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -65,6 +65,15 @@ export function getSymbol(currency) {
   return getCurrencyConfig(currency).symbol;
 }
 
+export function formatCompact(amount, currency) {
+  const symbol = getSymbol(currency);
+  const fmt = (n) => parseFloat(n.toFixed(2)).toString();
+  if (amount >= 10000000) return `${symbol}${fmt(amount / 10000000)} Crore`;
+  if (amount >= 100000) return `${symbol}${fmt(amount / 100000)} Lakhs`;
+  if (amount >= 1000) return `${symbol}${fmt(amount / 1000)}K`;
+  return `${symbol}${amount}`;
+}
+
 export function getRecommendations(currency) {
   return getCurrencyConfig(currency).recommendations;
 }

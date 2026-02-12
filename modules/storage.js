@@ -11,7 +11,8 @@ const defaultData = {
     arbitrageReturn: 6,
     epfReturn: 8,
     npsReturn: 9,
-    epfNpsStepUp: 5,
+    epfStepUp: 5,
+    npsStepUp: 0,
     investmentStepUp: 5
   },
   cashflow: {
@@ -229,12 +230,25 @@ export function setNpsReturn(data, value) {
   return data;
 }
 
-export function getEpfNpsStepUp(data) {
+export function getEpfStepUp(data) {
+  // Migrate: if new key exists, use it; else fall back to old epfNpsStepUp
+  if (data.settings?.epfStepUp !== undefined) return data.settings.epfStepUp;
   return data.settings?.epfNpsStepUp ?? 5;
 }
 
-export function setEpfNpsStepUp(data, value) {
-  data.settings.epfNpsStepUp = value;
+export function setEpfStepUp(data, value) {
+  data.settings.epfStepUp = value;
+  saveData(data);
+  return data;
+}
+
+export function getNpsStepUp(data) {
+  if (data.settings?.npsStepUp !== undefined) return data.settings.npsStepUp;
+  return 0;
+}
+
+export function setNpsStepUp(data, value) {
+  data.settings.npsStepUp = value;
   saveData(data);
   return data;
 }
@@ -327,26 +341,10 @@ export function addAsset(data, asset) {
   return data;
 }
 
-export function updateAsset(data, id, updates, options = {}) {
+export function updateAsset(data, id, updates) {
   const index = data.assets.items.findIndex(a => a.id === id);
   if (index === -1) {
     return { success: false, error: 'Asset not found', data };
-  }
-
-  const oldValue = data.assets.items[index].value || 0;
-
-  // If value is being reduced, validate against allocations (unless skipValidation is true)
-  if (updates.value !== undefined && updates.value < oldValue && !options.skipValidation) {
-    const validation = validateAssetValueReduction(data, id, updates.value);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.error,
-        totalAllocated: validation.totalAllocated,
-        allocations: validation.allocations,
-        data
-      };
-    }
   }
 
   data.assets.items[index] = { ...data.assets.items[index], ...updates };
@@ -355,23 +353,9 @@ export function updateAsset(data, id, updates, options = {}) {
   return { success: true, data };
 }
 
-export function deleteAsset(data, id, options = {}) {
-  // Validate deletion unless skipValidation is true
-  if (!options.skipValidation) {
-    const validation = validateAssetDeletion(data, id);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.error,
-        totalAllocated: validation.totalAllocated,
-        allocations: validation.allocations,
-        data
-      };
-    }
-  }
-
+export function deleteAsset(data, id) {
   data.assets.items = data.assets.items.filter(a => a.id !== id);
-  // Clean up any linked asset references in goals (belt and suspenders)
+  // Clean up any linked asset references in goals
   data.goals.forEach(goal => {
     if (goal.linkedAssets && goal.linkedAssets.length > 0) {
       goal.linkedAssets = goal.linkedAssets.filter(la => la.assetId !== id);
@@ -466,97 +450,3 @@ export function cleanupLinkedAssetsOnAssetDelete(data, assetId) {
   return data;
 }
 
-/**
- * Validate if an asset's value can be reduced to the new amount
- * Returns error if the new value is less than total allocated across goals
- * @param {object} data - App data
- * @param {string} assetId - Asset to check
- * @param {number} newValue - Proposed new value
- * @returns {object} { valid: boolean, error?: string, allocations?: Array<{goalName, amount}> }
- */
-export function validateAssetValueReduction(data, assetId, newValue) {
-  const asset = data.assets.items.find(a => a.id === assetId);
-  if (!asset) {
-    return { valid: false, error: 'Asset not found' };
-  }
-
-  // If value is increasing or staying the same, always valid
-  if (newValue >= asset.value) {
-    return { valid: true };
-  }
-
-  // Calculate total allocated to this asset across all goals
-  let totalAllocated = 0;
-  const allocations = [];
-
-  data.goals.forEach(goal => {
-    if (goal.linkedAssets && goal.linkedAssets.length > 0) {
-      const link = goal.linkedAssets.find(la => la.assetId === assetId);
-      if (link && link.amount > 0) {
-        totalAllocated += link.amount;
-        allocations.push({ goalName: goal.name, goalId: goal.id, amount: link.amount });
-      }
-    }
-  });
-
-  // Check if new value is below allocated
-  if (newValue < totalAllocated) {
-    return {
-      valid: false,
-      error: `Cannot reduce below allocated amount. This asset has ${formatAmount(totalAllocated)} linked to goals.`,
-      totalAllocated,
-      allocations
-    };
-  }
-
-  return { valid: true };
-}
-
-/**
- * Validate if an asset can be deleted
- * Returns error if the asset is linked to any goals
- * @param {object} data - App data
- * @param {string} assetId - Asset to check
- * @returns {object} { valid: boolean, error?: string, allocations?: Array<{goalName, amount}> }
- */
-export function validateAssetDeletion(data, assetId) {
-  const asset = data.assets.items.find(a => a.id === assetId);
-  if (!asset) {
-    return { valid: false, error: 'Asset not found' };
-  }
-
-  // Check if asset is linked to any goals
-  const allocations = [];
-
-  data.goals.forEach(goal => {
-    if (goal.linkedAssets && goal.linkedAssets.length > 0) {
-      const link = goal.linkedAssets.find(la => la.assetId === assetId);
-      if (link && link.amount > 0) {
-        allocations.push({ goalName: goal.name, goalId: goal.id, amount: link.amount });
-      }
-    }
-  });
-
-  if (allocations.length > 0) {
-    const totalAllocated = allocations.reduce((sum, a) => sum + a.amount, 0);
-    return {
-      valid: false,
-      error: `Cannot delete this asset. It has ${formatAmount(totalAllocated)} linked to ${allocations.length} goal${allocations.length > 1 ? 's' : ''}.`,
-      totalAllocated,
-      allocations
-    };
-  }
-
-  return { valid: true };
-}
-
-// Helper to format amount for error messages
-function formatAmount(amount) {
-  if (amount >= 10000000) {
-    return `₹${(amount / 10000000).toFixed(2)} Cr`;
-  } else if (amount >= 100000) {
-    return `₹${(amount / 100000).toFixed(2)} L`;
-  } else {
-    return `₹${amount.toLocaleString('en-IN')}`;
-  }
-}

@@ -1,12 +1,13 @@
 // Goals CRUD and UI - Simplified for Unified Portfolio
 import { addGoal, updateGoal, deleteGoal } from './storage.js';
-import { formatCurrency, getSymbol } from './currency.js';
+import { formatCurrency, formatCompact, getSymbol } from './currency.js';
 import {
   getYearsRemaining,
   getUnifiedCategory,
   getCategoryDisplay,
   formatTimeline
 } from './calculator.js';
+import { getAssetAllocations, getGoalLinkedTotal } from './assets.js';
 
 let appData = null;
 let currency = 'INR';
@@ -99,7 +100,7 @@ function showAddGoalModal(editGoal = null) {
     .join('');
 
   content.innerHTML = `
-    <div class="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
       <h3 class="text-xl font-semibold mb-6">${isEdit ? 'Edit Goal' : 'Add New Goal'}</h3>
 
       <div class="space-y-4">
@@ -428,7 +429,7 @@ export function showEstimateModal() {
   overlay.innerHTML = `
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
       <!-- Header -->
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-blue-50">
+      <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-blue-50">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
             <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,7 +446,7 @@ export function showEstimateModal() {
       </div>
 
       <!-- Body -->
-      <div class="px-6 py-5 overflow-y-auto">
+      <div class="px-4 sm:px-6 py-5 overflow-y-auto">
         ${formulaHtml}
         ${personalHtml}
       </div>
@@ -456,6 +457,134 @@ export function showEstimateModal() {
 
   const closeModal = () => overlay.remove();
   overlay.querySelector('#close-estimate-modal').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+}
+
+export function showAllocationModal() {
+  const compact = (v) => formatCompact(v, currency);
+  const items = appData?.assets?.items || [];
+  const goals = appData?.goals || [];
+
+  // Sort goals: short-term first, then long-term, earliest first within each
+  const sortedGoals = [...goals].sort((a, b) => {
+    const catA = getUnifiedCategory(a.targetDate);
+    const catB = getUnifiedCategory(b.targetDate);
+    if (catA === 'short' && catB === 'long') return -1;
+    if (catA === 'long' && catB === 'short') return 1;
+    return new Date(a.targetDate) - new Date(b.targetDate);
+  });
+
+  // Section A: Assigned to Goals
+  const goalRowsHtml = sortedGoals.map(goal => {
+    const linked = goal.linkedAssets || [];
+    const validLinks = linked.filter(la => items.find(a => a.id === la.assetId));
+
+    // Build asset lines: linked assets + EPF/NPS for retirement goals
+    const assetLines = [];
+
+    validLinks.forEach(la => {
+      const asset = items.find(a => a.id === la.assetId);
+      if (!asset) return;
+      assetLines.push({ name: asset.name, amount: la.amount });
+    });
+
+    // Add EPF/NPS corpus for retirement goals with includeEpfNps
+    if (goal.goalType === 'retirement' && goal.includeEpfNps) {
+      const epfAsset = items.find(a => a.category === 'EPF Corpus');
+      const npsAsset = items.find(a => a.category === 'NPS Corpus');
+      if (epfAsset && epfAsset.value > 0) {
+        assetLines.push({ name: epfAsset.name, amount: epfAsset.value });
+      }
+      if (npsAsset && npsAsset.value > 0) {
+        assetLines.push({ name: npsAsset.name, amount: npsAsset.value });
+      }
+    }
+
+    if (assetLines.length === 0) {
+      return `
+        <div class="flex justify-between items-center py-2">
+          <span class="text-sm text-gray-700">${goal.name}</span>
+          <span class="text-xs text-gray-400 italic">No existing assets</span>
+        </div>`;
+    }
+
+    const totalAmount = assetLines.reduce((s, a) => s + a.amount, 0);
+    const detailLines = assetLines.map(a => `
+      <div class="flex justify-between text-xs text-gray-500">
+        <span>${a.name}</span>
+        <span>${compact(a.amount)}</span>
+      </div>`).join('');
+
+    return `
+      <div class="py-2">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-700">${goal.name}</span>
+          <span class="text-sm font-medium text-gray-800">${compact(totalAmount)}</span>
+        </div>
+        <div class="mt-1 space-y-0.5">${detailLines}</div>
+      </div>`;
+  }).join('');
+
+  // Section B: Not assigned
+  const allocations = getAssetAllocations(appData);
+  const unallocated = Object.entries(allocations)
+    .filter(([, info]) => info.available > 0.01)
+    .map(([assetId, info]) => {
+      const asset = items.find(a => a.id === assetId);
+      return asset ? { name: asset.name, available: info.available, total: info.total } : null;
+    })
+    .filter(Boolean);
+
+  let unallocatedHtml;
+  if (unallocated.length === 0) {
+    unallocatedHtml = '<div class="text-sm text-emerald-600 py-2">All assets fully assigned</div>';
+  } else {
+    unallocatedHtml = unallocated.map(a => `
+      <div class="flex justify-between items-center py-2">
+        <span class="text-sm text-gray-700">${a.name}</span>
+        <span class="text-sm text-gray-500">${compact(a.available)} <span class="text-xs text-gray-400">of ${compact(a.total)}</span></span>
+      </div>`).join('');
+  }
+
+  // Build modal
+  const overlay = document.createElement('div');
+  overlay.id = 'allocation-modal-overlay';
+  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4';
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h3 class="text-base font-semibold text-gray-900">Existing Investment Utilization</h3>
+        <button id="close-allocation-modal" class="text-gray-400 hover:text-gray-600 rounded-lg p-1 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-5 py-4 overflow-y-auto">
+        <p class="text-sm text-gray-500 mb-4">How your existing investments are being used towards your goals.</p>
+
+        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Assigned to goals</h4>
+        <div class="divide-y divide-gray-100">
+          ${goalRowsHtml}
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-gray-100">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Not assigned</h4>
+          <div class="divide-y divide-gray-100">
+            ${unallocatedHtml}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const closeModal = () => overlay.remove();
+  overlay.querySelector('#close-allocation-modal').addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeModal();
   });
@@ -511,6 +640,7 @@ function renderGoalsList() {
   container.querySelectorAll('.estimate-retirement-link').forEach(btn => {
     btn.addEventListener('click', () => showEstimateModal());
   });
+
 }
 
 function renderGoalCard(goal) {
@@ -526,16 +656,16 @@ function renderGoalCard(goal) {
   return `
     <div class="bg-white border rounded-lg p-4 mb-3 shadow-sm hover:shadow-md transition-shadow">
       <div class="flex items-start justify-between">
-        <div class="flex-1">
-          <div class="flex items-center gap-2 mb-1">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
             <h3 class="text-lg font-semibold text-gray-800">${goal.name}</h3>
-            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded ${categoryColors[category]}">
+            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded whitespace-nowrap ${categoryColors[category]}">
               ${getCategoryDisplay(category)}
             </span>
-            ${isRetirement ? '<span class="inline-block px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800">Retirement</span>' : ''}
+            ${isRetirement ? '<span class="inline-block px-2 py-0.5 text-xs font-medium rounded whitespace-nowrap bg-purple-100 text-purple-800">Retirement</span>' : ''}
           </div>
           <div class="text-sm text-gray-500 space-y-0.5">
-            <div>Target: <span class="font-medium text-gray-700">${formatCurrency(goal.targetAmount, currency)}</span> (today's value)</div>
+            <div>Target: <span class="font-medium text-gray-700">${formatCompact(goal.targetAmount, currency)}</span> (today's value)</div>
             <div>Timeline: <span class="font-medium text-gray-700">${formatTimeline(years)}</span> (${new Date(goal.targetDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})</div>
             <div>Inflation: <span class="font-medium text-gray-700">${goal.inflationRate}%</span></div>
             ${isRetirement && goal.includeEpfNps ? '<div class="text-purple-600">EPF/NPS deductions included</div>' : ''}
@@ -549,7 +679,7 @@ function renderGoalCard(goal) {
         </div>
 
         <!-- Actions -->
-        <div class="flex items-center gap-1 ml-4">
+        <div class="flex items-center gap-1 ml-4 shrink-0">
           <button class="edit-goal-btn p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
             data-id="${goal.id}" title="Edit">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

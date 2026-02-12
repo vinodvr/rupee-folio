@@ -334,7 +334,7 @@ function createWizardModal() {
       </div>
 
       <!-- Header -->
-      <div class="p-6 pb-2">
+      <div class="p-4 sm:p-6 pb-2">
         <div class="flex items-center justify-between mb-2">
           <span id="wizard-step-indicator" class="text-sm text-gray-500">Step 1 of ${WIZARD_STEPS.length}</span>
           <button id="wizard-close-btn" class="text-gray-400 hover:text-gray-600 p-1">
@@ -348,10 +348,10 @@ function createWizardModal() {
       </div>
 
       <!-- Content area -->
-      <div id="wizard-content" class="flex-1 overflow-y-auto px-6 py-4"></div>
+      <div id="wizard-content" class="flex-1 overflow-y-auto px-4 sm:px-6 py-4"></div>
 
       <!-- Footer with navigation -->
-      <div class="p-6 pt-4 border-t bg-gray-50 flex justify-between">
+      <div class="p-4 sm:p-6 pt-4 border-t bg-gray-50 flex justify-between">
         <button id="wizard-back-btn" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors">
           Back
         </button>
@@ -517,7 +517,7 @@ function renderSlider(step) {
             type="text"
             id="wizard-text-input"
             value="${currentValue.toLocaleString('en-IN')}"
-            class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-64"
+            class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-48 sm:w-64"
             inputmode="numeric"
           >
         </div>`;
@@ -573,7 +573,7 @@ function renderDualSlider(step) {
                   type="text"
                   id="wizard-text-input-${i}"
                   value="${currentValue.toLocaleString('en-IN')}"
-                  class="text-3xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-64"
+                  class="text-3xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-48 sm:w-64"
                   inputmode="numeric"
                 >
               </div>

@@ -1,9 +1,10 @@
 // Main application initialization and event coordination
-import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse, getEquityAllocation, setEquityAllocation, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn, getArbitrageReturn, setArbitrageReturn, getEpfReturn, setEpfReturn, getNpsReturn, setNpsReturn, getEpfNpsStepUp, setEpfNpsStepUp, getInvestmentStepUp, setInvestmentStepUp } from './modules/storage.js';
+import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse, getEquityAllocation, setEquityAllocation, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn, getArbitrageReturn, setArbitrageReturn, getEpfReturn, setEpfReturn, getNpsReturn, setNpsReturn, getEpfStepUp, setEpfStepUp, getNpsStepUp, setNpsStepUp, getInvestmentStepUp, setInvestmentStepUp } from './modules/storage.js';
 import { initCashflow, updateCurrency as updateCashflowCurrency, refreshData as refreshCashflow } from './modules/cashflow.js';
 import { initAssets, updateCurrency as updateAssetsCurrency, refreshData as refreshAssets } from './modules/assets.js';
 import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, updateReturns as updateGoalsReturns, refreshData as refreshGoals } from './modules/goals.js';
 import { initInvestmentPlan, updateCurrency as updateInvestmentPlanCurrency, updateFundHouse as updateInvestmentPlanFundHouse, updateAllocation as updateInvestmentPlanAllocation, updateReturns as updateInvestmentPlanReturns, updateStepUp as updateInvestmentPlanStepUp, refreshData as refreshInvestmentPlan } from './modules/investmentplan.js';
+import { autoAssignAssets } from './modules/autoassign.js';
 import { initWizard, openWizard, isDataEmpty } from './modules/wizard.js';
 
 let appData = null;
@@ -102,13 +103,6 @@ const TAB_LABELS = {
   investmentplan: 'Plan'
 };
 
-const REVIEW_BANNER_MESSAGES = {
-  cashflow: 'Review your income, EPF/NPS deductions, and expenses to match your actual numbers.',
-  assets: 'Add any savings, FDs, equity, real estate, or other assets and liabilities (home loan, car loan) which are missing here.',
-  goals: 'Review your goals — adjust amounts, dates, or add new ones like education or a house.',
-  investmentplan: 'Link your existing investments to goals to reduce the monthly SIP needed.'
-};
-
 // Helper: Set up a collapsible section
 function setupCollapsible(toggleId, contentId, chevronId, summaryId) {
   const toggleBtn = document.getElementById(toggleId);
@@ -119,7 +113,7 @@ function setupCollapsible(toggleId, contentId, chevronId, summaryId) {
   toggleBtn.addEventListener('click', () => {
     const isHidden = content.classList.toggle('hidden');
     chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
-    summary.classList.toggle('hidden', !isHidden);
+    if (summary) summary.classList.toggle('hidden', !isHidden);
   });
 }
 
@@ -166,7 +160,6 @@ function setupHomeTab(switchToTab) {
   document.getElementById('clear-data-btn')?.addEventListener('click', () => {
     if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
       clearData();
-      localStorage.removeItem(REVIEW_BANNER_KEY);
       window.location.reload();
     }
   });
@@ -189,23 +182,6 @@ function updateHomeTabCTA() {
   }
 }
 
-// Review banner for wizard-generated data
-const REVIEW_BANNER_KEY = 'rupeefolio-review-banner-dismissed';
-
-function showReviewBanner() {
-  if (localStorage.getItem(REVIEW_BANNER_KEY) === 'true') return;
-  document.getElementById('review-banner')?.classList.remove('hidden');
-}
-
-function hideReviewBanner() {
-  document.getElementById('review-banner')?.classList.add('hidden');
-  localStorage.setItem(REVIEW_BANNER_KEY, 'true');
-}
-
-function setupReviewBanner() {
-  document.getElementById('dismiss-review-banner')?.addEventListener('click', hideReviewBanner);
-}
-
 function setupTabNavigation() {
   const tabs = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
@@ -226,27 +202,12 @@ function setupTabNavigation() {
     const nextLabel = document.getElementById('nav-next-label');
     const stepIndicator = document.getElementById('nav-step-indicator');
 
-    // Hide bottom nav and review banner on Home tab
-    const reviewBanner = document.getElementById('review-banner');
+    // Hide bottom nav on Home tab
     if (currentIndex === 0) {
       bottomNav.classList.add('hidden');
-      if (reviewBanner) reviewBanner.classList.add('hidden');
       return;
     }
     bottomNav.classList.remove('hidden');
-
-    // Show review banner on data tabs (if not dismissed)
-    const isDataTab = currentIndex >= 1 && currentIndex <= 4; // Cash Flow, Assets, Goals, Plan
-    if (reviewBanner && isDataTab && localStorage.getItem(REVIEW_BANNER_KEY) !== 'true') {
-      reviewBanner.classList.remove('hidden');
-      const bannerText = document.getElementById('review-banner-text');
-      if (bannerText) {
-        const tabName = TAB_ORDER[currentIndex];
-        bannerText.textContent = REVIEW_BANNER_MESSAGES[tabName] || '';
-      }
-    } else if (reviewBanner) {
-      reviewBanner.classList.add('hidden');
-    }
 
     // Update step indicator (exclude Home tab from count)
     stepIndicator.textContent = `Step ${currentIndex} of ${TAB_ORDER.length - 1}`;
@@ -382,7 +343,8 @@ function init() {
   const arbitrageReturn = getArbitrageReturn(appData);
   const epfReturn = getEpfReturn(appData);
   const npsReturn = getNpsReturn(appData);
-  const epfNpsStepUp = getEpfNpsStepUp(appData);
+  const epfStepUp = getEpfStepUp(appData);
+  const npsStepUp = getNpsStepUp(appData);
   const investmentStepUp = getInvestmentStepUp(appData);
 
   // Set up tab navigation
@@ -396,9 +358,6 @@ function init() {
 
   // Set up Home tab CTA buttons
   setupHomeTab(switchToTab);
-
-  // Set up review banner
-  setupReviewBanner();
 
   // Set up currency selector
   const currencySelect = document.getElementById('currency-select');
@@ -419,7 +378,8 @@ function init() {
   initSlider('nps-return-setting', 'nps-return-value', npsReturn, handleNpsReturnChange);
 
   // Set up step-up sliders
-  initSlider('epf-nps-stepup-setting', 'epf-nps-stepup-value', epfNpsStepUp, handleEpfNpsStepUpChange);
+  initSlider('epf-stepup-setting', 'epf-stepup-value', epfStepUp, handleEpfStepUpChange);
+  initSlider('nps-stepup-setting', 'nps-stepup-value', npsStepUp, handleNpsStepUpChange);
   initSlider('investment-stepup-setting', 'investment-stepup-value', investmentStepUp, handleInvestmentStepUpChange);
 
   // Set up reset button
@@ -428,6 +388,7 @@ function init() {
   // Set up collapsible sections
   setupCollapsible('toggle-allocation-btn', 'allocation-content', 'allocation-chevron', 'allocation-summary');
   setupCollapsible('toggle-returns-btn', 'returns-content', 'returns-chevron', 'returns-summary');
+  setupCollapsible('toggle-existing-btn', 'existing-content', 'existing-chevron');
 
   // Initialize summaries
   updateAllocationSummary(equityAllocation);
@@ -455,10 +416,6 @@ function init() {
     updateEpfNpsVisibility();
     updateHomeTabCTA();
 
-    // Show review banner (reset dismissed state for new wizard run)
-    localStorage.removeItem(REVIEW_BANNER_KEY);
-    showReviewBanner();
-
     // Navigate to Cash Flow tab after wizard completes
     if (switchToTabFn) {
       switchToTabFn('cashflow');
@@ -469,7 +426,7 @@ function init() {
   initCashflow(appData, currency, onDataChange);
   initAssets(appData, currency, onDataChange);
   initGoals(appData, currency, fundHouse, equityReturn, debtReturn, arbitrageReturn, onDataChange);
-  initInvestmentPlan(appData, currency, fundHouse, equityAllocation, equityReturn, debtReturn, arbitrageReturn, epfReturn, npsReturn, epfNpsStepUp, investmentStepUp, onDataChange);
+  initInvestmentPlan(appData, currency, fundHouse, equityAllocation, equityReturn, debtReturn, arbitrageReturn, epfReturn, npsReturn, epfStepUp, npsStepUp, investmentStepUp, onDataChange);
 
   // Show/hide EPF/NPS returns based on retirement goals
   updateEpfNpsVisibility();
@@ -609,15 +566,17 @@ function handleStepUpChange(valueId, setter) {
     document.getElementById(valueId).textContent = `${newValue}%`;
     setter(appData, newValue);
 
-    const epfNps = getEpfNpsStepUp(appData);
+    const epfStep = getEpfStepUp(appData);
+    const npsStep = getNpsStepUp(appData);
     const investment = getInvestmentStepUp(appData);
     updateReturnsSummary(getEquityReturn(appData), investment);
     updateSettingsProfileLabel();
-    updateInvestmentPlanStepUp(epfNps, investment);
+    updateInvestmentPlanStepUp(epfStep, npsStep, investment);
   };
 }
 
-const handleEpfNpsStepUpChange = handleStepUpChange('epf-nps-stepup-value', setEpfNpsStepUp);
+const handleEpfStepUpChange = handleStepUpChange('epf-stepup-value', setEpfStepUp);
+const handleNpsStepUpChange = handleStepUpChange('nps-stepup-value', setNpsStepUp);
 const handleInvestmentStepUpChange = handleStepUpChange('investment-stepup-value', setInvestmentStepUp);
 
 
@@ -631,7 +590,8 @@ function updateSettingsProfileLabel() {
     { id: 'equity-return-setting', max: 13, getter: getEquityReturn },
     { id: 'debt-return-setting', max: 7, getter: getDebtReturn },
     { id: 'arbitrage-return-setting', max: 8, getter: getArbitrageReturn },
-    { id: 'epf-nps-stepup-setting', max: 10, getter: getEpfNpsStepUp },
+    { id: 'epf-stepup-setting', max: 10, getter: getEpfStepUp },
+    { id: 'nps-stepup-setting', max: 10, getter: getNpsStepUp },
     { id: 'investment-stepup-setting', max: 10, getter: getInvestmentStepUp }
   ];
 
@@ -657,7 +617,8 @@ function handleResetReturns() {
     arbitrageReturn: 6,
     epfReturn: 8,
     npsReturn: 9,
-    epfNpsStepUp: 5,
+    epfStepUp: 5,
+    npsStepUp: 0,
     investmentStepUp: 5
   };
 
@@ -672,7 +633,8 @@ function handleResetReturns() {
   resetSlider('arbitrage-return-setting', 'arbitrage-return-value', defaults.arbitrageReturn, setArbitrageReturn);
   resetSlider('epf-return-setting', 'epf-return-value', defaults.epfReturn, setEpfReturn);
   resetSlider('nps-return-setting', 'nps-return-value', defaults.npsReturn, setNpsReturn);
-  resetSlider('epf-nps-stepup-setting', 'epf-nps-stepup-value', defaults.epfNpsStepUp, setEpfNpsStepUp);
+  resetSlider('epf-stepup-setting', 'epf-stepup-value', defaults.epfStepUp, setEpfStepUp);
+  resetSlider('nps-stepup-setting', 'nps-stepup-value', defaults.npsStepUp, setNpsStepUp);
   resetSlider('investment-stepup-setting', 'investment-stepup-value', defaults.investmentStepUp, setInvestmentStepUp);
 
   // Update modules
@@ -680,7 +642,7 @@ function handleResetReturns() {
   updateGoalsReturns(defaults.equityReturn, defaults.debtReturn, defaults.arbitrageReturn);
   updateInvestmentPlanFundHouse(defaults.fundHouse);
   updateInvestmentPlanReturns(defaults.equityReturn, defaults.debtReturn, defaults.arbitrageReturn, defaults.epfReturn, defaults.npsReturn);
-  updateInvestmentPlanStepUp(defaults.epfNpsStepUp, defaults.investmentStepUp);
+  updateInvestmentPlanStepUp(defaults.epfStepUp, defaults.npsStepUp, defaults.investmentStepUp);
 
   // Update summaries
   updateReturnsSummary(defaults.equityReturn, defaults.investmentStepUp);
@@ -700,14 +662,16 @@ function updateEpfNpsVisibility() {
 function updateReturnsSummary(equityReturn, investmentStepUp) {
   const summary = document.getElementById('returns-summary');
   if (summary) {
-    summary.textContent = `Equity ${equityReturn}% | Step-up ${investmentStepUp}%`;
+    const textSpan = summary.querySelector('span');
+    if (textSpan) textSpan.textContent = `Equity ${equityReturn}% | SIP Step-up ${investmentStepUp}%`;
   }
 }
 
 function updateAllocationSummary(equityPercent) {
   const summary = document.getElementById('allocation-summary');
   if (summary) {
-    summary.textContent = `Equity ${equityPercent}% | Debt ${100 - equityPercent}%`;
+    const textSpan = summary.querySelector('span');
+    if (textSpan) textSpan.textContent = `Equity ${equityPercent}% | Debt ${100 - equityPercent}%`;
   }
 }
 
@@ -717,6 +681,7 @@ function refreshAllModules() {
   refreshCashflow(appData);
   refreshAssets(appData);
   refreshGoals(appData);
+  autoAssignAssets(appData);
   refreshInvestmentPlan(appData);
 }
 

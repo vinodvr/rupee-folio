@@ -15,8 +15,10 @@ import {
   setDebtReturn,
   getArbitrageReturn,
   setArbitrageReturn,
-  getEpfNpsStepUp,
-  setEpfNpsStepUp,
+  getEpfStepUp,
+  setEpfStepUp,
+  getNpsStepUp,
+  setNpsStepUp,
   getInvestmentStepUp,
   setInvestmentStepUp,
   addIncome,
@@ -36,9 +38,7 @@ import {
   deleteLiability,
   linkAssetToGoal,
   unlinkAssetFromGoal,
-  updateLinkedAssetAmount,
-  validateAssetValueReduction,
-  validateAssetDeletion
+  updateLinkedAssetAmount
 } from '../modules/storage.js';
 
 // Helper to get fresh data
@@ -266,22 +266,50 @@ describe('Return Rate Settings', () => {
     expect(data.settings.arbitrageReturn).toBe(6);
   });
 
-  it('getEpfNpsStepUp returns epfNpsStepUp from data', () => {
+  it('getEpfStepUp returns epfStepUp from data', () => {
     const data = getFreshData();
-    data.settings.epfNpsStepUp = 7;
-    expect(getEpfNpsStepUp(data)).toBe(7);
+    data.settings.epfStepUp = 7;
+    expect(getEpfStepUp(data)).toBe(7);
   });
 
-  it('getEpfNpsStepUp returns 5 as default', () => {
-    expect(getEpfNpsStepUp({})).toBe(5);
-    expect(getEpfNpsStepUp({ settings: {} })).toBe(5);
+  it('getEpfStepUp returns 5 as default', () => {
+    expect(getEpfStepUp({})).toBe(5);
+    expect(getEpfStepUp({ settings: {} })).toBe(5);
   });
 
-  it('setEpfNpsStepUp updates and saves', () => {
+  it('getEpfStepUp falls back to old epfNpsStepUp for migration', () => {
+    const data = { settings: { epfNpsStepUp: 8 } };
+    expect(getEpfStepUp(data)).toBe(8);
+  });
+
+  it('setEpfStepUp updates and saves', () => {
     const data = getFreshData();
-    data.settings.epfNpsStepUp = 5;
-    setEpfNpsStepUp(data, 8);
-    expect(data.settings.epfNpsStepUp).toBe(8);
+    data.settings.epfStepUp = 5;
+    setEpfStepUp(data, 8);
+    expect(data.settings.epfStepUp).toBe(8);
+  });
+
+  it('getNpsStepUp returns npsStepUp from data', () => {
+    const data = getFreshData();
+    data.settings.npsStepUp = 3;
+    expect(getNpsStepUp(data)).toBe(3);
+  });
+
+  it('getNpsStepUp returns 0 as default', () => {
+    expect(getNpsStepUp({})).toBe(0);
+    expect(getNpsStepUp({ settings: {} })).toBe(0);
+  });
+
+  it('getNpsStepUp defaults to 0 even when old epfNpsStepUp exists', () => {
+    const data = { settings: { epfNpsStepUp: 8 } };
+    expect(getNpsStepUp(data)).toBe(0);
+  });
+
+  it('setNpsStepUp updates and saves', () => {
+    const data = getFreshData();
+    data.settings.npsStepUp = 0;
+    setNpsStepUp(data, 5);
+    expect(data.settings.npsStepUp).toBe(5);
   });
 
   it('getInvestmentStepUp returns investmentStepUp from data', () => {
@@ -304,14 +332,17 @@ describe('Return Rate Settings', () => {
 
   it('Round-trip preserves step-up values', () => {
     const data = getFreshData();
-    data.settings.epfNpsStepUp = 5;
+    data.settings.epfStepUp = 5;
+    data.settings.npsStepUp = 0;
     data.settings.investmentStepUp = 5;
-    setEpfNpsStepUp(data, 7);
+    setEpfStepUp(data, 7);
+    setNpsStepUp(data, 3);
     setInvestmentStepUp(data, 8);
     saveData(data);
 
     const loaded = loadData();
-    expect(loaded.settings.epfNpsStepUp).toBe(7);
+    expect(loaded.settings.epfStepUp).toBe(7);
+    expect(loaded.settings.npsStepUp).toBe(3);
     expect(loaded.settings.investmentStepUp).toBe(8);
   });
 });
@@ -466,87 +497,11 @@ describe('Asset CRUD', () => {
     expect(data.assets.items[0].value).toBe(1000000);
   });
 
-  it('updateAsset rejects reduction when it would be below allocated amount', () => {
+  it('updateAsset allows any value change (auto-assign handles reallocation)', () => {
     const data = getFreshData();
     addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Emergency Fund',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 600000 }]
-    });
-    addGoal(data, {
-      id: 'goal-2',
-      name: 'Vacation',
-      targetAmount: 200000,
-      targetDate: '2028-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 400000 }]
-    });
 
-    // Try to reduce asset value below total allocated (1M allocated) - should fail
     const result = updateAsset(data, 'asset-1', { value: 500000 });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('Cannot reduce');
-    expect(result.totalAllocated).toBe(1000000);
-    expect(result.allocations.length).toBe(2);
-    // Asset value should remain unchanged
-    expect(data.assets.items[0].value).toBe(1000000);
-    // Linked amounts should remain unchanged
-    expect(data.goals[0].linkedAssets[0].amount).toBe(600000);
-    expect(data.goals[1].linkedAssets[0].amount).toBe(400000);
-  });
-
-  it('updateAsset allows value increase when linked', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Emergency Fund',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 800000 }]
-    });
-
-    // Increase asset value - should succeed and linked amount stays the same
-    const result = updateAsset(data, 'asset-1', { value: 1500000 });
-    expect(result.success).toBe(true);
-    expect(data.assets.items[0].value).toBe(1500000);
-    expect(data.goals[0].linkedAssets[0].amount).toBe(800000);
-  });
-
-  it('updateAsset allows decrease when still above allocated amount', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Emergency Fund',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 300000 }]
-    });
-
-    // Decrease but still above allocated - should succeed
-    const result = updateAsset(data, 'asset-1', { value: 500000 });
-    expect(result.success).toBe(true);
-    expect(data.assets.items[0].value).toBe(500000);
-    expect(data.goals[0].linkedAssets[0].amount).toBe(300000);
-  });
-
-  it('updateAsset with skipValidation allows reduction below allocated', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'Bank/FD', value: 1000000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Emergency Fund',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 800000 }]
-    });
-
-    // With skipValidation, reduction is allowed
-    const result = updateAsset(data, 'asset-1', { value: 500000 }, { skipValidation: true });
     expect(result.success).toBe(true);
     expect(data.assets.items[0].value).toBe(500000);
   });
@@ -562,7 +517,7 @@ describe('Asset CRUD', () => {
     expect(data.assets.items[0].id).toBe('asset-2');
   });
 
-  it('deleteAsset rejects deletion when asset is linked to goals', () => {
+  it('deleteAsset removes linked asset and cleans up references', () => {
     const data = getFreshData();
     addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
     addGoal(data, {
@@ -574,28 +529,6 @@ describe('Asset CRUD', () => {
     });
 
     const result = deleteAsset(data, 'asset-1');
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('Cannot delete');
-    expect(result.allocations.length).toBe(1);
-    expect(result.allocations[0].goalName).toBe('Emergency Fund');
-    expect(result.allocations[0].amount).toBe(300000);
-    // Asset should still exist
-    expect(data.assets.items.length).toBe(1);
-  });
-
-  it('deleteAsset with skipValidation removes linked asset', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Emergency Fund',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 300000 }]
-    });
-
-    const result = deleteAsset(data, 'asset-1', { skipValidation: true });
 
     expect(result.success).toBe(true);
     expect(data.assets.items.length).toBe(0);
@@ -901,7 +834,7 @@ describe('Linked Assets CRUD', () => {
     expect(data.goals[0].linkedAssets[0].amount).toBe(350000);
   });
 
-  it('deleteAsset with skipValidation cleans up linkedAssets references', () => {
+  it('deleteAsset cleans up linkedAssets references across goals', () => {
     const data = getFreshData();
     addAsset(data, { id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 });
     addAsset(data, { id: 'asset-2', name: 'Debt MF', category: 'Debt/Arbitrage Mutual Funds', value: 300000 });
@@ -911,8 +844,7 @@ describe('Linked Assets CRUD', () => {
     ]});
     addGoal(data, { id: 'goal-2', name: 'Goal 2', targetAmount: 500000, linkedAssets: [{ assetId: 'asset-1', amount: 150000 }] });
 
-    // Need skipValidation since asset-1 is linked
-    deleteAsset(data, 'asset-1', { skipValidation: true });
+    deleteAsset(data, 'asset-1');
 
     expect(data.goals[0].linkedAssets.length).toBe(1);
     expect(data.goals[0].linkedAssets[0].assetId).toBe('asset-2');
@@ -920,177 +852,3 @@ describe('Linked Assets CRUD', () => {
   });
 });
 
-describe('Asset Value Reduction Validation', () => {
-  it('validateAssetValueReduction returns valid for non-existent asset', () => {
-    const data = getFreshData();
-    const result = validateAssetValueReduction(data, 'non-existent', 100000);
-    expect(result.valid).toBe(false);
-    expect(result.error).toBe('Asset not found');
-  });
-
-  it('validateAssetValueReduction returns valid when increasing value', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Goal 1',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 300000 }]
-    });
-
-    const result = validateAssetValueReduction(data, 'asset-1', 1000000);
-    expect(result.valid).toBe(true);
-  });
-
-  it('validateAssetValueReduction returns valid when decrease is above allocated', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Goal 1',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 200000 }]
-    });
-
-    const result = validateAssetValueReduction(data, 'asset-1', 300000);
-    expect(result.valid).toBe(true);
-  });
-
-  it('validateAssetValueReduction returns invalid when decrease is below allocated', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Goal 1',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 300000 }]
-    });
-    addGoal(data, {
-      id: 'goal-2',
-      name: 'Goal 2',
-      targetAmount: 300000,
-      targetDate: '2028-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 150000 }]
-    });
-
-    // Total allocated: 450000, trying to reduce to 400000
-    const result = validateAssetValueReduction(data, 'asset-1', 400000);
-    expect(result.valid).toBe(false);
-    expect(result.totalAllocated).toBe(450000);
-    expect(result.allocations.length).toBe(2);
-  });
-
-  it('validateAssetValueReduction returns allocation details', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Child Education',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 200000 }]
-    });
-    addGoal(data, {
-      id: 'goal-2',
-      name: 'Vacation',
-      targetAmount: 100000,
-      targetDate: '2026-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 100000 }]
-    });
-
-    const result = validateAssetValueReduction(data, 'asset-1', 200000);
-    expect(result.valid).toBe(false);
-    expect(result.allocations).toContainEqual({ goalName: 'Child Education', goalId: 'goal-1', amount: 200000 });
-    expect(result.allocations).toContainEqual({ goalName: 'Vacation', goalId: 'goal-2', amount: 100000 });
-  });
-});
-
-describe('Asset Deletion Validation', () => {
-  it('validateAssetDeletion returns valid for non-existent asset', () => {
-    const data = getFreshData();
-    const result = validateAssetDeletion(data, 'non-existent');
-    expect(result.valid).toBe(false);
-    expect(result.error).toBe('Asset not found');
-  });
-
-  it('validateAssetDeletion returns valid when asset is not linked', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Goal 1',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: []
-    });
-
-    const result = validateAssetDeletion(data, 'asset-1');
-    expect(result.valid).toBe(true);
-  });
-
-  it('validateAssetDeletion returns invalid when asset is linked', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Goal 1',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 200000 }]
-    });
-
-    const result = validateAssetDeletion(data, 'asset-1');
-    expect(result.valid).toBe(false);
-    expect(result.error).toContain('Cannot delete');
-    expect(result.allocations.length).toBe(1);
-  });
-
-  it('validateAssetDeletion returns all linked goals', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Child Education',
-      targetAmount: 1000000,
-      targetDate: '2035-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 200000 }]
-    });
-    addGoal(data, {
-      id: 'goal-2',
-      name: 'Retirement',
-      targetAmount: 5000000,
-      targetDate: '2050-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 150000 }]
-    });
-    addGoal(data, {
-      id: 'goal-3',
-      name: 'House',
-      targetAmount: 2000000,
-      targetDate: '2030-01-01',
-      linkedAssets: [] // Not linked
-    });
-
-    const result = validateAssetDeletion(data, 'asset-1');
-    expect(result.valid).toBe(false);
-    expect(result.allocations.length).toBe(2);
-    expect(result.totalAllocated).toBe(350000);
-  });
-
-  it('validateAssetDeletion ignores zero-amount links', () => {
-    const data = getFreshData();
-    addAsset(data, { id: 'asset-1', name: 'FD', category: 'FDs & RDs', value: 500000 });
-    addGoal(data, {
-      id: 'goal-1',
-      name: 'Goal 1',
-      targetAmount: 500000,
-      targetDate: '2030-01-01',
-      linkedAssets: [{ assetId: 'asset-1', amount: 0 }]
-    });
-
-    const result = validateAssetDeletion(data, 'asset-1');
-    expect(result.valid).toBe(true);
-  });
-});

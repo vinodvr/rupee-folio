@@ -63,14 +63,16 @@
 
     <!-- Home Panel -->
     <div id="panel-home" class="tab-panel">
-      <div class="max-w-2xl mx-auto text-center py-6 md:py-12 px-4">
-        <h1 class="text-3xl font-bold text-gray-800 mb-4">RupeeFolio</h1>
-        <p class="text-lg text-gray-600 mb-6">
-          An experimental financial planning tool. Track cash flow, set goals,
-          and get a clear investment plan — all in your browser. <a href="how-it-works.html" class="inline-flex items-center gap-1 text-blue-600 font-medium hover:text-blue-800 transition-colors">Learn how it works <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></a>
+      <div class="max-w-2xl mx-auto text-center pt-2 md:pt-4 pb-6 md:pb-12 px-4">
+        <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-6 md:mb-8 inline-block">
+          This is an experimental project. Please verify calculations independently.
         </p>
-        <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mb-6 md:mb-8 inline-block">
-          This is an experimental project. Please use caution and verify calculations independently.
+        <h1 class="text-3xl font-bold text-gray-800 mb-3">RupeeFolio</h1>
+        <p class="text-lg text-gray-600 mb-2">
+          Set your financial goals, track your cash flow, and get a clear investment plan.
+        </p>
+        <p class="mb-6 md:mb-8">
+          <a href="how-it-works.html" class="inline-flex items-center gap-1 text-blue-600 font-medium hover:text-blue-800 transition-colors">How it Works <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></a>
         </p>
 
         <!-- Mobile: Compact feature icons -->
@@ -168,24 +170,14 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
               </svg>
-              Quick Setup
+              Get Started
             </button>
-            <p class="text-sm text-gray-500 mt-2">Answer a few questions, we'll estimate the rest</p>
           </div>
 
-          <!-- Divider -->
-          <div class="text-sm text-gray-400">— or —</div>
-
-          <!-- Secondary CTA: Inline link style -->
-          <p class="text-sm text-gray-600">
-            Want complete control?
-            <button id="enter-data-btn" class="text-blue-600 hover:text-blue-700 hover:underline font-medium">Enter My Data</button>
-          </p>
         </div>
 
         <!-- Has data state: Show continue message -->
         <div id="home-has-data-state" class="hidden">
-          <p class="text-gray-600 mb-4">Welcome back! Your financial plan is ready to continue.</p>
           <button id="continue-planning-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium">
             Continue to Cash Flow
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,88 +193,73 @@
       </div>
     </div>
 
-    <!-- Review Banner (shared across tabs) -->
-    <div id="review-banner" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <p id="review-banner-text" class="text-sm text-amber-800"></p>
-      </div>
-      <button id="dismiss-review-banner" class="text-sm text-amber-700 hover:text-amber-900 underline">
-        Dismiss
-      </button>
-    </div>
-
     <!-- Cash Flow Panel -->
     <div id="panel-cashflow" class="tab-panel hidden">
-      <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
-        <h2 class="text-lg font-semibold mb-4 text-gray-800">Cash Flow</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <!-- Income (1 column) -->
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="font-medium text-green-700">Monthly Income</h3>
-              <button id="add-income-btn" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
-                + Add
-              </button>
-            </div>
-            <div id="income-form-container"></div>
-            <div id="income-list" class="space-y-1"></div>
+      <p class="text-sm text-gray-500 mb-4">Review your income, EPF/NPS deductions, and expenses to match your actual numbers.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <!-- Income -->
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium text-green-700">Monthly Income</h3>
+            <button id="add-income-btn" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+              + Add
+            </button>
           </div>
-
-          <!-- Expenses (2 columns) -->
-          <div class="md:col-span-2">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="font-medium text-red-700">Monthly Expenses</h3>
-              <button id="add-expense-btn" class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
-                + Add
-              </button>
-            </div>
-            <div id="expense-form-container"></div>
-            <div id="expense-list" class="space-y-1"></div>
-          </div>
+          <div id="income-form-container"></div>
+          <div id="income-list" class="space-y-1"></div>
         </div>
 
-        <!-- Monthly Summary -->
-        <div class="mt-6 pt-4 border-t">
-          <div class="flex flex-wrap justify-between items-center gap-4">
-            <div class="flex items-center gap-2">
-              <span class="text-gray-600">Total Income:</span>
-              <span id="total-income" class="font-semibold text-green-600">₹0</span>
-            </div>
-            <div id="epf-nps-row" class="hidden flex items-center gap-2">
-              <span class="text-gray-600">EPF/NPS:</span>
-              <span id="epf-nps-contributions" class="font-semibold text-green-600">₹0</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-gray-600">Total Expenses:</span>
-              <span id="total-expenses" class="font-semibold text-red-600">₹0</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-gray-600">Available for Investment:</span>
-              <span id="net-cashflow" class="text-xl font-bold text-green-600">₹0</span>
-            </div>
-            <div class="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg">
-              <span class="text-blue-800 font-medium">Savings Rate:</span>
-              <span id="savings-rate" class="text-xl font-bold">0%</span>
-              <span id="savings-rate-label" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">-</span>
-            </div>
+        <!-- Expenses -->
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium text-red-700">Monthly Expenses</h3>
+            <button id="add-expense-btn" class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
+              + Add
+            </button>
           </div>
-          <div id="savings-rate-suggestion" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            <span class="font-medium">Tip:</span> Aim for 40%+ savings to build long-term wealth. Review expenses for savings opportunities.
+          <div id="expense-form-container"></div>
+          <div id="expense-list" class="space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- Monthly Summary -->
+      <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-gray-600">Total Income:</span>
+            <span id="total-income" class="font-semibold text-green-600">₹0</span>
           </div>
+          <div id="epf-nps-row" class="hidden flex items-center gap-2">
+            <span class="text-gray-600">EPF/NPS:</span>
+            <span id="epf-nps-contributions" class="font-semibold text-green-600">₹0</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-600">Total Expenses:</span>
+            <span id="total-expenses" class="font-semibold text-red-600">₹0</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-600">Available for Investment:</span>
+            <span id="net-cashflow" class="text-xl font-bold text-green-600">₹0</span>
+          </div>
+          <div class="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg w-full sm:w-auto">
+            <span class="text-blue-800 font-medium">Savings Rate:</span>
+            <span id="savings-rate" class="text-xl font-bold">0%</span>
+            <span id="savings-rate-label" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">-</span>
+          </div>
+        </div>
+        <div id="savings-rate-suggestion" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+          <span class="font-medium">Tip:</span> Aim for 40%+ savings to build long-term wealth. Review expenses for savings opportunities.
         </div>
       </div>
     </div>
 
     <!-- Assets & Liabilities Panel -->
     <div id="panel-assets" class="tab-panel hidden">
+      <p class="text-sm text-gray-500 mb-4">Add any savings, FDs, equity, real estate, or other assets and liabilities (home loan, car loan) which are missing here.</p>
       <!-- Assets and Liabilities Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <!-- Assets -->
-        <div class="bg-white rounded-lg shadow-sm p-5">
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-800">Assets</h2>
             <button id="add-asset-btn" class="text-sm px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">
@@ -294,7 +271,7 @@
         </div>
 
         <!-- Liabilities -->
-        <div class="bg-white rounded-lg shadow-sm p-5">
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-800">Liabilities</h2>
             <button id="add-liability-btn" class="text-sm px-3 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors">
@@ -317,7 +294,7 @@
         <div id="net-worth-box" class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center">
           <div id="net-worth-label" class="text-emerald-100 text-sm uppercase tracking-wide mb-2">Your Net Worth</div>
           <div id="net-worth" class="text-4xl font-bold mb-4">₹0</div>
-          <div class="flex justify-center items-center gap-3">
+          <div class="flex flex-wrap justify-center items-center gap-3">
             <div class="bg-white/10 rounded-lg px-4 py-2">
               <div id="assets-label" class="text-emerald-300 text-xs uppercase tracking-wide">↑ Assets</div>
               <div id="total-assets" class="text-lg font-semibold text-emerald-200">₹0</div>
@@ -334,20 +311,19 @@
 
     <!-- Financial Goals Panel -->
     <div id="panel-goals" class="tab-panel hidden">
-      <div class="bg-white rounded-lg shadow-sm p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-800">Financial Goals</h2>
-          <button id="add-goal-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            + Add Goal
-          </button>
-        </div>
-
-        <div id="goals-list"></div>
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-sm text-gray-500">Review your goals — adjust amounts, dates, or add new ones like education or a house.</p>
+        <button id="add-goal-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap shrink-0 ml-4">
+          + Add Goal
+        </button>
       </div>
+
+      <div id="goals-list"></div>
     </div>
 
     <!-- Plan Panel -->
     <div id="panel-investmentplan" class="tab-panel hidden">
+      <p class="text-sm text-gray-500 mb-4">Your personalized investment plan based on goals, cash flow, and existing assets.</p>
       <!-- Investment Summary -->
       <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-5 text-white mb-4">
         <h2 class="text-lg font-semibold mb-4">Investment Summary</h2>
@@ -370,13 +346,16 @@
         </div>
       </div>
 
-      <!-- Initial Asset Allocation (Collapsible) -->
+      <!-- Plan Settings (Collapsible sections) -->
       <div class="bg-white rounded-lg shadow-sm mb-4">
-        <button id="toggle-allocation-btn" class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors rounded-lg">
-          <div class="flex items-center gap-3">
-            <h3 class="text-sm font-semibold text-gray-800">Initial Asset Allocation (Long-Term Goals)</h3>
-            <span id="allocation-summary" class="text-xs text-gray-500">Equity 60% | Debt 40%</span>
-            <span id="risk-profile-label" class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Reasonable</span>
+        <!-- Initial Asset Allocation -->
+        <button id="toggle-allocation-btn" class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors rounded-t-lg">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-800">Manage Asset Allocation</h3>
+            <div id="allocation-summary" class="flex items-center gap-2 mt-0.5">
+              <span class="text-xs text-gray-500">Equity 60% | Debt 40%</span>
+              <span id="risk-profile-label" class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Reasonable</span>
+            </div>
           </div>
           <svg id="allocation-chevron" class="w-5 h-5 text-gray-400 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -387,7 +366,7 @@
           <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
             <div class="flex items-center gap-2">
               <span class="text-sm text-gray-600">Equity Allocation</span>
-              <input type="range" id="equity-allocation-setting" min="20" max="80" step="5" value="60" class="w-56">
+              <input type="range" id="equity-allocation-setting" min="20" max="80" step="5" value="60" class="w-32 sm:w-56">
               <span id="equity-allocation-value" class="text-sm font-semibold text-gray-800 w-8">60%</span>
             </div>
 
@@ -423,15 +402,15 @@
             <p class="text-xs text-gray-500 mt-2">Rebalance when goals cross 8, 5, and 3-year thresholds</p>
           </div>
         </div>
-      </div>
 
-      <!-- Expected Returns & SIP Step-up (Collapsible) -->
-      <div class="bg-white rounded-lg shadow-sm mb-6">
-        <button id="toggle-returns-btn" class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors rounded-lg">
-          <div class="flex items-center gap-3">
-            <h3 class="text-sm font-semibold text-gray-800">Expected Returns & SIP Step-up</h3>
-            <span id="returns-summary" class="text-xs text-gray-500">Equity 10% | Step-up 5%</span>
-            <span id="stepup-profile-label" class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Reasonable</span>
+        <!-- Expected Returns & SIP Step-up -->
+        <button id="toggle-returns-btn" class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors border-t border-gray-200">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-800">Adjust Returns</h3>
+            <div id="returns-summary" class="flex items-center gap-2 mt-0.5">
+              <span class="text-xs text-gray-500">Equity 10% | SIP Step-up 5%</span>
+              <span id="stepup-profile-label" class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Reasonable</span>
+            </div>
           </div>
           <svg id="returns-chevron" class="w-5 h-5 text-gray-400 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -453,19 +432,19 @@
             <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
               <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-600 w-16">Equity</span>
-                <input type="range" id="equity-return-setting" min="8" max="13" step="1" value="10" class="w-40">
+                <input type="range" id="equity-return-setting" min="8" max="13" step="1" value="10" class="w-24 sm:w-40">
                 <span id="equity-return-value" class="text-sm font-semibold text-gray-800 w-8">10%</span>
               </div>
 
               <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-600 w-16">Debt</span>
-                <input type="range" id="debt-return-setting" min="4" max="7" step="1" value="5" class="w-40">
+                <input type="range" id="debt-return-setting" min="4" max="7" step="1" value="5" class="w-24 sm:w-40">
                 <span id="debt-return-value" class="text-sm font-semibold text-gray-800 w-8">5%</span>
               </div>
 
               <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-600 w-16">Arbitrage</span>
-                <input type="range" id="arbitrage-return-setting" min="5" max="8" step="1" value="6" class="w-40">
+                <input type="range" id="arbitrage-return-setting" min="5" max="8" step="1" value="6" class="w-24 sm:w-40">
                 <span id="arbitrage-return-value" class="text-sm font-semibold text-gray-800 w-8">6%</span>
               </div>
             </div>
@@ -475,13 +454,13 @@
               <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
                 <div class="flex items-center gap-2">
                   <span class="text-sm text-gray-600 w-16">EPF</span>
-                  <input type="range" id="epf-return-setting" min="5" max="8" step="1" value="8" class="w-40">
+                  <input type="range" id="epf-return-setting" min="5" max="8" step="1" value="8" class="w-24 sm:w-40">
                   <span id="epf-return-value" class="text-sm font-semibold text-gray-800 w-8">8%</span>
                 </div>
 
                 <div class="flex items-center gap-2">
                   <span class="text-sm text-gray-600 w-16">NPS</span>
-                  <input type="range" id="nps-return-setting" min="7" max="10" step="1" value="9" class="w-40">
+                  <input type="range" id="nps-return-setting" min="7" max="10" step="1" value="9" class="w-24 sm:w-40">
                   <span id="nps-return-value" class="text-sm font-semibold text-gray-800 w-8">9%</span>
                 </div>
               </div>
@@ -495,17 +474,39 @@
 
             <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
               <div class="flex items-center gap-2">
-                <span class="text-sm text-gray-600 whitespace-nowrap">EPF/NPS Step-up</span>
-                <input type="range" id="epf-nps-stepup-setting" min="0" max="10" step="1" value="5" class="w-40">
-                <span id="epf-nps-stepup-value" class="text-sm font-semibold text-gray-800 w-8">5%</span>
+                <span class="text-sm text-gray-600 whitespace-nowrap">EPF Step-up</span>
+                <input type="range" id="epf-stepup-setting" min="0" max="10" step="1" value="5" class="w-24 sm:w-40">
+                <span id="epf-stepup-value" class="text-sm font-semibold text-gray-800 w-8">5%</span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-600 whitespace-nowrap">NPS Step-up</span>
+                <input type="range" id="nps-stepup-setting" min="0" max="10" step="1" value="0" class="w-24 sm:w-40">
+                <span id="nps-stepup-value" class="text-sm font-semibold text-gray-800 w-8">0%</span>
               </div>
 
               <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-600 whitespace-nowrap">Investment Step-up</span>
-                <input type="range" id="investment-stepup-setting" min="0" max="10" step="1" value="5" class="w-40">
+                <input type="range" id="investment-stepup-setting" min="0" max="10" step="1" value="5" class="w-24 sm:w-40">
                 <span id="investment-stepup-value" class="text-sm font-semibold text-gray-800 w-8">5%</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Existing Investments (Collapsible) -->
+        <div id="plan-view-allocation-row" class="hidden border-t border-gray-200">
+          <button id="toggle-existing-btn" class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors rounded-b-lg">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-800">Existing Assets</h3>
+              <span id="plan-view-allocation-label" class="text-xs text-gray-500 block mt-0.5"></span>
+            </div>
+            <svg id="existing-chevron" class="w-5 h-5 text-gray-400 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="existing-content" class="hidden px-4 pb-4">
+            <div id="existing-investments-body"></div>
           </div>
         </div>
       </div>
@@ -532,7 +533,7 @@
 
     <!-- Footer -->
     <footer class="text-center text-gray-500 text-sm mt-8 pb-4">
-      <p>Your data stays private on this device. Nothing is sent to any server.</p>
+      <p>Your data never leaves this device.</p>
       <p class="mt-2">
         <a href="https://github.com/vinodvr/rupee-folio" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-gray-700">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
