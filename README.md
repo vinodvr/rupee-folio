@@ -10,8 +10,8 @@ A client-side financial planning webapp that helps you manage cash flow, set fin
 
 ## Features
 
-### Quick Setup Wizard
-New users can use the **Quick Setup** wizard to populate financial data in minutes:
+### Get Started Wizard
+New users can use the **Get Started** wizard to populate financial data in minutes:
 - Answer simple questions about age, family, housing, income, and existing savings
 - Automatically generates realistic income, expenses, assets, liabilities, and goals
 - Configurable Financial Independence age (40-55) with smart corpus estimation
@@ -77,10 +77,11 @@ This unified approach simplifies portfolio management by consolidating all goals
 ### Plan Tab
 A dedicated tab for viewing your consolidated investment plan:
 - **Compact Goal Cards**: Each goal shows name, target amount, timeline, and monthly SIP at a glance
-- **Expandable Details**: Click "Details" to see FV breakdown, linked assets, EPF/NPS deductions, and gap to fill
+- **Expandable Details**: Click "Details" to see a money waterfall — Future Value, linked assets, EPF/NPS deductions, gap to fill, and monthly SIP
 - **Goal Categorization**: Goals automatically sorted into short-term and long-term buckets
 - **Combined SIP Calculation**: Total monthly SIP needed per bucket
-- **Link Existing Investments**: Assign existing assets to goals to reduce required SIP
+- **Auto-assign Investments**: Automatically links existing assets to eligible goals using a greedy algorithm — short-term assets to near-term goals, long-term assets to distant goals
+- **Link Existing Investments**: Manually assign existing assets to goals to reduce required SIP
 - **Fund Recommendations**: Specific fund allocations from ICICI Prudential or HDFC
 - **Cashflow Comparison**: Shows total SIP needed vs available cash flow with surplus/shortfall
 - **Asset Allocation Controls**: Adjust equity/debt split for long-term goals
@@ -197,19 +198,20 @@ npm test
 npm run test:watch
 ```
 
-**435 tests** organized into 9 suites:
+**437 tests** organized into 10 suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
-| Calculator | 138 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
-| Storage | 91 | CRUD operations, settings, schema migrations |
+| Calculator | 139 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
+| Storage | 82 | CRUD operations, settings, schema migrations |
 | Assets | 49 | EPF/NPS corpus, retirement assets, asset linking, allocations, asset distribution |
-| Plan | 43 | Goal categorization, SIP calculations, fund recommendations |
 | Persona Data | 41 | Sample data generation, persona profiles, retirement corpus estimation |
+| Auto-assign | 39 | Asset-to-goal linking rules, greedy algorithm, short/long-term pools, edge cases |
+| Wizard | 30 | Get Started flow, persona selection |
 | Currency | 26 | Formatting, return limits, fund recommendations |
-| Wizard | 22 | Quick setup flow, persona selection |
-| Cash Flow | 16 | Income/expense tracking, EPF/NPS contributions |
+| Cash Flow | 21 | Income/expense tracking, EPF/NPS contributions |
 | Goals | 9 | Retirement corpus estimation from cashflow data |
+| Plan | 1 | Goal categorization, SIP calculations, fund recommendations |
 
 ### Test Coverage
 
@@ -241,7 +243,8 @@ modules/
 ├── assets.js         # Assets & Liabilities tab UI and logic
 ├── goals.js          # Goals tab UI and logic
 ├── investmentplan.js # Plan tab (aggregates all goals)
-├── wizard.js         # Quick Setup wizard UI and flow
+├── autoassign.js     # Auto-assign assets to goals
+├── wizard.js         # Get Started wizard UI and flow
 └── personaData.js    # Generates realistic data from wizard answers
 ```
 
@@ -275,18 +278,20 @@ financial-planner/
 │   ├── assets.js         # Assets & Liabilities management
 │   ├── goals.js          # Goals management
 │   ├── investmentplan.js # Plan tab (unified portfolio view)
-│   ├── wizard.js         # Quick Setup wizard UI and flow
+│   ├── autoassign.js     # Auto-assign assets to goals
+│   ├── wizard.js         # Get Started wizard UI and flow
 │   └── personaData.js    # Generates realistic data from wizard answers
 └── tests/
-    ├── calculator.vitest.js      # SIP calculations, step-up, tapering, EPF/NPS (128 tests)
-    ├── storage.vitest.js         # Storage/CRUD tests (91 tests)
+    ├── calculator.vitest.js      # SIP calculations, step-up, tapering, EPF/NPS (139 tests)
+    ├── storage.vitest.js         # Storage/CRUD tests (82 tests)
     ├── assets.vitest.js          # Assets module tests (49 tests)
-    ├── investmentplan.vitest.js  # Investment plan tests (43 tests)
     ├── personaData.vitest.js     # Sample data tests (41 tests)
+    ├── autoassign.vitest.js      # Auto-assign tests (39 tests)
+    ├── wizard.vitest.js          # Get Started wizard tests (30 tests)
     ├── currency.vitest.js        # Currency formatting tests (26 tests)
-    ├── wizard.vitest.js          # Quick setup wizard tests (22 tests)
-    ├── cashflow.vitest.js        # Cash flow tests (16 tests)
-    └── goals.vitest.js           # Goals module tests (9 tests)
+    ├── cashflow.vitest.js        # Cash flow tests (21 tests)
+    ├── goals.vitest.js           # Goals module tests (9 tests)
+    └── investmentplan.vitest.js  # Investment plan tests (1 test)
 ```
 
 ## Usage Guide
@@ -419,7 +424,10 @@ Where:
     "debtReturn": 5,
     "arbitrageReturn": 6,
     "epfReturn": 8,
-    "npsReturn": 9
+    "npsReturn": 9,
+    "epfStepUp": 5,
+    "npsStepUp": 0,
+    "investmentStepUp": 5
   },
   "cashflow": {
     "income": [{

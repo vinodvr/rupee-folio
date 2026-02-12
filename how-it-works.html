@@ -162,7 +162,7 @@
             </table>
           </div>
           <p class="text-gray-500">
-            All return assumptions can be customized in the Plan tab under "Expected Returns & SIP Step-up".
+            All return assumptions can be customized in the Plan tab under "Adjust Returns".
           </p>
         </div>
       </section>
@@ -226,7 +226,7 @@
           Retirement Corpus Estimation
         </h2>
         <div class="text-sm text-gray-600 space-y-3 sm:ml-8">
-          <p>RupeeFolio estimates a <strong>Financial Independence</strong> corpus — the amount you need to stop working. This calculation is used by the Quick Setup wizard, and is also available via the <strong>"Estimate FI Corpus"</strong> button on any retirement goal in the Goals and Plan tabs. Here's how it's calculated:</p>
+          <p>RupeeFolio estimates a <strong>Financial Independence</strong> corpus — the amount you need to stop working. This calculation is used by the Get Started wizard, and is also available via the <strong>"Estimate FI Corpus"</strong> button on any retirement goal in the Goals and Plan tabs. Here's how it's calculated:</p>
 
           <div class="bg-gray-50 rounded-lg p-4 font-mono text-xs overflow-x-auto space-y-1">
             <p>1. Retirement Monthly Expenses = Non-EMI Expenses × 70% + Healthcare</p>
@@ -398,10 +398,36 @@
         </div>
       </section>
 
-      <!-- SIP Calculation -->
+      <!-- Auto-assign Investments -->
       <section class="mb-8">
         <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
           <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">10</span>
+          Auto-assign Investments
+        </h2>
+        <div class="text-sm text-gray-600 space-y-3 sm:ml-8">
+          <p>RupeeFolio can automatically link your existing investments to eligible goals, reducing the SIP you need. The algorithm works as follows:</p>
+
+          <div class="bg-gray-50 rounded-lg p-4 font-mono text-xs overflow-x-auto space-y-1">
+            <p>1. Partition assets into pools: short-term only, long-term only, both</p>
+            <p>2. Allocate to short-term goals (closest first):</p>
+            <p>   a. Exhaust short-term-only assets first (they can't go elsewhere)</p>
+            <p>   b. Use both-term assets for any remaining gap</p>
+            <p>3. Allocate to long-term goals (closest first):</p>
+            <p>   a. Exhaust long-term-only assets first</p>
+            <p>   b. Use remaining both-term assets for any gap</p>
+            <p class="text-gray-500 mt-2">Each goal is capped at its inflation-adjusted target. Largest assets are used first to minimize the number of assets per goal.</p>
+          </div>
+
+          <p class="text-gray-500 bg-gray-50 p-3 rounded-lg">
+            <strong>Why greedy?</strong> By processing goals closest-first and using the largest available assets, the algorithm ensures near-term goals are fully covered before allocating to distant ones. This is a practical heuristic that works well for typical financial plans.
+          </p>
+        </div>
+      </section>
+
+      <!-- SIP Calculation -->
+      <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">11</span>
           How SIP is Calculated
         </h2>
         <div class="text-sm text-gray-600 space-y-3 sm:ml-8">
@@ -481,7 +507,7 @@
 
     <!-- Footer -->
     <footer class="text-center text-gray-500 text-sm pb-4">
-      <p>Your data stays private on this device. Nothing is sent to any server.</p>
+      <p>Your data never leaves this device.</p>
       <p class="mt-2">
         <a href="https://github.com/vinodvr/rupee-folio" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-gray-700">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
