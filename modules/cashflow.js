@@ -4,16 +4,18 @@ import { formatCurrency, getSymbol } from './currency.js';
 import { getRetirementAssets } from './assets.js';
 
 const expenseCategories = [
+  // Essential
   { name: 'Housing', hint: 'Rent, Society Maintenance' },
-  { name: 'Utilities', hint: 'Electricity, Mobile, Broadband, Cable TV' },
   { name: 'Food', hint: 'Groceries, Vegetables, Dining Out' },
-  { name: 'Transport', hint: 'Fuel, Vehicle Maintenance, Parking' },
+  { name: 'Utilities', hint: 'Electricity, Mobile, Broadband, Cable TV' },
   { name: 'Health & Insurance', hint: 'Medical, Premiums' },
-  { name: 'Education', hint: 'Fees, Tuition, Books' },
-  { name: 'Children', hint: 'Clothes, Activities, Pocket Money' },
+  { name: 'EMIs/Loans', hint: 'Home, Car, Personal Loans' },
+  { name: 'Transport', hint: 'Fuel, Vehicle Maintenance, Parking' },
+  // Discretionary
   { name: 'Household Help', hint: 'Maid, Driver, Cook' },
   { name: 'Lifestyle', hint: 'Entertainment, Shopping, Subscriptions' },
-  { name: 'EMIs/Loans', hint: 'Home, Car, Personal Loans' },
+  { name: 'Education', hint: 'Fees, Tuition, Books' },
+  { name: 'Children', hint: 'Clothes, Activities, Pocket Money' },
   { name: 'Other', hint: 'Miscellaneous' }
 ];
 

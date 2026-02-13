@@ -7,7 +7,6 @@ import {
   formatNumber,
   getSymbol,
   getRecommendations,
-  getFunds,
   getEquityLimits,
   getDebtLimits,
   constrainEquityReturn,
@@ -126,39 +125,6 @@ describe('Currency Formatting', () => {
 });
 
 describe('Fund Recommendations', () => {
-  it('INR has fund recommendations', () => {
-    const funds = getFunds('INR');
-    expect(funds).not.toBeNull();
-    expect(funds.icici).toBeDefined();
-    expect(funds.hdfc).toBeDefined();
-  });
-
-  it('ICICI fund names are correct', () => {
-    const funds = getFunds('INR');
-    expect(funds.icici.nifty50).toContain('ICICI');
-    expect(funds.icici.nifty50).toContain('Nifty 50');
-    expect(funds.icici.niftyNext50).toContain('Nifty Next 50');
-    expect(funds.icici.moneyMarket).toContain('Money Market');
-  });
-
-  it('HDFC fund names are correct', () => {
-    const funds = getFunds('INR');
-    expect(funds.hdfc.nifty50).toContain('HDFC');
-    expect(funds.hdfc.nifty50).toContain('Nifty 50');
-  });
-
-  it('ICICI has arbitrage fund', () => {
-    const funds = getFunds('INR');
-    expect(funds.icici.arbitrage).toContain('Arbitrage');
-    expect(funds.icici.arbitrage).toContain('ICICI');
-  });
-
-  it('HDFC has arbitrage fund', () => {
-    const funds = getFunds('INR');
-    expect(funds.hdfc.arbitrage).toContain('Arbitrage');
-    expect(funds.hdfc.arbitrage).toContain('HDFC');
-  });
-
   it('INR has generic recommendations', () => {
     const recs = getRecommendations('INR');
     expect(recs.equity).toBeDefined();

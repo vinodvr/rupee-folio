@@ -7,8 +7,6 @@ import {
   clearData,
   getCurrency,
   setCurrency,
-  getFundHouse,
-  setFundHouse,
   getEquityReturn,
   setEquityReturn,
   getDebtReturn,
@@ -46,7 +44,6 @@ function getFreshData() {
   return {
     settings: {
       currency: 'INR',
-      fundHouse: 'icici',
       equityReturn: 10,
       debtReturn: 5,
       arbitrageReturn: 6
@@ -106,14 +103,12 @@ describe('Load/Save Data', () => {
 
   it('Round-trip preserves data', () => {
     const original = getFreshData();
-    original.settings.fundHouse = 'hdfc';
     original.cashflow.income.push({ id: 'test-1', name: 'Salary', amount: 100000 });
     original.goals.push({ id: 'goal-1', name: 'Test Goal', targetAmount: 1000000 });
 
     saveData(original);
     const loaded = loadData();
 
-    expect(loaded.settings.fundHouse).toBe('hdfc');
     expect(loaded.cashflow.income.length).toBe(1);
     expect(loaded.cashflow.income[0].name).toBe('Salary');
     expect(loaded.goals.length).toBe(1);
@@ -148,7 +143,6 @@ describe('Load/Save Data', () => {
 
     const data = loadData();
     expect(data.settings.currency).toBe('INR');
-    expect(data.settings.fundHouse).toBe('icici');
     expect(data.cashflow.income).toBeDefined();
   });
 });
@@ -171,21 +165,6 @@ describe('Settings Helpers', () => {
     expect(data.settings.currency).toBe('INR');
   });
 
-  it('getFundHouse returns fundHouse from data', () => {
-    const data = getFreshData();
-    data.settings.fundHouse = 'hdfc';
-    expect(getFundHouse(data)).toBe('hdfc');
-  });
-
-  it('getFundHouse returns icici as default', () => {
-    expect(getFundHouse({})).toBe('icici');
-  });
-
-  it('setFundHouse updates and saves', () => {
-    const data = getFreshData();
-    setFundHouse(data, 'hdfc');
-    expect(data.settings.fundHouse).toBe('hdfc');
-  });
 });
 
 describe('Return Rate Settings', () => {
@@ -620,7 +599,7 @@ describe('Schema Validation', () => {
 describe('Migration - EPF/NPS Corpus to Assets', () => {
   it('EPF corpus moved to assets', () => {
     localStorage.setItem('financial-planner-data', JSON.stringify({
-      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
       cashflow: {
         income: [
           { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 0, epfCorpus: 1500000, npsCorpus: 0 }
@@ -641,7 +620,7 @@ describe('Migration - EPF/NPS Corpus to Assets', () => {
 
   it('NPS corpus moved to assets', () => {
     localStorage.setItem('financial-planner-data', JSON.stringify({
-      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
       cashflow: {
         income: [
           { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 0, nps: 10000, epfCorpus: 0, npsCorpus: 500000 }
@@ -662,7 +641,7 @@ describe('Migration - EPF/NPS Corpus to Assets', () => {
 
   it('Multiple income entries with corpus', () => {
     localStorage.setItem('financial-planner-data', JSON.stringify({
-      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
       cashflow: {
         income: [
           { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, epfCorpus: 1500000, npsCorpus: 500000 },
@@ -687,7 +666,7 @@ describe('Migration - EPF/NPS Corpus to Assets', () => {
 
   it('Zero corpus values not migrated', () => {
     localStorage.setItem('financial-planner-data', JSON.stringify({
-      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
       cashflow: {
         income: [
           { id: 'inc-1', name: 'Salary Self', amount: 200000, epf: 36000, nps: 10000, epfCorpus: 0, npsCorpus: 0 }
@@ -705,7 +684,7 @@ describe('Migration - EPF/NPS Corpus to Assets', () => {
 describe('Migration - linkedAssets', () => {
   it('Adds linkedAssets array to goals that lack it', () => {
     localStorage.setItem('financial-planner-data', JSON.stringify({
-      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
       cashflow: { income: [], expenses: [] },
       assets: { items: [] },
       goals: [
@@ -724,7 +703,7 @@ describe('Migration - linkedAssets', () => {
 
   it('Preserves existing linkedAssets', () => {
     localStorage.setItem('financial-planner-data', JSON.stringify({
-      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
       cashflow: { income: [], expenses: [] },
       assets: { items: [{ id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 }] },
       goals: [
@@ -741,7 +720,7 @@ describe('Migration - linkedAssets', () => {
 
   it('Cleans up orphaned linkedAssets references', () => {
     localStorage.setItem('financial-planner-data', JSON.stringify({
-      settings: { currency: 'INR', fundHouse: 'icici', equityReturn: 10, debtReturn: 5 },
+      settings: { currency: 'INR', equityReturn: 10, debtReturn: 5 },
       cashflow: { income: [], expenses: [] },
       assets: { items: [{ id: 'asset-1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 }] },
       goals: [

@@ -1,9 +1,9 @@
 // Main application initialization and event coordination
-import { loadData, saveData, clearData, setCurrency, getCurrency, getFundHouse, setFundHouse, getEquityAllocation, setEquityAllocation, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn, getArbitrageReturn, setArbitrageReturn, getEpfReturn, setEpfReturn, getNpsReturn, setNpsReturn, getEpfStepUp, setEpfStepUp, getNpsStepUp, setNpsStepUp, getInvestmentStepUp, setInvestmentStepUp } from './modules/storage.js';
+import { loadData, saveData, clearData, setCurrency, getCurrency, getEquityAllocation, setEquityAllocation, getEquityReturn, setEquityReturn, getDebtReturn, setDebtReturn, getArbitrageReturn, setArbitrageReturn, getEpfReturn, setEpfReturn, getNpsReturn, setNpsReturn, getEpfStepUp, setEpfStepUp, getNpsStepUp, setNpsStepUp, getInvestmentStepUp, setInvestmentStepUp } from './modules/storage.js';
 import { initCashflow, updateCurrency as updateCashflowCurrency, refreshData as refreshCashflow } from './modules/cashflow.js';
 import { initAssets, updateCurrency as updateAssetsCurrency, refreshData as refreshAssets } from './modules/assets.js';
-import { initGoals, updateCurrency as updateGoalsCurrency, updateFundHouse as updateGoalsFundHouse, updateReturns as updateGoalsReturns, refreshData as refreshGoals } from './modules/goals.js';
-import { initInvestmentPlan, updateCurrency as updateInvestmentPlanCurrency, updateFundHouse as updateInvestmentPlanFundHouse, updateAllocation as updateInvestmentPlanAllocation, updateReturns as updateInvestmentPlanReturns, updateStepUp as updateInvestmentPlanStepUp, refreshData as refreshInvestmentPlan } from './modules/investmentplan.js';
+import { initGoals, updateCurrency as updateGoalsCurrency, updateReturns as updateGoalsReturns, refreshData as refreshGoals } from './modules/goals.js';
+import { initInvestmentPlan, updateCurrency as updateInvestmentPlanCurrency, updateAllocation as updateInvestmentPlanAllocation, updateReturns as updateInvestmentPlanReturns, updateStepUp as updateInvestmentPlanStepUp, refreshData as refreshInvestmentPlan } from './modules/investmentplan.js';
 import { autoAssignAssets } from './modules/autoassign.js';
 import { initWizard, openWizard, isDataEmpty } from './modules/wizard.js';
 
@@ -14,7 +14,6 @@ function getSampleData() {
   return {
     settings: {
       currency: 'INR',
-      fundHouse: 'icici',
       equityAllocation: 60,
       equityReturn: 10,
       debtReturn: 5,
@@ -339,7 +338,6 @@ function init() {
   autoAssignAssets(appData);
 
   const currency = getCurrency(appData);
-  const fundHouse = getFundHouse(appData);
   const equityAllocation = getEquityAllocation(appData);
   const equityReturn = getEquityReturn(appData);
   const debtReturn = getDebtReturn(appData);
@@ -428,8 +426,8 @@ function init() {
 
   initCashflow(appData, currency, onDataChange);
   initAssets(appData, currency, onDataChange);
-  initGoals(appData, currency, fundHouse, equityReturn, debtReturn, arbitrageReturn, onDataChange);
-  initInvestmentPlan(appData, currency, fundHouse, equityAllocation, equityReturn, debtReturn, arbitrageReturn, epfReturn, npsReturn, epfStepUp, npsStepUp, investmentStepUp, onDataChange);
+  initGoals(appData, currency, equityReturn, debtReturn, arbitrageReturn, onDataChange);
+  initInvestmentPlan(appData, currency, equityAllocation, equityReturn, debtReturn, arbitrageReturn, epfReturn, npsReturn, epfStepUp, npsStepUp, investmentStepUp, onDataChange);
 
   // Show/hide EPF/NPS returns based on retirement goals
   updateEpfNpsVisibility();
@@ -444,14 +442,6 @@ function init() {
       refreshAllModules();
       updateHomeTabCTA();
     }
-  });
-
-  // Listen for fund house changes from investment plan
-  document.addEventListener('fundHouseChange', (e) => {
-    const newFundHouse = e.detail.fundHouse;
-    setFundHouse(appData, newFundHouse);
-    updateGoalsFundHouse(newFundHouse);
-    updateInvestmentPlanFundHouse(newFundHouse);
   });
 
   console.log('RupeeFolio initialized');
@@ -614,7 +604,6 @@ function updateSettingsProfileLabel() {
 function handleResetReturns() {
   // Default values
   const defaults = {
-    fundHouse: 'icici',
     equityReturn: 10,
     debtReturn: 5,
     arbitrageReturn: 6,
@@ -624,11 +613,6 @@ function handleResetReturns() {
     npsStepUp: 0,
     investmentStepUp: 5
   };
-
-  // Reset Fund House
-  const fundHouseSelect = document.getElementById('fund-house-plan-select');
-  if (fundHouseSelect) fundHouseSelect.value = defaults.fundHouse;
-  setFundHouse(appData, defaults.fundHouse);
 
   // Reset all sliders using helper
   resetSlider('equity-return-setting', 'equity-return-value', defaults.equityReturn, setEquityReturn);
@@ -641,9 +625,7 @@ function handleResetReturns() {
   resetSlider('investment-stepup-setting', 'investment-stepup-value', defaults.investmentStepUp, setInvestmentStepUp);
 
   // Update modules
-  updateGoalsFundHouse(defaults.fundHouse);
   updateGoalsReturns(defaults.equityReturn, defaults.debtReturn, defaults.arbitrageReturn);
-  updateInvestmentPlanFundHouse(defaults.fundHouse);
   updateInvestmentPlanReturns(defaults.equityReturn, defaults.debtReturn, defaults.arbitrageReturn, defaults.epfReturn, defaults.npsReturn);
   updateInvestmentPlanStepUp(defaults.epfStepUp, defaults.npsStepUp, defaults.investmentStepUp);
 
@@ -680,7 +662,6 @@ function updateAllocationSummary(equityPercent) {
 
 function refreshAllModules() {
   const currency = getCurrency(appData);
-  const fundHouse = getFundHouse(appData);
   refreshCashflow(appData);
   refreshAssets(appData);
   refreshGoals(appData);

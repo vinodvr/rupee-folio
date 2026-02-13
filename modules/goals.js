@@ -11,27 +11,20 @@ import { getAssetAllocations, getGoalLinkedTotal } from './assets.js';
 
 let appData = null;
 let currency = 'INR';
-let fundHouse = 'icici';
 let equityReturn = 10;
 let debtReturn = 5;
 let arbitrageReturn = 6;
 let onDataChange = null;
 
-export function initGoals(data, curr, fh, eqReturn, debtRet, arbReturn, onChange) {
+export function initGoals(data, curr, eqReturn, debtRet, arbReturn, onChange) {
   appData = data;
   currency = curr;
-  fundHouse = fh || 'icici';
   equityReturn = eqReturn ?? 10;
   debtReturn = debtRet ?? 5;
   arbitrageReturn = arbReturn ?? 6;
   onDataChange = onChange;
   renderGoalsList();
   setupEventListeners();
-}
-
-export function updateFundHouse(fh) {
-  fundHouse = fh;
-  renderGoalsList();
 }
 
 export function updateReturns(eqReturn, debtRet, arbReturn) {
@@ -55,7 +48,7 @@ function setupEventListeners() {
   document.getElementById('add-goal-btn')?.addEventListener('click', () => showAddGoalModal(null));
 }
 
-function showAddGoalModal(editGoal = null) {
+export function showAddGoalModal(editGoal = null) {
   // Handle case where event object is passed instead of goal
   if (editGoal instanceof Event || (editGoal && !editGoal.id)) {
     editGoal = null;

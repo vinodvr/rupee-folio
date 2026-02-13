@@ -12,12 +12,19 @@ const EXPENSE_CONFIG = {
     ownWithLoan: { percent: 0.30, cap: null },
     ownNoLoan: { percent: 0, cap: 0 }
   },
-  food: {
-    single: { percent: 0.08, cap: 50000 },
-    married: { percent: 0.10, cap: 60000 },
-    marriedDual: { percent: 0.10, cap: 60000 },
-    withKids1: { percent: 0.12, cap: 70000 },
-    withKids2: { percent: 0.15, cap: 80000 }
+  groceries: {
+    single: { percent: 0.06, cap: 35000 },
+    married: { percent: 0.07, cap: 40000 },
+    marriedDual: { percent: 0.07, cap: 40000 },
+    withKids1: { percent: 0.08, cap: 50000 },
+    withKids2: { percent: 0.10, cap: 55000 }
+  },
+  eatingOut: {
+    single: { percent: 0.02, cap: 15000 },
+    married: { percent: 0.03, cap: 20000 },
+    marriedDual: { percent: 0.03, cap: 20000 },
+    withKids1: { percent: 0.04, cap: 20000 },
+    withKids2: { percent: 0.05, cap: 25000 }
   },
   utilities: { percent: 0.03, cap: 15000 },
   insurance: { percent: 0.03, cap: 30000 },
@@ -61,48 +68,54 @@ function calculateExpenses(answers) {
     expenses.push({
       id: generateId(),
       category: 'Housing',
-      name: 'Rent',
+      name: 'Rent + Maintenance',
       amount: calcExpense(income, EXPENSE_CONFIG.housing.renting)
     });
   }
 
-  // Food - varies by family size
-  let foodConfig = EXPENSE_CONFIG.food.single;
+  // Food - varies by family size (split into groceries + eating out)
+  let familyKey = 'single';
   if (answers.family === 'married' || answers.family === 'marriedDual') {
-    foodConfig = answers.kids === 'none'
-      ? EXPENSE_CONFIG.food.married
+    familyKey = answers.kids === 'none'
+      ? 'married'
       : answers.kids === '1'
-        ? EXPENSE_CONFIG.food.withKids1
-        : EXPENSE_CONFIG.food.withKids2;
+        ? 'withKids1'
+        : 'withKids2';
   }
   expenses.push({
     id: generateId(),
     category: 'Food',
-    name: 'Groceries + Eating Out',
-    amount: calcExpense(income, foodConfig)
+    name: 'Groceries + Vegetables',
+    amount: calcExpense(income, EXPENSE_CONFIG.groceries[familyKey])
+  });
+  expenses.push({
+    id: generateId(),
+    category: 'Food',
+    name: 'Eating Out + Partying',
+    amount: calcExpense(income, EXPENSE_CONFIG.eatingOut[familyKey])
   });
 
-  // Utilities (capped at ₹8k)
+  // Utilities
   expenses.push({
     id: generateId(),
     category: 'Utilities',
-    name: 'Electricity + Internet',
+    name: 'Electricity + Mobile + Internet',
     amount: calcExpense(income, EXPENSE_CONFIG.utilities)
   });
 
-  // Insurance (capped at ₹6k)
+  // Insurance
   expenses.push({
     id: generateId(),
     category: 'Health & Insurance',
-    name: 'Health + Life Insurance',
+    name: 'Health + Life Premiums',
     amount: calcExpense(income, EXPENSE_CONFIG.insurance)
   });
 
-  // Entertainment (capped at ₹12k)
+  // Entertainment
   expenses.push({
     id: generateId(),
     category: 'Lifestyle',
-    name: 'OTT + Recreation',
+    name: 'Subscriptions + Entertainment',
     amount: calcExpense(income, EXPENSE_CONFIG.entertainment)
   });
 
@@ -110,15 +123,15 @@ function calculateExpenses(answers) {
   expenses.push({
     id: generateId(),
     category: 'Lifestyle',
-    name: 'Clothes + Misc',
+    name: 'Shopping + Personal Care',
     amount: calcExpense(income, EXPENSE_CONFIG.shopping)
   });
 
-  // House Help (capped at ₹10k)
+  // House Help
   expenses.push({
     id: generateId(),
     category: 'Household Help',
-    name: 'House Help',
+    name: 'Maid + Cook',
     amount: calcExpense(income, EXPENSE_CONFIG.houseHelp)
   });
 

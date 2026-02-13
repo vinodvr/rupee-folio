@@ -29,7 +29,6 @@ export function createTestData(assets = [], goals = []) {
   return {
     settings: {
       currency: 'INR',
-      fundHouse: 'icici',
       equityReturn: 10,
       debtReturn: 5
     },

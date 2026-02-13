@@ -19,22 +19,6 @@ export const currencyConfig = {
     recommendations: {
       equity: 'Nifty 50 / Nifty Total Market Index Fund',
       debt: 'Money Market / Liquid Funds'
-    },
-    funds: {
-      icici: {
-        name: 'ICICI Prudential',
-        nifty50: 'ICICI Prudential Nifty 50 Index Fund Direct Growth',
-        niftyNext50: 'ICICI Prudential Nifty Next 50 Index Fund Direct Growth',
-        moneyMarket: 'ICICI Prudential Money Market Fund Direct Growth',
-        arbitrage: 'ICICI Prudential Equity Arbitrage Fund Direct Growth'
-      },
-      hdfc: {
-        name: 'HDFC',
-        nifty50: 'HDFC Nifty 50 Index Fund Direct Growth',
-        niftyNext50: 'HDFC Nifty Next 50 Index Fund Direct Growth',
-        moneyMarket: 'HDFC Money Market Fund Direct Growth',
-        arbitrage: 'HDFC Arbitrage Fund Direct Growth'
-      }
     }
   }
 };
@@ -76,10 +60,6 @@ export function formatCompact(amount, currency) {
 
 export function getRecommendations(currency) {
   return getCurrencyConfig(currency).recommendations;
-}
-
-export function getFunds(currency) {
-  return getCurrencyConfig(currency).funds || null;
 }
 
 export function getEquityLimits(currency) {

@@ -4,7 +4,6 @@ const STORAGE_KEY = 'financial-planner-data';
 const defaultData = {
   settings: {
     currency: 'INR',
-    fundHouse: 'icici',
     equityAllocation: 60,
     equityReturn: 10,
     debtReturn: 5,
@@ -156,16 +155,6 @@ export function getCurrency(data) {
 
 export function setCurrency(data, currency) {
   data.settings.currency = currency;
-  saveData(data);
-  return data;
-}
-
-export function getFundHouse(data) {
-  return data.settings?.fundHouse || 'icici';
-}
-
-export function setFundHouse(data, fundHouse) {
-  data.settings.fundHouse = fundHouse;
   saveData(data);
   return data;
 }

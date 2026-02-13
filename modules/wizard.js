@@ -510,7 +510,7 @@ function renderSlider(step) {
   const wordsText = !isYears && currentValue > 0 ? numberToWords(currentValue) : '';
 
   const valueDisplay = isYears
-    ? `<span class="text-4xl font-bold text-blue-600">${currentValue} years</span>`
+    ? `<span id="wizard-year-display" class="text-4xl font-bold text-blue-600">${currentValue} years</span>`
     : `<div class="flex items-center justify-center gap-2">
           <span class="text-2xl text-gray-400">₹</span>
           <input
@@ -691,11 +691,11 @@ function setupStepEventListeners(step) {
       const wordsDisplay = document.getElementById('wizard-words');
 
       if (step.format === 'years') {
-        // Years slider: just update the display span
+        // Years slider: update display directly (no re-render, preserves focus for arrow keys)
         slider.addEventListener('input', (e) => {
           const value = parseInt(e.target.value);
           answers[step.field] = value;
-          renderCurrentStep();
+          document.getElementById('wizard-year-display').textContent = `${value} years`;
         });
       } else {
         // Currency slider: update text input and words

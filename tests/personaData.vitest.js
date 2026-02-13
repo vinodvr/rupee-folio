@@ -103,7 +103,7 @@ describe('Persona Data Generation', () => {
         mfStocks: 0
       });
 
-      const rent = data.cashflow.expenses.find(e => e.name === 'Rent');
+      const rent = data.cashflow.expenses.find(e => e.name === 'Rent + Maintenance');
       expect(rent).toBeDefined();
       expect(rent.category).toBe('Housing');
     });
@@ -140,7 +140,7 @@ describe('Persona Data Generation', () => {
         mfStocks: 0
       });
 
-      const rent = data.cashflow.expenses.find(e => e.name === 'Rent');
+      const rent = data.cashflow.expenses.find(e => e.name === 'Rent + Maintenance');
       const emi = data.cashflow.expenses.find(e => e.name === 'Home Loan EMI');
       expect(rent).toBeUndefined();
       expect(emi).toBeUndefined();
@@ -577,7 +577,7 @@ describe('Persona Data Generation', () => {
 
       const retirement = data.goals.find(g => g.goalType === 'retirement');
       expect(retirement).toBeDefined();
-      // nonEmiExpenses=52000, healthcare=5000, retMonthly=round(52000*0.7+5000)=41400
+      // nonEmiExpenses=52000 (groceries 6K + eatingOut 2K + utilities 3K + insurance 3K + entertainment 5K + shopping 5K + houseHelp 3K + rent 25K)
       // corpus=41400*12*40=19,872,000 → rounded to 19,000,000
       expect(retirement.targetAmount).toBe(19000000);
     });
@@ -687,7 +687,7 @@ describe('Persona Data Generation', () => {
       });
 
       // At ₹20L income: 5% = ₹1L, but capped at ₹25K
-      // nonEmiExpenses: food 50K + utilities 15K + insurance 30K + entertainment 30K + shopping 30K + houseHelp 20K = 175K
+      // nonEmiExpenses: groceries 35K + eatingOut 15K + utilities 15K + insurance 30K + entertainment 30K + shopping 30K + houseHelp 20K = 175K
       // retMonthly = round(175000*0.7 + 25000) = round(122500 + 25000) = 147500
       // corpus = 147500 * 12 * 40 = 70,800,000 → rounded to 70,000,000
       const retirement = data.goals.find(g => g.goalType === 'retirement');
