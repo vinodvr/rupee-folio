@@ -71,6 +71,7 @@ The app uses a simplified **Unified Portfolio** approach instead of per-goal all
   - 5-8 years: Half allocation (max 40%)
   - 3-5 years: Quarter allocation (max 20%)
   - < 3 years: 0% equity (100% debt)
+- **Per-Goal Fund Split**: Fund recommendations use each goal's equity % from the equity reduction schedule, not the flat settings value. The header shows the weighted average across all long-term goals.
 
 This unified approach simplifies portfolio management by consolidating all goals into two buckets rather than managing separate allocations per goal.
 
@@ -82,7 +83,7 @@ A dedicated tab for viewing your consolidated investment plan:
 - **Combined SIP Calculation**: Total monthly SIP needed per bucket
 - **Auto-assign Investments**: Automatically links existing assets to eligible goals using a greedy algorithm — short-term assets to near-term goals, long-term assets to distant goals
 - **Link Existing Investments**: Manually assign existing assets to goals to reduce required SIP
-- **Fund Recommendations**: Specific fund allocations from ICICI Prudential or HDFC
+- **Fund Recommendations**: Specific fund type and SIP amount per goal category
 - **Cashflow Comparison**: Shows total SIP needed vs available cash flow with surplus/shortfall
 - **Asset Allocation Controls**: Adjust equity/debt split for long-term goals
 - **Return Settings**: Configure expected returns for equity, debt, arbitrage, EPF, and NPS
@@ -98,24 +99,16 @@ A dedicated tab for viewing your consolidated investment plan:
 
 Returns are post-tax estimates based on historical market performance.
 
-### Fund Recommendations (INR)
-For INR currency, get specific fund recommendations from:
-- **ICICI Prudential**
-  - Nifty 50 Index Fund Direct Growth
-  - Nifty Next 50 Index Fund Direct Growth
-  - Money Market Fund Direct Growth
-  - Equity Arbitrage Fund Direct Growth
-- **HDFC**
-  - Nifty 50 Index Fund Direct Growth
-  - Nifty Next 50 Index Fund Direct Growth
-  - Money Market Fund Direct Growth
-  - Arbitrage Fund Direct Growth
+### Fund Recommendations
+The Plan tab shows recommended fund types with exact SIP amounts:
 
-**Short-Term Goals**: 100% Arbitrage Fund (equity taxation with debt-like risk)
+**Short-Term Goals**: Equity Arbitrage Fund Direct Plan (equity taxation with debt-like risk)
 **Long-Term Goals**:
-- Equity (70% Nifty 50 + 30% Nifty Next 50)
-- Debt (Money Market Fund)
-**SIP Split**: Shows exact amounts per fund with total in the Plan tab
+- Equity: Nifty 50 Index Fund (70%) + Nifty Next 50 Index Fund (30%)
+- Debt: Money Market Fund
+- The equity/debt split for each goal follows the equity reduction schedule (e.g., a 6-year goal gets 30% equity, a 20-year goal gets 60%). The fund recommendation header shows the effective weighted average across all long-term goals.
+
+Pick any low-cost fund house (ICICI Prudential, HDFC, UTI, etc.) — the fund type matters more than the brand.
 
 ### Additional Features
 - **Goal Reordering**: Prioritize goals with up/down buttons
@@ -198,20 +191,20 @@ npm test
 npm run test:watch
 ```
 
-**437 tests** organized into 10 suites:
+**432 tests** organized into 10 suites:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
-| Calculator | 139 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
-| Storage | 82 | CRUD operations, settings, schema migrations |
+| Calculator | 136 | SIP calculations, step-up SIP, equity tapering, unified portfolio, EPF/NPS projections, linked assets |
+| Storage | 79 | CRUD operations, settings, schema migrations |
 | Assets | 49 | EPF/NPS corpus, retirement assets, asset linking, allocations, asset distribution |
 | Persona Data | 41 | Sample data generation, persona profiles, retirement corpus estimation |
 | Auto-assign | 39 | Asset-to-goal linking rules, greedy algorithm, short/long-term pools, edge cases |
 | Wizard | 30 | Get Started flow, persona selection |
-| Currency | 26 | Formatting, return limits, fund recommendations |
+| Currency | 21 | Formatting, return limits, fund recommendations |
 | Cash Flow | 21 | Income/expense tracking, EPF/NPS contributions |
 | Goals | 9 | Retirement corpus estimation from cashflow data |
-| Plan | 1 | Goal categorization, SIP calculations, fund recommendations |
+| Plan | 7 | Per-goal equity/debt split, weighted allocation, fund recommendations |
 
 ### Test Coverage
 
@@ -282,16 +275,16 @@ financial-planner/
 │   ├── wizard.js         # Get Started wizard UI and flow
 │   └── personaData.js    # Generates realistic data from wizard answers
 └── tests/
-    ├── calculator.vitest.js      # SIP calculations, step-up, tapering, EPF/NPS (139 tests)
-    ├── storage.vitest.js         # Storage/CRUD tests (82 tests)
+    ├── calculator.vitest.js      # SIP calculations, step-up, tapering, EPF/NPS (136 tests)
+    ├── storage.vitest.js         # Storage/CRUD tests (79 tests)
     ├── assets.vitest.js          # Assets module tests (49 tests)
     ├── personaData.vitest.js     # Sample data tests (41 tests)
     ├── autoassign.vitest.js      # Auto-assign tests (39 tests)
     ├── wizard.vitest.js          # Get Started wizard tests (30 tests)
-    ├── currency.vitest.js        # Currency formatting tests (26 tests)
+    ├── currency.vitest.js        # Currency formatting tests (21 tests)
     ├── cashflow.vitest.js        # Cash flow tests (21 tests)
     ├── goals.vitest.js           # Goals module tests (9 tests)
-    └── investmentplan.vitest.js  # Investment plan tests (1 test)
+    └── investmentplan.vitest.js  # Per-goal equity/debt split tests (7 tests)
 ```
 
 ## Usage Guide
@@ -418,7 +411,6 @@ Where:
 {
   "settings": {
     "currency": "INR",
-    "fundHouse": "icici",
     "equityAllocation": 60,    // Long-term equity allocation (20-80%)
     "equityReturn": 10,
     "debtReturn": 5,
