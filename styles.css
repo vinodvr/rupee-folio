@@ -148,24 +148,75 @@ input[type="number"] {
 /* Print styles */
 @media print {
   body {
-    background: white;
+    background: white !important;
   }
 
+  /* Hide everything except plan tab */
+  header,
+  #bottom-nav,
+  footer,
+  #panel-cashflow,
+  #panel-assets,
+  #panel-goals,
+  #goal-modal,
+  #investment-modal,
+  #wizard-modal,
+  #quick-setup-btn,
+  #export-plan-row {
+    display: none !important;
+  }
+
+  /* Inside plan tab: hide intro text and settings panel */
+  #panel-investmentplan > p:first-child,
+  #panel-investmentplan > .bg-white.rounded-lg.shadow-sm.mb-4 {
+    display: none !important;
+  }
+
+  /* Force plan tab visible */
+  #panel-investmentplan {
+    display: block !important;
+  }
+
+  /* Hide interactive elements */
+  button,
+  .edit-goal-btn,
+  .toggle-details-btn,
+  .estimate-retirement-link {
+    display: none !important;
+  }
+
+  /* Preserve gradient colors */
   .bg-gradient-to-r {
     background: #2563eb !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  button,
-  #add-goal-btn,
-  #add-income-btn,
-  #add-expense-btn,
-  .add-investment-btn,
-  .edit-goal-btn,
-  .delete-goal-btn,
-  .history-btn {
-    display: none !important;
+  /* Preserve colored backgrounds */
+  .bg-blue-50, .bg-amber-50, .bg-green-50,
+  .bg-amber-100, .bg-green-100,
+  .bg-blue-100\/50, .bg-gray-50 {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Remove shadows */
+  .shadow-sm, .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  /* Ensure goal details are visible */
+  .goal-details-expanded {
+    display: block !important;
+  }
+
+  /* Print-only sections */
+  .print-only {
+    display: block !important;
+  }
+
+  @page {
+    margin: 1cm;
   }
 }
 

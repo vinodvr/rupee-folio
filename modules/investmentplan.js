@@ -344,6 +344,98 @@ function renderExistingInvestments() {
 }
 
 /**
+ * Read a DOM element's text, returning '–' if missing
+ */
+function readDomText(id) {
+  return document.getElementById(id)?.textContent || '–';
+}
+
+/**
+ * Clone the asset distribution chart SVG, restyled for a light background
+ */
+function cloneAssetChart() {
+  const source = document.getElementById('asset-allocation-chart');
+  if (!source || !source.querySelector('svg')) return '';
+
+  const clone = source.cloneNode(true);
+  clone.removeAttribute('id');
+  // Restyle legend text for light background
+  clone.querySelectorAll('.text-slate-200').forEach(el => {
+    el.classList.replace('text-slate-200', 'text-gray-700');
+  });
+  clone.querySelectorAll('.text-white').forEach(el => {
+    el.classList.replace('text-white', 'text-gray-900');
+  });
+  // Fix background circle stroke for light background
+  clone.querySelectorAll('circle[stroke="rgba(255,255,255,0.1)"]').forEach(el => {
+    el.setAttribute('stroke', 'rgba(0,0,0,0.08)');
+  });
+
+  return `
+    <div class="bg-gray-50 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">Asset Distribution</h3>
+      ${clone.innerHTML}
+    </div>
+  `;
+}
+
+/**
+ * Build the print-only snapshot (header, cashflow, net worth, chart)
+ */
+function buildPrintSnapshot() {
+  const now = new Date();
+  const date = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+  const section = document.createElement('div');
+  section.id = 'print-snapshot';
+  section.className = 'print-only hidden mb-6';
+  section.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <span class="text-lg font-bold text-gray-800">RupeeFolio</span>
+      <span class="text-sm text-gray-500">${date}, ${time}</span>
+    </div>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div class="bg-gray-50 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Monthly Cash Flow</h3>
+        <div class="text-sm space-y-1">
+          <div class="flex justify-between"><span>Income</span><span class="font-medium">${readDomText('total-income')}</span></div>
+          <div class="flex justify-between"><span>Expenses</span><span class="font-medium">${readDomText('total-expenses')}</span></div>
+          <div class="flex justify-between border-t pt-1 mt-1"><span class="font-medium">Available</span><span class="font-semibold text-green-600">${readDomText('net-cashflow')}</span></div>
+          <div class="flex justify-between"><span>Savings Rate</span><span class="font-medium">${readDomText('savings-rate')}</span></div>
+        </div>
+      </div>
+      <div class="bg-gray-50 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Net Worth</h3>
+        <div class="text-sm space-y-1">
+          <div class="flex justify-between"><span>Assets</span><span class="font-medium">${readDomText('total-assets')}</span></div>
+          <div class="flex justify-between"><span>Liabilities</span><span class="font-medium">${readDomText('total-liabilities')}</span></div>
+          <div class="flex justify-between border-t pt-1 mt-1"><span class="font-semibold">Net Worth</span><span class="font-bold text-emerald-600">${readDomText('net-worth')}</span></div>
+        </div>
+      </div>
+    </div>
+    ${cloneAssetChart()}
+  `;
+  return section;
+}
+
+/**
+ * Handle Export as PDF — expand details, inject print snapshot, trigger print, clean up
+ */
+function handleExportPlan() {
+  // Expand all collapsed goal details before printing
+  document.querySelectorAll('#investment-plan-content .goal-details-expanded.hidden').forEach(el => {
+    el.classList.remove('hidden');
+  });
+
+  const container = document.getElementById('investment-plan-content');
+  const printSection = buildPrintSnapshot();
+  container.prepend(printSection);
+  window.print();
+  printSection.remove();
+}
+
+/**
  * Main render function for the Plan tab
  */
 function renderInvestmentPlan() {
@@ -374,6 +466,8 @@ function renderInvestmentPlan() {
     }
   }
 
+  const exportRow = document.getElementById('export-plan-row');
+
   if (appData.goals.length === 0) {
     container.innerHTML = `
       <div class="text-center py-12 text-gray-500">
@@ -384,6 +478,7 @@ function renderInvestmentPlan() {
         <p class="text-sm">Add financial goals to generate your personalized investment plan</p>
       </div>
     `;
+    if (exportRow) exportRow.classList.add('hidden');
     updateSummary(0);
     return;
   }
@@ -543,6 +638,15 @@ function renderInvestmentPlan() {
       if (goal) showAddGoalModal(goal);
     });
   });
+
+  // Show export button when goals exist
+  if (exportRow) exportRow.classList.remove('hidden');
+
+  // Export as PDF handler
+  const exportBtn = document.getElementById('export-plan-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', handleExportPlan);
+  }
 
 }
 
