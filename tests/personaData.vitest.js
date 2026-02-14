@@ -349,6 +349,38 @@ describe('Persona Data Generation', () => {
       expect(hlEmi.amount).toBe(25000);
     });
 
+    it('creates both rent and home loan for rentingWithConstruction', () => {
+      const data = generatePersonaData({
+        age: 30,
+        family: 'single',
+        kids: 'none',
+        housing: 'rentingWithConstruction',
+        monthlyIncome: 100000,
+        homeLoanEmi: 30000,
+        homeLoanOutstanding: 3000000,
+        otherEmi: 0,
+        epfCorpus: 0,
+        npsCorpus: 0,
+        mfStocks: 0
+      });
+
+      // Should have rent expense
+      const rent = data.cashflow.expenses.find(e => e.name === 'Rent + Maintenance');
+      expect(rent).toBeDefined();
+      expect(rent.category).toBe('Housing');
+
+      // Should have home loan EMI expense
+      const hlEmi = data.cashflow.expenses.find(e => e.name === 'Home Loan EMI');
+      expect(hlEmi).toBeDefined();
+      expect(hlEmi.category).toBe('EMIs/Loans');
+      expect(hlEmi.amount).toBe(30000);
+
+      // Should have home loan liability
+      const homeLoan = data.liabilities.items.find(l => l.category === 'Home Loan');
+      expect(homeLoan).toBeDefined();
+      expect(homeLoan.amount).toBe(3000000);
+    });
+
     it('creates separate Home Loan EMI and Loan EMIs expenses', () => {
       const data = generatePersonaData({
         age: 30,

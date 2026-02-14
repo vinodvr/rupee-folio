@@ -165,6 +165,10 @@ describe('numberToWords', () => {
       expect(homeLoanStep.showIf({ housing: 'rentingToBuy' })).toBe(false);
     });
 
+    it('home loan step is visible when housing is rentingWithConstruction', () => {
+      expect(homeLoanStep.showIf({ housing: 'rentingWithConstruction' })).toBe(true);
+    });
+
     it('home loan step has two fields', () => {
       expect(homeLoanStep.fields).toHaveLength(2);
       expect(homeLoanStep.fields[0].field).toBe('homeLoanEmi');

@@ -430,13 +430,7 @@ function updateSummary() {
 
   const netFlowEl = document.getElementById('net-cashflow');
   netFlowEl.textContent = formatCurrency(netFlow, currency);
-  netFlowEl.className = netFlow >= 0 ? 'text-xl font-bold text-green-600' : 'text-xl font-bold text-red-600';
-
-  // Update available for investment display
-  const availableEl = document.getElementById('available-investment');
-  if (availableEl) {
-    availableEl.textContent = formatCurrency(Math.max(0, netFlow), currency);
-  }
+  netFlowEl.className = netFlow >= 0 ? 'text-4xl font-bold' : 'text-4xl font-bold text-red-300';
 
   // Update savings rate (includes EPF/NPS as part of gross income and savings)
   const savingsRateEl = document.getElementById('savings-rate');
@@ -446,18 +440,11 @@ function updateSummary() {
     const savingsRate = grossIncome > 0 ? getSavingsRate(totalIncome, netFlow, totalEpfNps) : 0;
     savingsRateEl.textContent = `${savingsRate}%`;
 
-    const { label, level } = getSavingsRateLabel(savingsRate);
-    const styleMap = {
-      excellent: { bg: 'bg-green-100', text: 'text-green-700' },
-      good: { bg: 'bg-blue-100', text: 'text-blue-700' },
-      reasonable: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-      poor: { bg: 'bg-red-100', text: 'text-red-700' },
-    };
-    const { bg: bgClass, text: textClass } = styleMap[level];
+    const { label } = getSavingsRateLabel(savingsRate);
 
-    savingsRateEl.className = `font-semibold ${textClass}`;
+    savingsRateEl.className = 'text-4xl font-bold';
     savingsRateLabelEl.textContent = label;
-    savingsRateLabelEl.className = `text-xs px-2 py-1 rounded-full ${bgClass} ${textClass}`;
+    savingsRateLabelEl.className = 'text-xs px-3 py-1 rounded-full bg-white/20 text-white';
 
     // Show/hide suggestion for low savings rate
     const suggestionEl = document.getElementById('savings-rate-suggestion');

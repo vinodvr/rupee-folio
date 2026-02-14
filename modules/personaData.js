@@ -9,6 +9,7 @@ const EXPENSE_CONFIG = {
   housing: {
     renting: { percent: 0.25, cap: 150000 },
     rentingToBuy: { percent: 0.25, cap: 150000 },
+    rentingWithConstruction: { percent: 0.25, cap: 150000 },
     ownWithLoan: { percent: 0.30, cap: null },
     ownNoLoan: { percent: 0, cap: 0 }
   },
@@ -64,7 +65,7 @@ function calculateExpenses(answers) {
   const expenses = [];
 
   // Housing (rent only - EMIs are handled separately)
-  if (answers.housing === 'renting' || answers.housing === 'rentingToBuy') {
+  if (answers.housing === 'renting' || answers.housing === 'rentingToBuy' || answers.housing === 'rentingWithConstruction') {
     expenses.push({
       id: generateId(),
       category: 'Housing',

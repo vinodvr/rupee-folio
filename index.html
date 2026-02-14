@@ -198,33 +198,35 @@
       <p class="text-sm text-gray-500 mb-4">Review your income, EPF/NPS deductions, and expenses to match your actual numbers.</p>
 
       <!-- Monthly Summary -->
-      <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5 mb-4">
-        <div class="flex flex-wrap justify-between items-center gap-4">
-          <div class="flex items-center gap-2">
-            <span class="text-gray-600">Total Income:</span>
-            <span id="total-income" class="font-semibold text-green-600">₹0</span>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <!-- Monthly Cash Flow Card -->
+        <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center">
+          <div class="text-emerald-100 text-sm uppercase tracking-wide mb-2">Monthly Cash Flow</div>
+          <div id="net-cashflow" class="text-4xl font-bold mb-1">₹0</div>
+          <div class="text-emerald-200 text-sm mb-4">Available for Investment</div>
+          <div class="flex flex-wrap justify-center items-center gap-3">
+            <div class="bg-white/10 rounded-lg px-4 py-2">
+              <div class="text-emerald-300 text-xs uppercase tracking-wide">↑ Income</div>
+              <div id="total-income" class="text-lg font-semibold text-emerald-100">₹0</div>
+            </div>
+            <div class="bg-white/10 rounded-lg px-4 py-2">
+              <div class="text-orange-300 text-xs uppercase tracking-wide">↓ Expenses</div>
+              <div id="total-expenses" class="text-lg font-semibold text-orange-200">₹0</div>
+            </div>
           </div>
-          <div id="epf-nps-row" class="hidden flex items-center gap-2">
-            <span class="text-gray-600">EPF/NPS:</span>
-            <span id="epf-nps-contributions" class="font-semibold text-green-600">₹0</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-gray-600">Total Expenses:</span>
-            <span id="total-expenses" class="font-semibold text-red-600">₹0</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-gray-600">Available for Investment:</span>
-            <span id="net-cashflow" class="text-xl font-bold text-green-600">₹0</span>
-          </div>
-          <div class="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg w-full sm:w-auto">
-            <span class="text-blue-800 font-medium">Savings Rate:</span>
-            <span id="savings-rate" class="text-xl font-bold">0%</span>
-            <span id="savings-rate-label" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">-</span>
+          <div id="epf-nps-row" class="hidden mt-3 text-emerald-200 text-sm">
+            EPF/NPS: <span id="epf-nps-contributions" class="font-semibold">₹0</span>
           </div>
         </div>
-        <div id="savings-rate-suggestion" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-          <span class="font-medium">Tip:</span> Aim for 40%+ savings to build long-term wealth. Review expenses for savings opportunities.
+        <!-- Savings Rate Card -->
+        <div class="bg-gradient-to-r from-slate-700 to-slate-800 rounded-lg shadow-lg p-6 text-white text-center">
+          <div class="text-slate-300 text-sm uppercase tracking-wide mb-2">Savings Rate</div>
+          <div id="savings-rate" class="text-4xl font-bold mb-3">0%</div>
+          <span id="savings-rate-label" class="text-xs px-3 py-1 rounded-full bg-white/20 text-white">-</span>
         </div>
+      </div>
+      <div id="savings-rate-suggestion" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        <span class="font-medium">Tip:</span> Aim for 40%+ savings to build long-term wealth. Review expenses for savings opportunities.
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

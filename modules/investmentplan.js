@@ -185,7 +185,7 @@ function renderGoalRow(goal) {
         <span>${formatCompact(goal.targetAmount, currency)}</span>
         <span class="mx-1">·</span>
         <span>${formatTimeline(goal.projections.years)}</span>
-        ${isRetirement ? '<span class="mx-1">·</span><button type="button" class="estimate-retirement-link text-sm text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer">Estimate FI</button>' : ''}
+        ${isRetirement ? '<span class="mx-1">·</span><button type="button" class="estimate-retirement-link text-sm text-emerald-600 hover:text-emerald-800 underline underline-offset-2 transition-colors">Estimate Corpus</button>' : ''}
       </div>
       <!-- SIP amount + View Details -->
       <div class="flex items-center justify-between mt-5">

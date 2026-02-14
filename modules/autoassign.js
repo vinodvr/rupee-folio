@@ -19,7 +19,10 @@ import { saveData } from './storage.js';
  *    - First pass: exhaust LONG_TERM_ONLY assets (they can't go anywhere else)
  *    - Second pass: use remaining BOTH_TERMS assets for any remaining gap
  *    - Same greedy approach
- * 5. Save and return updated data
+ * 5. Cross-category spillover — any assets still remaining after their
+ *    preferred pool is exhausted are offered to goals of the other timeline
+ *    (short-term goals first, then long-term) to maximize utilization
+ * 6. Save and return updated data
  *
  * @param {object} data - App data (mutated in place)
  * @returns {object} The updated data
@@ -97,7 +100,16 @@ export function autoAssignAssets(data) {
   const remainingBoth = bothTermPool.filter(a => a.remaining > 0);
   greedyAssignToGoals(remainingBoth, longTermGoals, data, equityReturn, debtReturn);
 
-  // Step 5: Save
+  // Step 5: Cross-category spillover — maximize asset utilization
+  // Any assets still remaining can help goals of the other timeline
+  const remainingAll = [...shortTermPool, ...longTermPool, ...bothTermPool]
+    .filter(a => a.remaining > 0.01);
+  if (remainingAll.length > 0) {
+    greedyAssignToGoals(remainingAll, shortTermGoals, data, equityReturn, debtReturn);
+    greedyAssignToGoals(remainingAll, longTermGoals, data, equityReturn, debtReturn);
+  }
+
+  // Step 6: Save
   saveData(data);
   return data;
 }

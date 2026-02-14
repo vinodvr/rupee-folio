@@ -1,8 +1,17 @@
 // Persona-Based Onboarding Wizard
 // Step-by-step wizard to help new users populate financial data
 
-import { formatCurrency } from './currency.js';
+import { formatCurrency, getSymbol } from './currency.js';
 import { generatePersonaData } from './personaData.js';
+
+/** Short label for slider min/max: ₹0, ₹10K, ₹10L, ₹10Cr */
+function sliderLabel(amount) {
+  const symbol = getSymbol('INR');
+  if (amount >= 10000000) return `${symbol}${amount / 10000000}Cr`;
+  if (amount >= 100000) return `${symbol}${amount / 100000}L`;
+  if (amount >= 1000) return `${symbol}${amount / 1000}K`;
+  return `${symbol}${amount}`;
+}
 
 let wizardCallback = null;
 let currentStep = 0;
@@ -73,13 +82,13 @@ export const WIZARD_STEPS = [
     id: 'age',
     title: 'How old are you?',
     subtitle: 'This helps us calculate your retirement timeline',
-    type: 'dropdown',
+    type: 'slider',
     field: 'age',
-    options: Array.from({ length: 43 }, (_, i) => ({
-      value: 18 + i,
-      label: `${18 + i} years`
-    })),
-    defaultValue: 30
+    min: 18,
+    max: 60,
+    step: 1,
+    defaultValue: 30,
+    format: 'years'
   },
   {
     id: 'retirementAge',
@@ -127,9 +136,10 @@ export const WIZARD_STEPS = [
     field: 'housing',
     options: [
       { value: 'renting', label: 'Renting', icon: 'rent' },
-      { value: 'rentingToBuy', label: 'Renting (planning to buy)', icon: 'rent-buy' },
-      { value: 'ownWithLoan', label: 'Living in own home (with loan)', icon: 'home-loan' },
-      { value: 'ownNoLoan', label: 'Living in own home (no loan)', icon: 'home' }
+      { value: 'rentingToBuy', label: 'Renting + Planning to buy', icon: 'rent-buy' },
+      { value: 'rentingWithConstruction', label: 'Renting + Home under construction', icon: 'rent-build' },
+      { value: 'ownWithLoan', label: 'Own home (with loan)', icon: 'home-loan' },
+      { value: 'ownNoLoan', label: 'Own home (no loan)', icon: 'home' }
     ],
     defaultValue: 'renting'
   },
@@ -142,7 +152,7 @@ export const WIZARD_STEPS = [
       { field: 'homeLoanEmi', label: 'Monthly EMI for Home', min: 0, max: 500000, step: 5000, defaultValue: 0, format: 'currency' },
       { field: 'homeLoanOutstanding', label: 'Outstanding Balance', min: 0, max: 50000000, step: 100000, defaultValue: 0, format: 'currency' }
     ],
-    showIf: (answers) => answers.housing === 'ownWithLoan'
+    showIf: (answers) => answers.housing === 'ownWithLoan' || answers.housing === 'rentingWithConstruction'
   },
   {
     id: 'income',
@@ -181,11 +191,11 @@ export const WIZARD_STEPS = [
     format: 'currency'
   },
   {
-    id: 'ppf',
-    title: 'What\'s your PPF corpus?',
-    subtitle: 'Current balance in Public Provident Fund',
+    id: 'nps',
+    title: 'What\'s your NPS corpus?',
+    subtitle: 'Current balance in National Pension System',
     type: 'slider',
-    field: 'ppfCorpus',
+    field: 'npsCorpus',
     min: 0,
     max: 10000000,
     step: 100000,
@@ -193,11 +203,11 @@ export const WIZARD_STEPS = [
     format: 'currency'
   },
   {
-    id: 'nps',
-    title: 'What\'s your NPS corpus?',
-    subtitle: 'Current balance in National Pension System',
+    id: 'ppf',
+    title: 'What\'s your PPF corpus?',
+    subtitle: 'Current balance in Public Provident Fund',
     type: 'slider',
-    field: 'npsCorpus',
+    field: 'ppfCorpus',
     min: 0,
     max: 10000000,
     step: 100000,
@@ -223,7 +233,7 @@ export const WIZARD_STEPS = [
     type: 'slider',
     field: 'fdsRds',
     min: 0,
-    max: 10000000,
+    max: 100000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -235,7 +245,7 @@ export const WIZARD_STEPS = [
     type: 'slider',
     field: 'debtMf',
     min: 0,
-    max: 50000000,
+    max: 100000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -247,7 +257,7 @@ export const WIZARD_STEPS = [
     type: 'slider',
     field: 'equityMf',
     min: 0,
-    max: 50000000,
+    max: 100000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -259,7 +269,7 @@ export const WIZARD_STEPS = [
     type: 'slider',
     field: 'directStocks',
     min: 0,
-    max: 50000000,
+    max: 100000000,
     step: 100000,
     defaultValue: 0,
     format: 'currency'
@@ -459,24 +469,27 @@ function renderCards(step) {
     rent: '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>',
     'rent-buy': '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>',
     'home-loan': '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>',
-    home: '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>'
+    home: '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>',
+    'rent-build': '<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 21V7h10v14H3M6 10h1m2 0h1M6 13h1m2 0h1M6 16h1m2 0h1"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 21V4m-3 0h7v5"/></svg>'
   };
 
+  const compact = step.options.length > 4;
+
   return `
-    <div class="grid grid-cols-1 gap-3 py-4">
+    <div class="grid grid-cols-1 ${compact ? 'gap-2 py-2' : 'gap-3 py-4'}">
       ${step.options.map(opt => `
         <button
-          class="wizard-card flex items-center gap-4 p-4 border-2 rounded-xl text-left transition-all ${
+          class="wizard-card flex items-center ${compact ? 'gap-3 p-3' : 'gap-4 p-4'} border-2 rounded-xl text-left transition-all ${
             opt.value === currentValue
               ? 'border-blue-500 bg-blue-50'
               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
           }"
           data-value="${opt.value}"
         >
-          <div class="text-${opt.value === currentValue ? 'blue-600' : 'gray-400'}">
+          <div class="${compact ? 'scale-75 -mx-1' : ''} text-${opt.value === currentValue ? 'blue-600' : 'gray-400'}">
             ${icons[opt.icon] || icons.person}
           </div>
-          <span class="text-lg font-medium ${opt.value === currentValue ? 'text-blue-700' : 'text-gray-700'}">${opt.label}</span>
+          <span class="${compact ? 'text-base' : 'text-lg'} font-medium ${opt.value === currentValue ? 'text-blue-700' : 'text-gray-700'}">${opt.label}</span>
         </button>
       `).join('')}
     </div>
@@ -603,14 +616,14 @@ function renderSlider(step) {
             type="text"
             id="wizard-text-input"
             value="${currentValue.toLocaleString('en-IN')}"
-            class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-48 sm:w-64"
+            class="text-4xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-64"
             inputmode="numeric"
           >
         </div>`;
 
   const formatLabel = (val) => {
     if (isYears) return `${val} years`;
-    if (step.format === 'currency') return formatCurrency(val, 'INR');
+    if (step.format === 'currency') return sliderLabel(val);
     return val.toLocaleString('en-IN');
   };
 
@@ -663,7 +676,7 @@ function renderDualSlider(step) {
                   type="text"
                   id="wizard-text-input-${i}"
                   value="${currentValue.toLocaleString('en-IN')}"
-                  class="text-3xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-48 sm:w-64"
+                  class="text-3xl font-bold text-blue-600 bg-transparent border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center w-64"
                   inputmode="numeric"
                 >
               </div>
@@ -684,8 +697,8 @@ function renderDualSlider(step) {
                 <button type="button" id="wizard-increment-${i}" class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-500 hover:text-gray-700 text-lg font-bold flex items-center justify-center shrink-0 transition-colors">+</button>
               </div>
               <div class="flex justify-between text-sm text-gray-500 mt-2 px-12">
-                <span>${formatCurrency(f.min, 'INR')}</span>
-                <span>${formatCurrency(f.max, 'INR')}</span>
+                <span>${sliderLabel(f.min)}</span>
+                <span>${sliderLabel(f.max)}</span>
               </div>
             </div>
           </div>

@@ -121,12 +121,9 @@ export function showAddGoalModal(editGoal = null) {
             <input type="number" id="goal-amount" value="${goal.targetAmount}" placeholder="e.g., 5000000"
               class="w-full pl-8 pr-3 py-2 border rounded-lg">
           </div>
-          <div id="estimate-retirement-container" class="${(goal.goalType || 'one-time') === 'retirement' ? '' : 'hidden'}">
-            <button type="button" id="estimate-retirement-btn" class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 px-3 py-1.5 rounded-lg shadow-sm mt-1.5 transition-colors">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-              </svg>
-              Estimate FI Corpus
+          <div id="estimate-retirement-container" class="${(goal.goalType || 'one-time') === 'retirement' ? '' : 'hidden'} mt-1.5">
+            <button type="button" id="estimate-retirement-btn" class="text-xs text-emerald-600 hover:text-emerald-800 underline underline-offset-2 transition-colors">
+              Estimate Corpus
             </button>
           </div>
         </div>
@@ -216,9 +213,9 @@ export function showAddGoalModal(editGoal = null) {
       alert('Please enter a valid target amount');
       return;
     }
-    const maxTargetAmount = 100000000; // 10 Crore
+    const maxTargetAmount = 5000000000; // 50 Crore
     if (targetAmount > maxTargetAmount) {
-      alert('Target amount cannot exceed ₹10 Crore');
+      alert('Target amount cannot exceed ₹50 Crore');
       return;
     }
 
@@ -662,13 +659,12 @@ function renderGoalCard(goal) {
             <div>Timeline: <span class="font-medium text-gray-700">${formatTimeline(years)}</span> (${new Date(goal.targetDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})</div>
             <div>Inflation: <span class="font-medium text-gray-700">${goal.inflationRate}%</span></div>
             ${isRetirement && goal.includeEpfNps ? '<div class="text-purple-600">EPF/NPS deductions included</div>' : ''}
-            ${isRetirement ? `<button type="button" class="estimate-retirement-link inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 px-3 py-1.5 rounded-lg shadow-sm mt-1.5 transition-colors">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-              </svg>
-              Estimate FI Corpus
-            </button>` : ''}
           </div>
+          ${isRetirement ? `<div class="mt-1.5">
+            <button type="button" class="estimate-retirement-link text-xs text-emerald-600 hover:text-emerald-800 underline underline-offset-2 transition-colors">
+              Estimate Corpus
+            </button>
+          </div>` : ''}
         </div>
 
         <!-- Actions -->

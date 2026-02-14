@@ -125,7 +125,7 @@ describe('autoAssignAssets - Single Goal', () => {
     expect(data.goals[0].linkedAssets[0].amount).toBe(300000);
   });
 
-  it('Does NOT assign equity assets to short-term goals', () => {
+  it('Spills equity assets to short-term goals when no long-term goals need them', () => {
     const data = createTestData([
       { id: 'a1', name: 'Equity MF', category: 'Equity Mutual Funds', value: 500000 }
     ], [
@@ -134,10 +134,13 @@ describe('autoAssignAssets - Single Goal', () => {
 
     autoAssignAssets(data);
 
-    expect(data.goals[0].linkedAssets).toEqual([]);
+    // Spillover: equity has no long-term goal, so it helps the short-term goal
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].assetId).toBe('a1');
+    expect(linkedFV(data.goals[0], data.assets.items)).toBeCloseTo(300000, -2);
   });
 
-  it('Does NOT assign FDs to long-term goals', () => {
+  it('Spills FDs to long-term goals when no short-term goals need them', () => {
     const data = createTestData([
       { id: 'a1', name: 'FD', category: 'FDs & RDs', value: 500000 }
     ], [
@@ -146,7 +149,10 @@ describe('autoAssignAssets - Single Goal', () => {
 
     autoAssignAssets(data);
 
-    expect(data.goals[0].linkedAssets).toEqual([]);
+    // Spillover: FD has no short-term goal, so it helps the long-term goal
+    expect(data.goals[0].linkedAssets.length).toBe(1);
+    expect(data.goals[0].linkedAssets[0].assetId).toBe('a1');
+    expect(data.goals[0].linkedAssets[0].amount).toBe(500000);
   });
 
   it('Assigns Debt/Arbitrage MF to short-term goal (full allocation when FV < target)', () => {
@@ -563,8 +569,9 @@ describe('autoAssignAssets - Mixed Scenarios', () => {
     expect(g2Total).toBeGreaterThan(400000);
   });
 
-  it('Stocks assigned to long-term goals only', () => {
-    // Stocks 400k at 10%/10yr = 1.04M > 1M target. Partial assignment.
+  it('Stocks: long-term first, remainder spills to short-term', () => {
+    // Stocks 400k at 10%/10yr = 1.04M > 1M target. Partial assignment to long-term.
+    // Remainder spills to short-term goal.
     const assets = [{ id: 'a1', name: 'TCS Stocks', category: 'Stocks', value: 400000 }];
     const data = createTestData(assets, [
       createGoal({ id: 'g-short', yearsFromNow: 3, targetAmount: 500000, inflationRate: 0 }),
@@ -576,12 +583,14 @@ describe('autoAssignAssets - Mixed Scenarios', () => {
     const gShort = data.goals.find(g => g.id === 'g-short');
     const gLong = data.goals.find(g => g.id === 'g-long');
 
-    expect(gShort.linkedAssets.length).toBe(0);
+    // Long-term goal gets what it needs
     expect(gLong.linkedAssets.length).toBe(1);
-    // FV of assigned should match target
     expect(linkedFV(gLong, assets)).toBeCloseTo(1000000, -2);
-    // Less than full 400k assigned
     expect(gLong.linkedAssets[0].amount).toBeLessThan(400000);
+    // Remainder spills to short-term
+    expect(gShort.linkedAssets.length).toBe(1);
+    expect(gShort.linkedAssets[0].assetId).toBe('a1');
+    expect(gShort.linkedAssets[0].amount).toBeGreaterThan(0);
   });
 
   it('Gold ETFs/SGBs assigned to long-term goals only', () => {
@@ -742,7 +751,7 @@ describe('autoAssignAssets - Edge Cases', () => {
     });
   });
 
-  it('SHORT_TERM_ONLY categories are NOT assigned to long-term', () => {
+  it('SHORT_TERM_ONLY categories spill to long-term when no short-term goals', () => {
     const categories = ['FDs & RDs', 'Savings Bank'];
     categories.forEach(category => {
       const data = createTestData([
@@ -752,11 +761,13 @@ describe('autoAssignAssets - Edge Cases', () => {
       ]);
 
       autoAssignAssets(data);
-      expect(data.goals[0].linkedAssets.length).toBe(0);
+      // Spillover: no short-term goals to consume them, so they help long-term
+      expect(data.goals[0].linkedAssets.length).toBe(1);
+      expect(data.goals[0].linkedAssets[0].amount).toBe(100000);
     });
   });
 
-  it('LONG_TERM_ONLY categories are NOT assigned to short-term', () => {
+  it('LONG_TERM_ONLY categories spill to short-term when no long-term goals', () => {
     const categories = ['Equity Mutual Funds', 'Stocks', 'Gold ETFs/SGBs'];
     categories.forEach(category => {
       const data = createTestData([
@@ -766,7 +777,9 @@ describe('autoAssignAssets - Edge Cases', () => {
       ]);
 
       autoAssignAssets(data);
-      expect(data.goals[0].linkedAssets.length).toBe(0);
+      // Spillover: no long-term goals to consume them, so they help short-term
+      expect(data.goals[0].linkedAssets.length).toBe(1);
+      expect(data.goals[0].linkedAssets[0].amount).toBe(100000);
     });
   });
 });
