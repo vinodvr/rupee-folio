@@ -196,34 +196,9 @@
     <!-- Cash Flow Panel -->
     <div id="panel-cashflow" class="tab-panel hidden">
       <p class="text-sm text-gray-500 mb-4">Review your income, EPF/NPS deductions, and expenses to match your actual numbers.</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <!-- Income -->
-        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-medium text-green-700">Monthly Income</h3>
-            <button id="add-income-btn" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
-              + Add
-            </button>
-          </div>
-          <div id="income-form-container"></div>
-          <div id="income-list" class="space-y-1"></div>
-        </div>
-
-        <!-- Expenses -->
-        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-medium text-red-700">Monthly Expenses</h3>
-            <button id="add-expense-btn" class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
-              + Add
-            </button>
-          </div>
-          <div id="expense-form-container"></div>
-          <div id="expense-list" class="space-y-1"></div>
-        </div>
-      </div>
 
       <!-- Monthly Summary -->
-      <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
+      <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5 mb-4">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div class="flex items-center gap-2">
             <span class="text-gray-600">Total Income:</span>
@@ -251,13 +226,65 @@
           <span class="font-medium">Tip:</span> Aim for 40%+ savings to build long-term wealth. Review expenses for savings opportunities.
         </div>
       </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Income -->
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium text-green-700">Monthly Income</h3>
+            <button id="add-income-btn" class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+              + Add
+            </button>
+          </div>
+          <div id="income-form-container"></div>
+          <div id="income-list" class="space-y-1"></div>
+        </div>
+
+        <!-- Expenses -->
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-medium text-red-700">Monthly Expenses</h3>
+            <button id="add-expense-btn" class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
+              + Add
+            </button>
+          </div>
+          <div id="expense-form-container"></div>
+          <div id="expense-list" class="space-y-1"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Assets & Liabilities Panel -->
     <div id="panel-assets" class="tab-panel hidden">
       <p class="text-sm text-gray-500 mb-4">Add any savings, FDs, equity, real estate, or other assets and liabilities (home loan, car loan) which are missing here.</p>
+
+      <!-- Net Worth & Asset Distribution -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <!-- Net Worth Box -->
+        <div id="net-worth-box" class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center">
+          <div id="net-worth-label" class="text-emerald-100 text-sm uppercase tracking-wide mb-2">Your Net Worth</div>
+          <div id="net-worth" class="text-4xl font-bold mb-4">₹0</div>
+          <div class="flex flex-wrap justify-center items-center gap-3">
+            <div class="bg-white/10 rounded-lg px-4 py-2">
+              <div id="assets-label" class="text-emerald-300 text-xs uppercase tracking-wide">↑ Assets</div>
+              <div id="total-assets" class="text-lg font-semibold text-emerald-200">₹0</div>
+            </div>
+            <span class="text-2xl font-bold text-white/70">−</span>
+            <div class="bg-white/10 rounded-lg px-4 py-2">
+              <div class="text-orange-300 text-xs uppercase tracking-wide">↓ Liabilities</div>
+              <div id="total-liabilities" class="text-lg font-semibold text-orange-200">₹0</div>
+            </div>
+          </div>
+        </div>
+        <!-- Asset Distribution Box -->
+        <div class="bg-gradient-to-r from-slate-700 to-slate-800 rounded-lg shadow-lg p-6 text-white text-center">
+          <div class="text-slate-300 text-sm uppercase tracking-wide mb-4">Asset Distribution</div>
+          <div id="asset-allocation-chart" class="flex justify-center"></div>
+        </div>
+      </div>
+
       <!-- Assets and Liabilities Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Assets -->
         <div class="bg-white rounded-lg shadow-sm p-4 sm:p-5">
           <div class="flex items-center justify-between mb-4">
@@ -280,31 +307,6 @@
           </div>
           <div id="liability-form-container"></div>
           <div id="liabilities-list" class="space-y-1"></div>
-        </div>
-      </div>
-
-      <!-- Asset Distribution & Net Worth -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Asset Distribution Box -->
-        <div class="bg-gradient-to-r from-slate-700 to-slate-800 rounded-lg shadow-lg p-6 text-white text-center">
-          <div class="text-slate-300 text-sm uppercase tracking-wide mb-4">Asset Distribution</div>
-          <div id="asset-allocation-chart" class="flex justify-center"></div>
-        </div>
-        <!-- Net Worth Box -->
-        <div id="net-worth-box" class="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg shadow-lg p-6 text-white text-center">
-          <div id="net-worth-label" class="text-emerald-100 text-sm uppercase tracking-wide mb-2">Your Net Worth</div>
-          <div id="net-worth" class="text-4xl font-bold mb-4">₹0</div>
-          <div class="flex flex-wrap justify-center items-center gap-3">
-            <div class="bg-white/10 rounded-lg px-4 py-2">
-              <div id="assets-label" class="text-emerald-300 text-xs uppercase tracking-wide">↑ Assets</div>
-              <div id="total-assets" class="text-lg font-semibold text-emerald-200">₹0</div>
-            </div>
-            <span class="text-2xl font-bold text-white/70">−</span>
-            <div class="bg-white/10 rounded-lg px-4 py-2">
-              <div class="text-orange-300 text-xs uppercase tracking-wide">↓ Liabilities</div>
-              <div id="total-liabilities" class="text-lg font-semibold text-orange-200">₹0</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

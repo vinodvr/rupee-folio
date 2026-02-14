@@ -105,12 +105,12 @@ describe('numberToWords', () => {
   });
 
   describe('getRetirementAgeBounds', () => {
-    it('age 30 → min 40, max 55, default 45', () => {
-      expect(getRetirementAgeBounds(30)).toEqual({ min: 40, max: 55, defaultValue: 45 });
+    it('age 30 → min 40, max 60, default 45', () => {
+      expect(getRetirementAgeBounds(30)).toEqual({ min: 40, max: 60, defaultValue: 45 });
     });
 
-    it('age 45 → min 46, max 55, default 50 (age+5=50)', () => {
-      expect(getRetirementAgeBounds(45)).toEqual({ min: 46, max: 55, defaultValue: 50 });
+    it('age 45 → min 46, max 60, default 50 (age+5=50)', () => {
+      expect(getRetirementAgeBounds(45)).toEqual({ min: 46, max: 60, defaultValue: 50 });
     });
 
     it('age 50 → min 51, max 60, default 55 (age+5=55)', () => {
@@ -125,12 +125,12 @@ describe('numberToWords', () => {
       expect(getRetirementAgeBounds(60)).toEqual({ min: 61, max: 70, defaultValue: 65 });
     });
 
-    it('age 18 → min 40, max 55, default 45', () => {
-      expect(getRetirementAgeBounds(18)).toEqual({ min: 40, max: 55, defaultValue: 45 });
+    it('age 18 → min 40, max 60, default 45', () => {
+      expect(getRetirementAgeBounds(18)).toEqual({ min: 40, max: 60, defaultValue: 45 });
     });
 
-    it('age 39 → min 40, max 55, default 45 (age+5=44 < 45 floor)', () => {
-      expect(getRetirementAgeBounds(39)).toEqual({ min: 40, max: 55, defaultValue: 45 });
+    it('age 39 → min 40, max 60, default 45 (age+5=44 < 45 floor)', () => {
+      expect(getRetirementAgeBounds(39)).toEqual({ min: 40, max: 60, defaultValue: 45 });
     });
 
     it('default is always at least 5 years from age when range allows', () => {

@@ -62,7 +62,7 @@ export function numberToWords(num) {
  */
 export function getRetirementAgeBounds(age) {
   const min = Math.max(40, age + 1);
-  const max = Math.max(55, age + 10);
+  const max = Math.max(60, age + 10);
   const defaultValue = Math.max(min, Math.min(Math.max(45, age + 5), max));
   return { min, max, defaultValue };
 }
@@ -88,7 +88,7 @@ export const WIZARD_STEPS = [
     type: 'slider',
     field: 'retirementAge',
     min: 40,
-    max: 55,
+    max: 60,
     step: 1,
     defaultValue: 50,
     format: 'years'
@@ -484,6 +484,92 @@ function renderCards(step) {
 }
 
 /**
+ * Wire up all event listeners for a slider: range input, text input, +/- buttons
+ * Handles both currency and years formats.
+ */
+function wireSliderEvents({ field, min, max, step, isYears, sliderId, textInputId, wordsId, yearDisplayId, decrementId, incrementId }) {
+  const slider = document.getElementById(sliderId);
+  const decBtn = document.getElementById(decrementId);
+  const incBtn = document.getElementById(incrementId);
+
+  // Shared update function — sets the value everywhere
+  const updateValue = (newValue) => {
+    const clamped = Math.min(Math.max(newValue, min), max);
+    answers[field] = clamped;
+    slider.value = clamped;
+
+    if (isYears) {
+      document.getElementById(yearDisplayId).textContent = `${clamped} years`;
+    } else {
+      const textInput = document.getElementById(textInputId);
+      const wordsDisplay = document.getElementById(wordsId);
+      textInput.value = clamped.toLocaleString('en-IN');
+      wordsDisplay.textContent = clamped > 0 ? numberToWords(clamped) : '';
+    }
+  };
+
+  // Slider input
+  slider.addEventListener('input', (e) => updateValue(parseInt(e.target.value)));
+
+  // +/- buttons with press-and-hold repeat
+  const setupHoldRepeat = (btn, delta) => {
+    let timer = null;
+    let interval = null;
+
+    const stop = () => {
+      clearTimeout(timer);
+      timer = null;
+    };
+
+    const start = () => {
+      updateValue(answers[field] + delta);
+      let delay = 400;
+      const repeat = () => {
+        timer = setTimeout(() => {
+          updateValue(answers[field] + delta);
+          delay = Math.max(50, delay / 2);
+          repeat();
+        }, delay);
+      };
+      repeat();
+    };
+
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', stop);
+    btn.addEventListener('mouseleave', stop);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); start(); });
+    btn.addEventListener('touchend', stop);
+    btn.addEventListener('touchcancel', stop);
+  };
+
+  setupHoldRepeat(decBtn, -step);
+  setupHoldRepeat(incBtn, step);
+
+  // Currency-specific: text input editing
+  if (!isYears) {
+    const textInput = document.getElementById(textInputId);
+    const wordsDisplay = document.getElementById(wordsId);
+
+    textInput.addEventListener('input', (e) => {
+      const rawValue = e.target.value.replace(/[^0-9]/g, '');
+      const value = parseInt(rawValue) || 0;
+      answers[field] = value;
+      slider.value = Math.min(Math.max(value, min), max);
+      wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
+    });
+
+    textInput.addEventListener('blur', (e) => {
+      const rawValue = e.target.value.replace(/[^0-9]/g, '');
+      const value = parseInt(rawValue) || 0;
+      answers[field] = value;
+      e.target.value = value.toLocaleString('en-IN');
+    });
+
+    textInput.addEventListener('focus', (e) => e.target.select());
+  }
+}
+
+/**
  * Render slider step
  */
 function renderSlider(step) {
@@ -534,17 +620,21 @@ function renderSlider(step) {
         ${valueDisplay}
         <p id="wizard-words" class="text-sm text-gray-500 mt-2 h-6">${wordsText}</p>
       </div>
-      <div class="px-4">
-        <input
-          type="range"
-          id="wizard-input"
-          min="${sliderMin}"
-          max="${sliderMax}"
-          step="${step.step}"
-          value="${currentValue}"
-          class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer wizard-slider"
-        >
-        <div class="flex justify-between text-sm text-gray-500 mt-2">
+      <div class="px-0 sm:px-4">
+        <div class="flex items-center gap-1.5 sm:gap-3">
+          <button type="button" id="wizard-decrement" class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-500 hover:text-gray-700 text-lg font-bold flex items-center justify-center shrink-0 transition-colors">&minus;</button>
+          <input
+            type="range"
+            id="wizard-input"
+            min="${sliderMin}"
+            max="${sliderMax}"
+            step="${step.step}"
+            value="${currentValue}"
+            class="flex-1 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer wizard-slider"
+          >
+          <button type="button" id="wizard-increment" class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-500 hover:text-gray-700 text-lg font-bold flex items-center justify-center shrink-0 transition-colors">+</button>
+        </div>
+        <div class="flex justify-between text-sm text-gray-500 mt-2 px-12">
           <span>${formatLabel(sliderMin)}</span>
           <span>${formatLabel(sliderMax)}</span>
         </div>
@@ -579,17 +669,21 @@ function renderDualSlider(step) {
               </div>
               <p id="wizard-words-${i}" class="text-sm text-gray-500 mt-1 h-5">${wordsText}</p>
             </div>
-            <div class="px-4">
-              <input
-                type="range"
-                id="wizard-input-${i}"
-                min="${f.min}"
-                max="${f.max}"
-                step="${f.step}"
-                value="${currentValue}"
-                class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer wizard-slider"
-              >
-              <div class="flex justify-between text-sm text-gray-500 mt-2">
+            <div class="px-0 sm:px-4">
+              <div class="flex items-center gap-1.5 sm:gap-3">
+                <button type="button" id="wizard-decrement-${i}" class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-500 hover:text-gray-700 text-lg font-bold flex items-center justify-center shrink-0 transition-colors">&minus;</button>
+                <input
+                  type="range"
+                  id="wizard-input-${i}"
+                  min="${f.min}"
+                  max="${f.max}"
+                  step="${f.step}"
+                  value="${currentValue}"
+                  class="flex-1 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer wizard-slider"
+                >
+                <button type="button" id="wizard-increment-${i}" class="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-500 hover:text-gray-700 text-lg font-bold flex items-center justify-center shrink-0 transition-colors">+</button>
+              </div>
+              <div class="flex justify-between text-sm text-gray-500 mt-2 px-12">
                 <span>${formatCurrency(f.min, 'INR')}</span>
                 <span>${formatCurrency(f.max, 'INR')}</span>
               </div>
@@ -686,87 +780,45 @@ function setupStepEventListeners(step) {
       break;
 
     case 'slider':
-      const slider = document.getElementById('wizard-input');
-      const textInput = document.getElementById('wizard-text-input');
-      const wordsDisplay = document.getElementById('wizard-words');
-
       if (step.format === 'years') {
-        // Years slider: update display directly (no re-render, preserves focus for arrow keys)
-        slider.addEventListener('input', (e) => {
-          const value = parseInt(e.target.value);
-          answers[step.field] = value;
-          document.getElementById('wizard-year-display').textContent = `${value} years`;
+        wireSliderEvents({
+          field: step.field,
+          min: step.min,
+          max: step.max,
+          step: step.step,
+          isYears: true,
+          sliderId: 'wizard-input',
+          decrementId: 'wizard-decrement',
+          incrementId: 'wizard-increment',
+          yearDisplayId: 'wizard-year-display'
         });
       } else {
-        // Currency slider: update text input and words
-        slider.addEventListener('input', (e) => {
-          const value = parseInt(e.target.value);
-          answers[step.field] = value;
-          textInput.value = value.toLocaleString('en-IN');
-          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
-        });
-
-        // Text input changes update slider and words
-        textInput.addEventListener('input', (e) => {
-          // Remove non-numeric characters and parse
-          const rawValue = e.target.value.replace(/[^0-9]/g, '');
-          const value = parseInt(rawValue) || 0;
-          answers[step.field] = value;
-
-          // Update slider (clamp to slider range for visual)
-          const clampedValue = Math.min(Math.max(value, step.min), step.max);
-          slider.value = clampedValue;
-
-          // Update words display
-          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
-        });
-
-        // Format on blur
-        textInput.addEventListener('blur', (e) => {
-          const rawValue = e.target.value.replace(/[^0-9]/g, '');
-          const value = parseInt(rawValue) || 0;
-          answers[step.field] = value;
-          e.target.value = value.toLocaleString('en-IN');
-        });
-
-        // Select all on focus
-        textInput.addEventListener('focus', (e) => {
-          e.target.select();
+        wireSliderEvents({
+          field: step.field,
+          min: step.min,
+          max: step.max,
+          step: step.step,
+          sliderId: 'wizard-input',
+          textInputId: 'wizard-text-input',
+          wordsId: 'wizard-words',
+          decrementId: 'wizard-decrement',
+          incrementId: 'wizard-increment'
         });
       }
       break;
 
     case 'dual-slider':
       step.fields.forEach((f, i) => {
-        const slider = document.getElementById(`wizard-input-${i}`);
-        const textInput = document.getElementById(`wizard-text-input-${i}`);
-        const wordsDisplay = document.getElementById(`wizard-words-${i}`);
-
-        slider.addEventListener('input', (e) => {
-          const value = parseInt(e.target.value);
-          answers[f.field] = value;
-          textInput.value = value.toLocaleString('en-IN');
-          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
-        });
-
-        textInput.addEventListener('input', (e) => {
-          const rawValue = e.target.value.replace(/[^0-9]/g, '');
-          const value = parseInt(rawValue) || 0;
-          answers[f.field] = value;
-          const clampedValue = Math.min(Math.max(value, f.min), f.max);
-          slider.value = clampedValue;
-          wordsDisplay.textContent = value > 0 ? numberToWords(value) : '';
-        });
-
-        textInput.addEventListener('blur', (e) => {
-          const rawValue = e.target.value.replace(/[^0-9]/g, '');
-          const value = parseInt(rawValue) || 0;
-          answers[f.field] = value;
-          e.target.value = value.toLocaleString('en-IN');
-        });
-
-        textInput.addEventListener('focus', (e) => {
-          e.target.select();
+        wireSliderEvents({
+          field: f.field,
+          min: f.min,
+          max: f.max,
+          step: f.step,
+          sliderId: `wizard-input-${i}`,
+          textInputId: `wizard-text-input-${i}`,
+          wordsId: `wizard-words-${i}`,
+          decrementId: `wizard-decrement-${i}`,
+          incrementId: `wizard-increment-${i}`
         });
       });
       break;
