@@ -479,7 +479,7 @@ function renderInvestmentPlan() {
       </div>
     `;
     if (exportRow) exportRow.classList.add('hidden');
-    updateSummary(0);
+    updateSummary(0, false);
     return;
   }
 
@@ -653,9 +653,18 @@ function renderInvestmentPlan() {
 /**
  * Update the summary section with cashflow comparison
  */
-function updateSummary(totalSIP) {
+function updateSummary(totalSIP, hasGoals = true) {
   const summaryGrid = document.getElementById('plan-summary-grid');
   if (!summaryGrid) return;
+
+  if (totalSIP === 0 && !hasGoals) {
+    summaryGrid.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-4 col-span-full">
+        <div class="text-blue-200 text-sm">Add goals to see your investment plan</div>
+      </div>
+    `;
+    return;
+  }
 
   // All goals achieved — show celebratory message
   if (totalSIP === 0) {
