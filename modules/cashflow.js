@@ -1,7 +1,8 @@
 // Cash flow management UI and logic
 import { addIncome, updateIncome, deleteIncome, addExpense, updateExpense, deleteExpense, generateId } from './storage.js';
-import { formatCurrency, getSymbol } from './currency.js';
+import { formatCurrency, formatNumber, getSymbol, parseCurrencyInput, setupCurrencyInput } from './currency.js';
 import { getRetirementAssets } from './assets.js';
+import { numberToWords } from './wizard.js';
 
 const expenseCategories = [
   // Essential
@@ -62,13 +63,14 @@ function showAddIncomeForm() {
     <div class="bg-gray-50 p-3 rounded-lg mb-3">
       <input type="text" id="new-income-name" placeholder="Income source - optional (e.g., Freelance)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
-      <div class="flex gap-2 mb-2">
+      <div class="flex gap-2">
         <div class="relative flex-1">
           <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-          <input type="number" id="new-income-amount" placeholder="Monthly take-home pay"
-            class="w-full pl-8 pr-3 py-2 border rounded text-sm">
+          <input type="text" id="new-income-amount" placeholder="Monthly take-home pay"
+            class="w-full pl-8 pr-3 py-2 border rounded text-sm" inputmode="numeric">
         </div>
       </div>
+      <p id="new-income-amount-words" class="text-xs text-gray-400 mt-0.5 mb-2 pl-8 h-4"></p>
 
       <!-- EPF/NPS Section -->
       <details class="mb-2">
@@ -103,12 +105,17 @@ function showAddIncomeForm() {
   document.getElementById('cancel-income-btn').addEventListener('click', () => {
     container.innerHTML = '';
   });
+  setupCurrencyInput(
+    document.getElementById('new-income-amount'),
+    document.getElementById('new-income-amount-words'),
+    numberToWords, currency
+  );
   document.getElementById('new-income-name').focus();
 }
 
 function saveNewIncome() {
   const name = document.getElementById('new-income-name').value.trim() || 'Salary';
-  const amount = parseFloat(document.getElementById('new-income-amount').value);
+  const amount = parseCurrencyInput(document.getElementById('new-income-amount').value);
   const epf = parseFloat(document.getElementById('new-income-epf').value) || 0;
   const nps = parseFloat(document.getElementById('new-income-nps').value) || 0;
 
@@ -192,8 +199,9 @@ function editIncome(id) {
       <input type="text" value="${income.name}" class="edit-income-name w-full px-3 py-2 border rounded text-sm" placeholder="Description">
       <div class="relative">
         <span class="absolute left-3 top-2 text-gray-500 text-sm">${getSymbol(currency)}</span>
-        <input type="number" value="${income.amount}" class="edit-income-amount w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Amount">
+        <input type="text" value="${formatNumber(income.amount, currency)}" class="edit-income-amount w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Amount" inputmode="numeric">
       </div>
+      <p class="edit-income-amount-words text-xs text-gray-400 pl-7 h-4"></p>
     </div>
 
     <!-- EPF/NPS Edit Section -->
@@ -219,9 +227,15 @@ function editIncome(id) {
     </div>
   `;
 
+  setupCurrencyInput(
+    row.querySelector('.edit-income-amount'),
+    row.querySelector('.edit-income-amount-words'),
+    numberToWords, currency
+  );
+
   row.querySelector('.save-edit-income').addEventListener('click', () => {
     const newName = row.querySelector('.edit-income-name').value.trim();
-    const newAmount = parseFloat(row.querySelector('.edit-income-amount').value);
+    const newAmount = parseCurrencyInput(row.querySelector('.edit-income-amount').value);
     const newEpf = parseFloat(row.querySelector('.edit-income-epf').value) || 0;
     const newNps = parseFloat(row.querySelector('.edit-income-nps').value) || 0;
 
@@ -268,11 +282,12 @@ function showAddExpenseForm() {
       <select id="new-expense-category" class="w-full px-3 py-2 border rounded mb-2 text-sm">
         ${expenseCategories.map(cat => `<option value="${cat.name}">${cat.name} (${cat.hint})</option>`).join('')}
       </select>
-      <div class="relative mb-2">
+      <div class="relative">
         <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-        <input type="number" id="new-expense-amount" placeholder="Amount"
-          class="w-full pl-8 pr-3 py-2 border rounded text-sm">
+        <input type="text" id="new-expense-amount" placeholder="Amount"
+          class="w-full pl-8 pr-3 py-2 border rounded text-sm" inputmode="numeric">
       </div>
+      <p id="new-expense-amount-words" class="text-xs text-gray-400 mt-0.5 mb-2 pl-8 h-4"></p>
       <input type="text" id="new-expense-name" placeholder="Description - optional (e.g., Monthly Rent)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
       <div class="flex gap-2 justify-end">
@@ -286,6 +301,11 @@ function showAddExpenseForm() {
   document.getElementById('cancel-expense-btn').addEventListener('click', () => {
     container.innerHTML = '';
   });
+  setupCurrencyInput(
+    document.getElementById('new-expense-amount'),
+    document.getElementById('new-expense-amount-words'),
+    numberToWords, currency
+  );
   document.getElementById('new-expense-amount').focus();
 }
 
@@ -294,7 +314,7 @@ function saveNewExpense() {
   const categoryData = expenseCategories.find(c => c.name === category);
   const defaultName = categoryData ? categoryData.hint : category;
   const name = document.getElementById('new-expense-name').value.trim() || defaultName;
-  const amount = parseFloat(document.getElementById('new-expense-amount').value);
+  const amount = parseCurrencyInput(document.getElementById('new-expense-amount').value);
 
   if (isNaN(amount) || amount <= 0) {
     alert('Please enter a valid amount');
@@ -371,8 +391,9 @@ function editExpense(id) {
       <input type="text" value="${expense.name}" class="edit-expense-name w-full px-3 py-2 border rounded text-sm" placeholder="Description">
       <div class="relative">
         <span class="absolute left-3 top-2 text-gray-500 text-sm">${getSymbol(currency)}</span>
-        <input type="number" value="${expense.amount}" class="edit-expense-amount w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Amount">
+        <input type="text" value="${formatNumber(expense.amount, currency)}" class="edit-expense-amount w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Amount" inputmode="numeric">
       </div>
+      <p class="edit-expense-amount-words text-xs text-gray-400 pl-7 h-4"></p>
     </div>
     <div class="flex gap-2 justify-end">
       <button class="cancel-edit-expense bg-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-400">Cancel</button>
@@ -380,10 +401,16 @@ function editExpense(id) {
     </div>
   `;
 
+  setupCurrencyInput(
+    row.querySelector('.edit-expense-amount'),
+    row.querySelector('.edit-expense-amount-words'),
+    numberToWords, currency
+  );
+
   row.querySelector('.save-edit-expense').addEventListener('click', () => {
     const newCategory = row.querySelector('.edit-expense-category').value;
     const newName = row.querySelector('.edit-expense-name').value.trim();
-    const newAmount = parseFloat(row.querySelector('.edit-expense-amount').value);
+    const newAmount = parseCurrencyInput(row.querySelector('.edit-expense-amount').value);
     if (newName && !isNaN(newAmount) && newAmount > 0) {
       updateExpense(appData, id, { category: newCategory, name: newName, amount: newAmount });
       renderExpenseList();

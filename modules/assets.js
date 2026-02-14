@@ -1,6 +1,7 @@
 // Assets & Liabilities management UI and logic
 import { addAsset, updateAsset, deleteAsset, addLiability, updateLiability, deleteLiability, generateId } from './storage.js';
-import { formatCurrency, getSymbol } from './currency.js';
+import { formatCurrency, formatNumber, getSymbol, parseCurrencyInput, setupCurrencyInput } from './currency.js';
+import { numberToWords } from './wizard.js';
 
 // Asset class mapping for pie chart allocation
 const ASSET_CLASS_MAP = {
@@ -183,11 +184,12 @@ function showAddAssetForm() {
       <select id="new-asset-category" class="w-full px-3 py-2 border rounded mb-2 text-sm">
         ${renderAssetCategoryOptions()}
       </select>
-      <div class="relative mb-2">
+      <div class="relative">
         <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-        <input type="number" id="new-asset-value" placeholder="Current Value"
-          class="w-full pl-8 pr-3 py-2 border rounded text-sm">
+        <input type="text" id="new-asset-value" placeholder="Current Value"
+          class="w-full pl-8 pr-3 py-2 border rounded text-sm" inputmode="numeric">
       </div>
+      <p id="new-asset-value-words" class="text-xs text-gray-400 mt-0.5 mb-2 pl-8 h-4"></p>
       <input type="text" id="new-asset-name" placeholder="Description - optional (e.g., HDFC Savings)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
       <div class="flex gap-2 justify-end">
@@ -201,13 +203,18 @@ function showAddAssetForm() {
   document.getElementById('cancel-asset-btn').addEventListener('click', () => {
     container.innerHTML = '';
   });
+  setupCurrencyInput(
+    document.getElementById('new-asset-value'),
+    document.getElementById('new-asset-value-words'),
+    numberToWords, currency
+  );
   document.getElementById('new-asset-value').focus();
 }
 
 function saveNewAsset() {
   const category = document.getElementById('new-asset-category').value;
   const name = document.getElementById('new-asset-name').value.trim() || category;
-  const value = parseFloat(document.getElementById('new-asset-value').value);
+  const value = parseCurrencyInput(document.getElementById('new-asset-value').value);
 
   if (isNaN(value) || value < 0) {
     alert('Please enter a valid value');
@@ -230,33 +237,23 @@ function renderAssetsList() {
     return;
   }
 
-  // Group by category
+  // Group by asset class (matching pie chart buckets)
+  const classOrder = ['Retirement', 'Equity', 'Debt', 'Gold', 'Real Estate', 'Other'];
   const grouped = {};
   appData.assets.items.forEach(asset => {
-    if (!grouped[asset.category]) grouped[asset.category] = [];
-    grouped[asset.category].push(asset);
+    const assetClass = ASSET_CLASS_MAP[asset.category] || 'Other';
+    if (!grouped[assetClass]) grouped[assetClass] = [];
+    grouped[assetClass].push(asset);
   });
 
-  // Get all unique categories from data, ordered by our defined order
-  // Also support legacy category names
-  const allCategories = [...new Set(appData.assets.items.map(a => a.category))];
-  const categoryOrder = [...assetCategories, 'EPF', 'NPS', 'Real Estate', 'Vehicles', 'Bank/FDs', 'Stocks', 'Mutual Funds', 'Gold'];
-  const orderedCategories = categoryOrder.filter(c => allCategories.includes(c));
-  // Add any categories not in our predefined order
-  const remainingCategories = allCategories.filter(c => !orderedCategories.includes(c));
-
-  list.innerHTML = [...orderedCategories, ...remainingCategories]
-    .filter(category => grouped[category])
-    .map(category => {
-      const assets = grouped[category];
-      const isRetirement = retirementCategories.includes(category) || category === 'EPF' || category === 'NPS';
-      const badgeClass = isRetirement ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600';
+  list.innerHTML = classOrder
+    .filter(cls => grouped[cls])
+    .map(cls => {
+      const assets = grouped[cls];
 
       return `
         <div class="pt-4 first:pt-0">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-xs font-semibold uppercase ${badgeClass} px-2 py-0.5 rounded">${category}</span>
-          </div>
+          <div class="text-xs font-semibold uppercase text-gray-500 mb-1">${cls}</div>
           ${assets.map(asset => `
             <div class="flex items-center justify-between py-3 border-b border-gray-100 group" data-asset-id="${asset.id}">
               <span class="text-sm min-w-0">${asset.name}</span>
@@ -302,8 +299,9 @@ function editAsset(id) {
       <input type="text" value="${asset.name}" class="edit-asset-name w-full px-3 py-2 border rounded text-sm" placeholder="Description">
       <div class="relative">
         <span class="absolute left-3 top-2 text-gray-500 text-sm">${getSymbol(currency)}</span>
-        <input type="number" value="${asset.value}" class="edit-asset-value w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Value">
+        <input type="text" value="${formatNumber(asset.value, currency)}" class="edit-asset-value w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Value" inputmode="numeric">
       </div>
+      <p class="edit-asset-value-words text-xs text-gray-400 pl-7 h-4"></p>
     </div>
     <div class="flex gap-2 justify-end">
       <button class="cancel-edit-asset bg-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-400">Cancel</button>
@@ -311,11 +309,17 @@ function editAsset(id) {
     </div>
   `;
 
+  setupCurrencyInput(
+    row.querySelector('.edit-asset-value'),
+    row.querySelector('.edit-asset-value-words'),
+    numberToWords, currency
+  );
+
   row.querySelector('.save-edit-asset').addEventListener('click', () => {
     const newCategory = row.querySelector('.edit-asset-category').value;
-    const newName = row.querySelector('.edit-asset-name').value.trim();
-    const newValue = parseFloat(row.querySelector('.edit-asset-value').value);
-    if (newName && !isNaN(newValue) && newValue >= 0) {
+    const newName = row.querySelector('.edit-asset-name').value.trim() || newCategory;
+    const newValue = parseCurrencyInput(row.querySelector('.edit-asset-value').value);
+    if (!isNaN(newValue) && newValue >= 0) {
       updateAsset(appData, id, { category: newCategory, name: newName, value: newValue });
       renderAssetsList();
       updateNetWorthSummary();
@@ -343,11 +347,12 @@ function showAddLiabilityForm() {
       <select id="new-liability-category" class="w-full px-3 py-2 border rounded mb-2 text-sm">
         ${liabilityCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
       </select>
-      <div class="relative mb-2">
+      <div class="relative">
         <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-        <input type="number" id="new-liability-amount" placeholder="Outstanding Amount"
-          class="w-full pl-8 pr-3 py-2 border rounded text-sm">
+        <input type="text" id="new-liability-amount" placeholder="Outstanding Amount"
+          class="w-full pl-8 pr-3 py-2 border rounded text-sm" inputmode="numeric">
       </div>
+      <p id="new-liability-amount-words" class="text-xs text-gray-400 mt-0.5 mb-2 pl-8 h-4"></p>
       <input type="text" id="new-liability-name" placeholder="Description - optional (e.g., SBI Home Loan)"
         class="w-full px-3 py-2 border rounded mb-2 text-sm">
       <div class="flex gap-2 justify-end">
@@ -361,13 +366,18 @@ function showAddLiabilityForm() {
   document.getElementById('cancel-liability-btn').addEventListener('click', () => {
     container.innerHTML = '';
   });
+  setupCurrencyInput(
+    document.getElementById('new-liability-amount'),
+    document.getElementById('new-liability-amount-words'),
+    numberToWords, currency
+  );
   document.getElementById('new-liability-amount').focus();
 }
 
 function saveNewLiability() {
   const category = document.getElementById('new-liability-category').value;
   const name = document.getElementById('new-liability-name').value.trim() || category;
-  const amount = parseFloat(document.getElementById('new-liability-amount').value);
+  const amount = parseCurrencyInput(document.getElementById('new-liability-amount').value);
 
   if (isNaN(amount) || amount < 0) {
     alert('Please enter a valid amount');
@@ -444,8 +454,9 @@ function editLiability(id) {
       <input type="text" value="${liability.name}" class="edit-liability-name w-full px-3 py-2 border rounded text-sm" placeholder="Description">
       <div class="relative">
         <span class="absolute left-3 top-2 text-gray-500 text-sm">${getSymbol(currency)}</span>
-        <input type="number" value="${liability.amount}" class="edit-liability-amount w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Amount">
+        <input type="text" value="${formatNumber(liability.amount, currency)}" class="edit-liability-amount w-full pl-7 pr-3 py-2 border rounded text-sm" placeholder="Amount" inputmode="numeric">
       </div>
+      <p class="edit-liability-amount-words text-xs text-gray-400 pl-7 h-4"></p>
     </div>
     <div class="flex gap-2 justify-end">
       <button class="cancel-edit-liability bg-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-400">Cancel</button>
@@ -453,11 +464,17 @@ function editLiability(id) {
     </div>
   `;
 
+  setupCurrencyInput(
+    row.querySelector('.edit-liability-amount'),
+    row.querySelector('.edit-liability-amount-words'),
+    numberToWords, currency
+  );
+
   row.querySelector('.save-edit-liability').addEventListener('click', () => {
     const newCategory = row.querySelector('.edit-liability-category').value;
-    const newName = row.querySelector('.edit-liability-name').value.trim();
-    const newAmount = parseFloat(row.querySelector('.edit-liability-amount').value);
-    if (newName && !isNaN(newAmount) && newAmount >= 0) {
+    const newName = row.querySelector('.edit-liability-name').value.trim() || newCategory;
+    const newAmount = parseCurrencyInput(row.querySelector('.edit-liability-amount').value);
+    if (!isNaN(newAmount) && newAmount >= 0) {
       updateLiability(appData, id, { category: newCategory, name: newName, amount: newAmount });
       renderLiabilitiesList();
       updateNetWorthSummary();

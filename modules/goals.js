@@ -1,6 +1,7 @@
 // Goals CRUD and UI - Simplified for Unified Portfolio
 import { addGoal, updateGoal, deleteGoal } from './storage.js';
-import { formatCurrency, formatCompact, getSymbol } from './currency.js';
+import { formatCurrency, formatCompact, formatNumber, getSymbol, parseCurrencyInput, setupCurrencyInput } from './currency.js';
+import { numberToWords } from './wizard.js';
 import {
   getYearsRemaining,
   getUnifiedCategory,
@@ -118,9 +119,10 @@ export function showAddGoalModal(editGoal = null) {
           <label class="block text-sm font-medium text-gray-700 mb-1">Target Amount (today's value)</label>
           <div class="relative">
             <span class="absolute left-3 top-2 text-gray-500">${getSymbol(currency)}</span>
-            <input type="number" id="goal-amount" value="${goal.targetAmount}" placeholder="e.g., 5000000"
-              class="w-full pl-8 pr-3 py-2 border rounded-lg">
+            <input type="text" id="goal-amount" value="${isEdit ? formatNumber(goal.targetAmount, currency) : ''}" placeholder="e.g., 50,00,000"
+              class="w-full pl-8 pr-3 py-2 border rounded-lg" inputmode="numeric">
           </div>
+          <p id="goal-amount-words" class="text-xs text-gray-400 mt-0.5 pl-8 h-4"></p>
           <div id="estimate-retirement-container" class="${(goal.goalType || 'one-time') === 'retirement' ? '' : 'hidden'} mt-1.5">
             <button type="button" id="estimate-retirement-btn" class="text-xs text-emerald-600 hover:text-emerald-800 underline underline-offset-2 transition-colors">
               Estimate Corpus
@@ -190,6 +192,12 @@ export function showAddGoalModal(editGoal = null) {
     }
   });
 
+  setupCurrencyInput(
+    document.getElementById('goal-amount'),
+    document.getElementById('goal-amount-words'),
+    numberToWords, currency
+  );
+
   // Cancel button
   document.getElementById('cancel-goal-btn').addEventListener('click', () => {
     modal.classList.add('hidden');
@@ -199,7 +207,7 @@ export function showAddGoalModal(editGoal = null) {
   document.getElementById('save-goal-btn').addEventListener('click', () => {
     const name = document.getElementById('goal-name').value.trim();
     const goalType = document.getElementById('goal-type').value;
-    const targetAmount = parseFloat(document.getElementById('goal-amount').value);
+    const targetAmount = parseCurrencyInput(document.getElementById('goal-amount').value);
     const inflationRate = parseFloat(document.getElementById('goal-inflation').value);
     const targetMonth = parseInt(document.getElementById('goal-month').value);
     const targetYear = parseInt(document.getElementById('goal-year').value);
