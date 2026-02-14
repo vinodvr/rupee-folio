@@ -654,34 +654,43 @@ function renderInvestmentPlan() {
  * Update the summary section with cashflow comparison
  */
 function updateSummary(totalSIP) {
-  const totalSIPElement = document.getElementById('plan-total-sip');
-  const availableElement = document.getElementById('plan-available-cashflow');
-  const gapElement = document.getElementById('plan-gap');
-  const gapLabel = document.getElementById('plan-gap-label');
+  const summaryGrid = document.getElementById('plan-summary-grid');
+  if (!summaryGrid) return;
 
-  if (!totalSIPElement || !availableElement || !gapElement || !gapLabel) return;
+  // All goals achieved — show celebratory message
+  if (totalSIP === 0) {
+    summaryGrid.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-4 col-span-full">
+        <svg class="w-12 h-12 text-green-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div class="text-xl font-bold">All Goals Achieved!</div>
+        <div class="text-blue-200 text-sm mt-1">Your existing assets fully cover all your financial goals.</div>
+      </div>
+    `;
+    return;
+  }
 
-  totalSIPElement.textContent = formatCurrency(Math.round(totalSIP), currency);
-
-  // Get cashflow data
+  // Normal summary with 3 boxes
   const totalIncome = appData.cashflow.income.reduce((sum, i) => sum + i.amount, 0);
   const totalExpenses = appData.cashflow.expenses.reduce((sum, e) => sum + e.amount, 0);
   const netCashflow = Math.max(0, totalIncome - totalExpenses);
-
-  availableElement.textContent = formatCurrency(netCashflow, currency);
-
   const gap = totalSIP - netCashflow;
-  gapElement.textContent = formatCurrency(Math.abs(Math.round(gap)), currency);
 
-  if (gap > 0) {
-    gapElement.classList.remove('text-green-400');
-    gapElement.classList.add('text-red-400');
-    gapLabel.textContent = 'Shortfall:';
-  } else {
-    gapElement.classList.remove('text-red-400');
-    gapElement.classList.add('text-green-400');
-    gapLabel.textContent = 'Surplus:';
-  }
+  summaryGrid.innerHTML = `
+    <div class="bg-white/10 rounded-lg p-4">
+      <div class="text-blue-100 text-sm">Total Monthly SIP Needed</div>
+      <div class="text-2xl font-bold">${formatCurrency(Math.round(totalSIP), currency)}</div>
+    </div>
+    <div class="bg-white/10 rounded-lg p-4">
+      <div class="text-blue-100 text-sm">Available from Cash Flow</div>
+      <div class="text-2xl font-bold">${formatCurrency(netCashflow, currency)}</div>
+    </div>
+    <div class="bg-white/10 rounded-lg p-4">
+      <div class="text-blue-100 text-sm">${gap > 0 ? 'Shortfall:' : 'Surplus:'}</div>
+      <div class="text-2xl font-bold ${gap > 0 ? 'text-red-400' : 'text-green-400'}">${formatCurrency(Math.abs(Math.round(gap)), currency)}</div>
+    </div>
+  `;
 }
 
 /**
